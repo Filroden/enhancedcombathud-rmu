@@ -1,0 +1,64 @@
+{
+    "title": "Argon - Combat HUD (RMU)",
+    "description": "Rolemaster Unified System Argon integration",
+    "id": "enhancedcombathud-rmu",
+    "version": "0.0.1",
+    "authors": [
+        {
+            "name": "theripper93",
+            "email": "tsplab@gmail.com",
+            "url": "https://www.patreon.com/theripper93"
+        },
+        {
+            "name": "Bob Morris (system integration)"
+        
+        },
+        {
+            "name": "Ken Dearman (system integration)"
+        }
+    ],
+    "languages": [
+        {
+            "lang": "en",
+            "name": "English",
+            "path": "languages/en.json"
+        },
+        {
+            "lang": "fr",
+            "name": "Français",
+            "path": "languages/fr.json"
+        }
+    ],
+    "scripts": [],
+    "esmodules": [
+        "index.js"
+    ],
+    "styles": [
+        "styles/module.css"
+    ],
+    "packs": [],
+    "relationships": {
+        "requires": [
+            {
+                "id": "enhancedcombathud",
+                "type": "module",
+                "compatibility": {
+                    "minimum": "3.0.4"
+                }
+            }
+        ],
+        "systems": [
+            {
+                "id": "rmu",
+                "type": "system",
+                "compatibility": {
+                    "minimum": "0.27.11"
+                }
+            }
+        ]
+    },
+    "compatibility": {
+        "minimum": "13",
+        "verified": "13"
+    }
+}
