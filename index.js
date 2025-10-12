@@ -1,5 +1,5 @@
 // Enhanced Combat HUD — RMU integration
-// Portrait + Movement + (NEW) MAIN "Attacks" action panel grouped into Melee/Ranged/Natural/Shield
+// Portrait + Movement + (MAIN) "Attacks" panel grouped into Melee/Ranged/Natural/Shield
 
 const MODULE_ID = "enhancedcombathud-rmu";
 
@@ -165,87 +165,81 @@ function defineWeaponSets(CoreHUD) {
 }
 
 /* ──────────────────────────────────────────────────────────
-   NEW — MAIN "Attacks" Action Panel (appears to the right of the portrait)
-   Pattern mirrors DnD: an ActionPanel that returns category buttons,
-   and each category button opens a small panel of action buttons.
+   Helpers used by Attacks
+────────────────────────────────────────────────────────── */
+// Route helper for core icons (works under sub-path deployments)
+const CORE_ICON = (p) => (foundry?.utils?.getRoute ? foundry.utils.getRoute(p) : p);
+
+// Default icons per category (core Foundry)
+const DEFAULT_ICONS = {
+  melee:   CORE_ICON("icons/skills/melee/maneuver-sword-katana-yellow.webp"),
+  ranged:  CORE_ICON("icons/skills/ranged/person-archery-bow-attack-orange.webp"),
+  natural: CORE_ICON("icons/skills/melee/unarmed-punch-fist-yellow-red.webp"),
+  shield:  CORE_ICON("icons/skills/melee/shield-block-gray-yellow.webp")
+};
+
+function asBool(v) { return !!(v === true || v === "true" || v === 1); }
+
+async function ensureExtendedTokenData() {
+  const token = ui.ARGON?._token;
+  const doc = token?.document ?? token;
+  if (doc && typeof doc.hudDeriveExtendedData === "function") {
+    try { await doc.hudDeriveExtendedData(); } catch (e) { console.warn("[ECH-RMU] hudDeriveExtendedData failed:", e); }
+  }
+}
+
+function getTokenAttacks() {
+  const a = ui.ARGON?._actor;
+  const list = a?.system?._attacks;
+  return Array.isArray(list) ? list : [];
+}
+
+// Bucket by **skill first** (fixes melee showing as ranged)
+function bucketOf(att) {
+  const sName = String(att?.skill?.name ?? "").toLowerCase();
+  const sSpec = String(att?.skill?.specialization ?? att?.skill?.specialisation ?? "").toLowerCase();
+  const type  = String(att?.subType ?? att?.type ?? att?.category ?? att?.attackType ?? "").toLowerCase();
+  const incs  = att?.rangeInrements ?? att?.rangeIncrements ?? null;
+
+  if (sName.includes("shield") || sSpec.includes("shield") || type.includes("shield")) return "shield";
+
+  // Unarmed / Natural (Strikes)
+  if (
+    sName.includes("unarmed") || sName.includes("strikes") || sSpec.includes("unarmed") || sSpec.includes("strikes") ||
+    type.includes("natural") || att?.isNatural === true
+  ) return "natural";
+
+  // Missile / Ranged
+  if (sName.includes("missile") || sName.includes("ranged") || type.includes("ranged") || sSpec.includes("thrown")) {
+    return "ranged";
+  }
+
+  // Heuristic fallback: only treat as ranged if an increment with a real distance exists
+  if (Array.isArray(incs) && incs.some(x => Number(x?.distInFt ?? x?.dist ?? 0) > 0)) {
+    return "ranged";
+  }
+
+  // Default → Melee
+  return "melee";
+}
+
+// Short range extractor
+function getShortRange(arr) {
+  if (!Array.isArray(arr)) return "—";
+  const short = arr.find(r => String(r.label).toLowerCase() === "short");
+  if (!short) return "—";
+  const dist = short.distance || (short.distInFt != null ? `${short.distInFt}'` : short.dist ?? "");
+  return dist ? `${dist}` : "—";
+}
+
+/* ──────────────────────────────────────────────────────────
+   MAIN — "Attacks" panel (to the right of the portrait)
 ────────────────────────────────────────────────────────── */
 function defineAttacksMain(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   const { ActionPanel } = ARGON.MAIN;
-  const { ButtonPanel, ACCORDION } = ARGON.MAIN.BUTTON_PANELS;
+  const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
   const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
-  const { AccordionPanel, AccordionPanelCategory } = ACCORDION;
-
-  // ---------- helpers ----------
-  const asBool = (v) => !!(v === true || v === "true" || v === 1);
-
-  async function ensureExtendedTokenData() {
-    const token = ui.ARGON?._token;
-    const doc = token?.document ?? token;
-    if (doc && typeof doc.hudDeriveExtendedData === "function") {
-      try { await doc.hudDeriveExtendedData(); } catch (e) { console.warn("[ECH-RMU] hudDeriveExtendedData failed:", e); }
-    }
-  }
-
-  function getTokenAttacks() {
-    const a = ui.ARGON?._actor;
-    const list = a?.system?._attacks;
-    return Array.isArray(list) ? list : [];
-  }
-
-  function bucketOf(att) {
-    const sName = String(att?.skill?.name ?? "").toLowerCase();
-    const sSpec = String(att?.skill?.specialization ?? att?.skill?.specialisation ?? "").toLowerCase();
-    const sType = String(att?.subType ?? att?.type ?? att?.category ?? att?.attackType ?? "").toLowerCase();
-
-    const hasRangeField =
-      !!(att?.range?.short || att?.range?.max || att?.usage?.range || att?.rangeInterval);
-
-    // Shield (explicit)
-    if (sName.includes("shield") || sSpec.includes("shield") || sType.includes("shield")) return "shield";
-
-    // Natural / Unarmed (Strikes)
-    if (
-      sName.includes("strike") || sSpec.includes("strike") ||
-      sName.includes("unarmed") || sSpec.includes("unarmed") ||
-      sType.includes("natural") || att?.isNatural === true
-    ) return "natural";
-
-    // Ranged (range field OR common keywords)
-    if (
-      hasRangeField ||
-      sName.includes("ranged") || sType.includes("ranged") ||
-      sName.includes("missile") || sType.includes("missile") ||
-      sName.includes("thrown")  || sType.includes("thrown")  ||
-      sName.includes("bow")     || sType.includes("bow")     ||
-      sName.includes("crossbow")|| sType.includes("crossbow")||
-      sName.includes("sling")   || sType.includes("sling")   ||
-      sName.includes("dart")    || sType.includes("dart")
-    ) return "ranged";
-
-    // Default
-    return "melee";
-  }
-
-  function getShortRange(arr) {
-    if (!Array.isArray(arr)) return "—";
-    // find the "Short" entry (case-insensitive)
-    const short = arr.find(r => String(r.label).toLowerCase() === "short");
-    if (!short) return "—";
-    const dist = short.distance || (short.distInFt != null ? `${short.distInFt}'` : short.dist ?? "");
-    return dist ? `${dist}` : "—";
-  }
-
-  // Route helper (handles sub-path deployments too)
-  const CORE_ICON = (p) => (foundry?.utils?.getRoute ? foundry.utils.getRoute(p) : p);
-
-  // Default icons per category (from Foundry core)
-  const DEFAULT_ICONS = {
-    melee:   CORE_ICON("icons/skills/melee/maneuver-sword-katana-yellow.webp"),
-    ranged:  CORE_ICON("icons/skills/ranged/person-archery-bow-attack-orange.webp"),
-    natural: CORE_ICON("icons/skills/melee/unarmed-punch-fist-yellow-red.webp"),
-    shield:  CORE_ICON("icons/skills/melee/shield-block-gray-yellow.webp")
-  };
 
   const CATS = [
     { key: "melee",   label: "Melee",   icon: DEFAULT_ICONS.melee   },
@@ -254,7 +248,7 @@ function defineAttacksMain(CoreHUD) {
     { key: "shield",  label: "Shield",  icon: DEFAULT_ICONS.shield  }
   ];
 
-  // ---------- attack tile ----------
+  // Attack tile
   class RMUAttackActionButton extends ActionButton {
     constructor(attack, catKey) {
       super();
@@ -262,63 +256,123 @@ function defineAttacksMain(CoreHUD) {
       this._catKey = catKey; // "melee" | "ranged" | "natural" | "shield"
     }
 
-    get label() { return this.attack?.attackName ?? this.attack?.name ?? "Attack"; }
+    get label() {
+      return this.attack?.attackName ?? this.attack?.name ?? "Attack";
+    }
 
-    get icon() { return this.attack?.img || DEFAULT_ICONS[this._catKey] || CORE_ICON("icons/svg/sword.svg"); }
+    get icon() {
+      // Attack image or category default
+      return this.attack?.img || DEFAULT_ICONS[this._catKey] || CORE_ICON("icons/svg/sword.svg");
+    }
 
     get _equipped() {
       const a = this.attack ?? {};
       return asBool(a.isEquipped ?? a.readyState ?? a.equipped ?? a.isReady);
     }
+
     get classes() {
       const c = super.classes.slice();
+      // Only disable when NOT equipped
       if (!this._equipped) c.push("disabled");
       return c;
+    }
+
+    // Keep the tile clickable even if theme CSS tries to block it
+    async _renderInner() {
+      await super._renderInner();
+      if (this.element) this.element.style.pointerEvents = "auto";
     }
 
     get hasTooltip() { return true; }
     async getTooltipData() {
       const a = this.attack ?? {};
       const shortRange = getShortRange(a.rangeInrements ?? a.rangeIncrements ?? a.rangeIntervals ?? a.range);
-      const kv = [
-        ["Specialisation", a.specialization],
-        ["Size",           a.sizeAdjustment],
-        ["Chart",          a.chart?.name],
-        ["Fumble",         a.fumble],
-        ["Melee reach",    a.meleeRange],
-        ["Range interval", shortRange],
-        ["STR",            a.itemStrength],
-        ["Ranks",          a.skill?.ranks],
-        ["2H",             (Number(a.twoHandedBonus) === 10 ? "Yes" : "No")],
-        ["Bonus OB",       a.itemBonus],
-        ["Total OB",       a.totalBonus]
-      ].filter(([,v]) => v !== undefined && v !== null && v !== "");
 
-      const details = kv.map(([label, value]) => ({ label, value }));
+      // Only provide the structured details (lets Argon render the designed block)
+      const details = [
+        { label: "Specialization",   value: a.skill?.specialization },
+        { label: "Size",             value: a.size },
+        { label: "Chart",            value: a.chart?.name },
+        { label: "Fumble",           value: a.fumble },
+        { label: "Melee reach",      value: a.meleeRange },         // exact path you provided
+        { label: "Range (short)",    value: shortRange },
+        { label: "Item Strength",    value: a.itemStrength },
+        { label: "Ranks",            value: a.skill?.ranks },
+        { label: "Combat Training",  value: a.skill?.name },
+        { label: "2H",               value: (Number(a.twoHandedBonus) === 10 ? "Yes" : "No") },
+        { label: "Bonus OB",         value: a.itemBonus },
+        { label: "Total OB",         value: a.totalBonus }
+      ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
 
-      const description =
-        `<table class="rmu-tt"><tbody>` +
-        kv.map(([k,v]) => `<tr><td>${k}</td><td style="text-align:right">${v}</td></tr>`).join("") +
-        `</tbody></table>`;
-
-      return {
-        title: this.label,
-        subtitle: a.skill?.name ?? "",
-        description,  // HTML block (nice on desktop)
-        details       // also provide structured details to match tooltip API
-      };
+      return { title: this.label, subtitle: a.skill?.name ?? "", details };
     }
 
+    // Trigger ONCE: mousedown only (prevents double API calls)
+    async _onMouseDown(event) {
+      if (event.button !== 0) return; // only left
+      event.preventDefault();
+      event.stopPropagation();
+      await this._invokeAttack();
+    }
 
+    // Do not trigger on mouseup anymore (prevents duplicate rolls)
     async _onLeftClick(event) {
-      if (!this._equipped) return ui.notifications?.warn?.(`${this.label} is not equipped.`);
-      ui.notifications?.info?.(`[RMU] Rolling "${this.label}" coming soon.`);
-      // TODO: replace with real roll API when the system exposes it
-      // await game.system.rmu.rollAttack({ token: ui.ARGON._token, attack: this.attack });
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      // no-op
+    }
+
+    async _invokeAttack() {
+      try {
+        // Require target (RMU usually needs it)
+        const targets = game.user?.targets ?? new Set();
+        if (!targets.size) {
+          ui.notifications?.warn?.("Select at least one target before attacking.");
+          return;
+        }
+
+        const token = ui.ARGON?._token;
+        const doc = token?.document ?? token;
+        if (!token) {
+          ui.notifications?.error?.("No active token for HUD.");
+          return;
+        }
+
+        // Ensure _attacks exist on the token
+        if (typeof doc?.hudDeriveExtendedData === "function") {
+          await doc.hudDeriveExtendedData();
+        }
+
+        // Re-grab a LIVE attack entry from the token array (avoid stale refs)
+        const list = token?.actor?.system?._attacks ?? [];
+        const live =
+          list.find(a => a === this.attack) ||
+          list.find(a => a.attackName === this.attack?.attackName) ||
+          this.attack;
+
+        // If not equipped, stop here (after deriving so state is fresh)
+        if (!this._equipped) {
+          ui.notifications?.warn?.(`${this.label} is not equipped.`);
+          return;
+        }
+
+        // Only Melee / Ranged confirmed supported right now
+        const supported = ["melee", "ranged"];
+        const api = game.system?.api?.rmuTokenAttackAction;
+        if (!supported.includes(this._catKey) || typeof api !== "function") {
+          ui.notifications?.info?.(`[RMU] Attack not supported yet for "${this._catKey}".`);
+          return;
+        }
+
+        await api(token, live);
+      } catch (err) {
+        console.error("[ECH-RMU] Attack API error:", err);
+        ui.notifications?.error?.(`Attack failed: ${err?.message ?? err}`);
+      }
     }
   }
 
-  // ---------- category buttons (each opens a small panel) ----------
+  // Category button (opens a small panel of attack tiles)
   class RMUAttackCategoryButton extends ButtonPanelButton {
     constructor({ key, label, icon, attacks }) {
       super();
@@ -327,13 +381,11 @@ function defineAttacksMain(CoreHUD) {
       this._icon = icon;
       this._attacks = Array.isArray(attacks) ? attacks : [];
     }
-
     get label() { return this.title; }
     get icon()  { return this._icon; }
     get hasContents() { return this._attacks.length > 0; }
 
     async _getPanel() {
-      // Build the attack action buttons for this category.
       const buttons = this._attacks.map(a => new RMUAttackActionButton(a, this.key));
       return new ButtonPanel({
         id: `rmu-attacks-${this.key}`,
@@ -342,15 +394,13 @@ function defineAttacksMain(CoreHUD) {
     }
   }
 
-
-  // ---------- MAIN action panel ----------
+  // MAIN panel visible to the right of the portrait
   class RMUAttacksActionPanel extends ActionPanel {
     get label() { return "Attacks"; }
     get maxActions() { return null; }
     get currentActions() { return null; }
 
     async _getButtons() {
-      // Ensure token has extended fields (async derive) before reading _attacks
       await ensureExtendedTokenData();
       const all = getTokenAttacks();
 
@@ -362,17 +412,17 @@ function defineAttacksMain(CoreHUD) {
         buckets.get(key).push(atk);
       }
 
-      // sort each bucket: equipped first, then name
+      // sort each bucket: equipped first, then name shown on the tile
       for (const [k, list] of buckets.entries()) {
         list.sort((a,b) => {
           const ea = asBool(a.isEquipped ?? a.readyState);
           const eb = asBool(b.isEquipped ?? b.readyState);
           if (ea !== eb) return ea ? -1 : 1;
-          return String(a.name ?? "").localeCompare(String(b.name ?? ""));
+          return String(a.attackName ?? a.name ?? "").localeCompare(String(b.attackName ?? b.name ?? ""));
         });
       }
 
-      // build 4 category buttons (only ones with contents will render)
+      // Build 4 category buttons (skip empties)
       const buttons = CATS.map(c =>
         new RMUAttackCategoryButton({
           key: c.key,
@@ -380,19 +430,17 @@ function defineAttacksMain(CoreHUD) {
           icon: c.icon,
           attacks: buckets.get(c.key) || []
         })
-      );
+      ).filter(b => b.hasContents);
 
-      // Filter empty categories so we don't show dead toggles
-      return buttons.filter(b => b.hasContents);
+      return buttons;
     }
   }
 
-  // Register this MAIN panel so it renders to the right of the portrait
   CoreHUD.defineMainPanels([RMUAttacksActionPanel]);
 }
 
 /* ──────────────────────────────────────────────────────────
-   Drawer Panel (kept simple; Attacks live in MAIN now)
+   Drawer Panel (kept simple)
 ────────────────────────────────────────────────────────── */
 function defineDrawerPanel(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
@@ -423,10 +471,10 @@ function initConfig() {
     defineWeaponSets(CoreHUD);
     defineMovementHud(CoreHUD);
 
-    // NEW: Attacks as a MAIN panel (to the right of the portrait)
+    // Attacks as a MAIN panel (to the right of the portrait)
     defineAttacksMain(CoreHUD);
 
-    // Keep a simple Drawer (no Attacks in drawer)
+    // Simple Drawer (no buttons for now)
     defineDrawerPanel(CoreHUD);
   });
 }
