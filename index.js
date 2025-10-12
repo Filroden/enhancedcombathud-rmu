@@ -194,7 +194,7 @@ function getTokenAttacks() {
   return Array.isArray(list) ? list : [];
 }
 
-// Bucket by **skill first** (fixes melee showing as ranged)
+// Bucket by skill first
 function bucketOf(att) {
   const sName = String(att?.skill?.name ?? "").toLowerCase();
   const sSpec = String(att?.skill?.specialization ?? att?.skill?.specialisation ?? "").toLowerCase();
@@ -249,6 +249,15 @@ function defineAttacksMain(CoreHUD) {
   ];
 
   // Attack tile
+  // Track “armed” (template placement) per token+attack so the UI can show state
+  const TEMPLATE_STATE = new Map(); // key: `${tokenId}::${attackName}` -> boolean
+
+  function tplKeyFor(token, attack) {
+    const id = token?.id ?? ui.ARGON?._token?.id ?? "no-token";
+    const name = attack?.attackName ?? attack?.name ?? "attack";
+    return `${id}::${name}`;
+  }
+
   class RMUAttackActionButton extends ActionButton {
     constructor(attack, catKey) {
       super();
@@ -256,8 +265,27 @@ function defineAttacksMain(CoreHUD) {
       this._catKey = catKey; // "melee" | "ranged" | "natural" | "shield"
     }
 
+    // Is this attack currently “armed” (waiting for second click)?
+    get _armed() {
+      const token = ui.ARGON?._token;
+      return TEMPLATE_STATE.get(tplKeyFor(token, this.attack)) === true;
+    }
+
+    set _armed(v) {
+      const token = ui.ARGON?._token;
+      TEMPLATE_STATE.set(tplKeyFor(token, this.attack), !!v);
+      // If we’re already in the DOM, update visuals immediately
+      if (this.element) {
+        this._applyArmedVisual();
+        this._updateBadge();
+        // Re-render the label so it shows "Place: …"
+        this.refresh?.();
+      }
+    }
+
     get label() {
-      return this.attack?.attackName ?? this.attack?.name ?? "Attack";
+      const name = this.attack?.attackName ?? this.attack?.name ?? "Attack";
+      return this._armed ? `Place: ${name}` : name;
     }
 
     get icon() {
@@ -267,35 +295,122 @@ function defineAttacksMain(CoreHUD) {
 
     get _equipped() {
       const a = this.attack ?? {};
-      return asBool(a.isEquipped ?? a.readyState ?? a.equipped ?? a.isReady);
+      return !!(a.isEquipped ?? a.readyState ?? a.equipped ?? a.isReady);
     }
 
     get classes() {
       const c = super.classes.slice();
       // Only disable when NOT equipped
       if (!this._equipped) c.push("disabled");
+      if (this._armed) c.push("armed");
       return c;
     }
 
-    // Keep the tile clickable even if theme CSS tries to block it
+    // Keep the tile clickable even if theme CSS tries to block it; also apply armed visuals
     async _renderInner() {
       await super._renderInner();
       if (this.element) this.element.style.pointerEvents = "auto";
+      this._applyArmedVisual();
+      this._updateBadge();
+      this._updateOverlay();   // NEW: add this line
     }
 
+    set _armed(v) {
+      const token = ui.ARGON?._token;
+      TEMPLATE_STATE.set(tplKeyFor(token, this.attack), !!v);
+      if (this.element) {
+        this._applyArmedVisual();
+        this._updateBadge();
+        this._updateOverlay();  // NEW: add this line
+        this.refresh?.();
+      }
+    }
+
+    // Stronger visual: outline + title hint
+    _applyArmedVisual() {
+      if (!this.element) return;
+      if (this._armed) {
+        this.element.style.outline = "2px solid rgba(255,165,0,0.95)";
+        this.element.title = "Template active: place it on the scene, then click this attack again to resolve.";
+      } else {
+        this.element.style.outline = "";
+        this.element.title = "";
+      }
+    }
+
+    // Big “PLACE TEMPLATE” badge
+    _updateBadge() {
+      if (!this.element) return;
+      const old = this.element.querySelector(".rmu-place-badge");
+      if (old) old.remove();
+
+      if (this._armed) {
+        const b = document.createElement("div");
+        b.className = "rmu-place-badge";
+        b.textContent = "PLACE TEMPLATE";
+        Object.assign(b.style, {
+          position: "absolute",
+          top: "4px",
+          right: "6px",
+          padding: "2px 6px",
+          fontSize: "10px",
+          fontWeight: "800",
+          letterSpacing: "0.5px",
+          borderRadius: "6px",
+          background: "rgba(255,165,0,0.95)",
+          color: "#000",
+          textShadow: "none",
+          pointerEvents: "none",
+          zIndex: "3"
+        });
+        this.element.style.position = "relative";
+        this.element.appendChild(b);
+      }
+    }
+
+    // NEW: add an orange overlay so background visibly changes without touching global CSS
+    _updateOverlay() {
+      if (!this.element) return;
+
+      // Remove any previous overlay
+      const old = this.element.querySelector(".rmu-armed-overlay");
+      if (old) old.remove();
+
+      if (this._armed) {
+        const ov = document.createElement("div");
+        ov.className = "rmu-armed-overlay";
+        Object.assign(ov.style, {
+          position: "absolute",
+          inset: "0",
+          background: "rgba(255,165,0,0.30)",       // orange tint
+          mixBlendMode: "multiply",                   // boosts visibility over the icon
+          borderRadius: "10px",
+          pointerEvents: "none",
+          zIndex: "2"
+        });
+        // Ensure the button can hold absolutely positioned children
+        this.element.style.position = "relative";
+        this.element.appendChild(ov);
+      }
+    }
+
+    /* ───────── Tooltip ───────── */
     get hasTooltip() { return true; }
     async getTooltipData() {
       const a = this.attack ?? {};
-      const shortRange = getShortRange(a.rangeInrements ?? a.rangeIncrements ?? a.rangeIntervals ?? a.range);
-
-      // Only provide the structured details (lets Argon render the designed block)
       const details = [
         { label: "Specialization",   value: a.skill?.specialization },
         { label: "Size",             value: a.size },
         { label: "Chart",            value: a.chart?.name },
         { label: "Fumble",           value: a.fumble },
-        { label: "Melee reach",      value: a.meleeRange },         // exact path you provided
-        { label: "Range (short)",    value: shortRange },
+        // Conditionally include Melee reach
+        ...( ["melee","natural","shield"].includes(this._catKey)
+            ? [{ label: "Melee reach", value: a.meleeRange }]
+            : [] ),
+        // Conditionally include Range (short)
+        ...( this._catKey === "ranged"
+            ? [{ label: "Range (short)", value: getShortRange(a.rangeInrements ?? a.rangeIncrements ?? a.rangeIntervals ?? a.range) }]
+            : [] ),
         { label: "Item Strength",    value: a.itemStrength },
         { label: "Ranks",            value: a.skill?.ranks },
         { label: "Combat Training",  value: a.skill?.name },
@@ -307,7 +422,8 @@ function defineAttacksMain(CoreHUD) {
       return { title: this.label, subtitle: a.skill?.name ?? "", details };
     }
 
-    // Trigger ONCE: mousedown only (prevents double API calls)
+    /* ───────── Clicks ───────── */
+    // Trigger ONCE on mousedown (prevents double API calls)
     async _onMouseDown(event) {
       if (event.button !== 0) return; // only left
       event.preventDefault();
@@ -315,7 +431,7 @@ function defineAttacksMain(CoreHUD) {
       await this._invokeAttack();
     }
 
-    // Do not trigger on mouseup anymore (prevents duplicate rolls)
+    // Mouseup is a no-op (prevents duplicates)
     async _onLeftClick(event) {
       event?.preventDefault?.();
       event?.stopPropagation?.();
@@ -324,7 +440,7 @@ function defineAttacksMain(CoreHUD) {
 
     async _invokeAttack() {
       try {
-        // Require target (RMU usually needs it)
+        // Require a target
         const targets = game.user?.targets ?? new Set();
         if (!targets.size) {
           ui.notifications?.warn?.("Select at least one target before attacking.");
@@ -343,34 +459,54 @@ function defineAttacksMain(CoreHUD) {
           await doc.hudDeriveExtendedData();
         }
 
-        // Re-grab a LIVE attack entry from the token array (avoid stale refs)
+        // Re-grab a LIVE attack entry (avoid stale refs)
         const list = token?.actor?.system?._attacks ?? [];
         const live =
           list.find(a => a === this.attack) ||
           list.find(a => a.attackName === this.attack?.attackName) ||
           this.attack;
 
-        // If not equipped, stop here (after deriving so state is fresh)
+        // If not equipped, stop here
         if (!this._equipped) {
-          ui.notifications?.warn?.(`${this.label} is not equipped.`);
+          ui.notifications?.warn?.(`${(this.attack?.attackName ?? this.label).replace(/^Place:\s*/, "")} is not equipped.`);
           return;
         }
 
-        // Only Melee / Ranged confirmed supported right now
-        const supported = ["melee", "ranged"];
         const api = game.system?.api?.rmuTokenAttackAction;
-        if (!supported.includes(this._catKey) || typeof api !== "function") {
-          ui.notifications?.info?.(`[RMU] Attack not supported yet for "${this._catKey}".`);
+        if (typeof api !== "function") {
+          ui.notifications?.error?.("RMU attack API not available.");
           return;
         }
 
+        const needsTemplate = live?.isAoE === true; // per-attack flag
+
+        // If we're already armed, this is the *second* click → resolve and clear state.
+        if (this._armed) {
+          await api(token, live);    // resolve after the template has been placed
+          this._armed = false;       // clear glow/label
+          return;
+        }
+
+        // First click
+        if (needsTemplate) {
+          // Arm, refresh visuals immediately, toast, then start placement via API.
+          this._armed = true;               // sets state + refreshes visuals/label
+          ui.notifications?.info?.("Place the template on the scene, then click this attack again to resolve.");
+          await api(token, live);           // starts the placement workflow
+          return;                           // stay armed until next click
+        }
+
+        // Normal (non-template) attack: single call
         await api(token, live);
+
       } catch (err) {
         console.error("[ECH-RMU] Attack API error:", err);
         ui.notifications?.error?.(`Attack failed: ${err?.message ?? err}`);
+        this._armed = false; // don’t leave the button stuck in “armed” state on error
       }
     }
   }
+
 
   // Category button (opens a small panel of attack tiles)
   class RMUAttackCategoryButton extends ButtonPanelButton {
@@ -470,11 +606,7 @@ function initConfig() {
     defineSupportedActorTypes(CoreHUD);
     defineWeaponSets(CoreHUD);
     defineMovementHud(CoreHUD);
-
-    // Attacks as a MAIN panel (to the right of the portrait)
     defineAttacksMain(CoreHUD);
-
-    // Simple Drawer (no buttons for now)
     defineDrawerPanel(CoreHUD);
   });
 }
