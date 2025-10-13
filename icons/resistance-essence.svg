@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs><style>
+    .bg{fill:#000000;opacity:.9}
+    .fg{fill:#ff8a00}
+  </style></defs>
+  <rect class="bg" x="4" y="4" width="56" height="56" rx="10" ry="10"/>
+  <path class="fg" d="M32 7l9 13h-7l7 12h-8l6 12h-6l5 13-21-25h8l-7-12h10l-6-13z"/>
+</svg>
