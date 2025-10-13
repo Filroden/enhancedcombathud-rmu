@@ -167,15 +167,18 @@ function defineWeaponSets(CoreHUD) {
 /* ──────────────────────────────────────────────────────────
    Helpers used by Attacks
 ────────────────────────────────────────────────────────── */
-// Route helper for core icons (works under sub-path deployments)
-const CORE_ICON = (p) => (foundry?.utils?.getRoute ? foundry.utils.getRoute(p) : p);
+// Route helper for module icons
+const MOD_ICON = (file) =>
+  (foundry?.utils?.getRoute
+    ? foundry.utils.getRoute(`modules/${MODULE_ID}/icons/${file}`)
+    : `modules/${MODULE_ID}/icons/${file}`);
 
-// Default icons per category (core Foundry)
+// Default icons per category
 const DEFAULT_ICONS = {
-  melee:   CORE_ICON("icons/skills/melee/maneuver-sword-katana-yellow.webp"),
-  ranged:  CORE_ICON("icons/skills/ranged/person-archery-bow-attack-orange.webp"),
-  natural: CORE_ICON("icons/skills/melee/unarmed-punch-fist-yellow-red.webp"),
-  shield:  CORE_ICON("icons/skills/melee/shield-block-gray-yellow.webp")
+  melee:   MOD_ICON("sword-brandish.svg"),
+  ranged:  MOD_ICON("high-shot.svg"),
+  natural: MOD_ICON("fist.svg"),
+  shield:  MOD_ICON("vibrating-shield.svg"),
 };
 
 function asBool(v) { return !!(v === true || v === "true" || v === 1); }
@@ -290,7 +293,7 @@ function defineAttacksMain(CoreHUD) {
 
     get icon() {
       // Attack image or category default
-      return this.attack?.img || DEFAULT_ICONS[this._catKey] || CORE_ICON("icons/svg/sword.svg");
+      return this.attack?.img || DEFAULT_ICONS[this._catKey] || MOD_ICON("sword-brandish.svg");
     }
 
     get _equipped() {
