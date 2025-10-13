@@ -9,7 +9,11 @@ const MODULE_ID = "enhancedcombathud-rmu";
 console.info("[ECH-RMU] index.js loaded");
 Hooks.once("init",  () => console.info("[ECH-RMU] init"));
 Hooks.once("setup", () => console.info("[ECH-RMU] setup"));
-Hooks.once("ready", () => console.info("[ECH-RMU] ready"));
+Hooks.once("ready", () => {
+  console.info("[ECH-RMU] ready");
+  // Add a page-scope class so CSS never leaks elsewhere
+  document.body.classList.add("enhancedcombathud-rmu");
+});
 
 /* ──────────────────────────────────────────────────────────
    Settings (minimal)
@@ -236,7 +240,27 @@ function getShortRange(arr) {
 }
 
 /* ──────────────────────────────────────────────────────────
-   MAIN — "Attacks" panel (to the right of the portrait)
+   Shared visual overlay (blurred icon + "Total" + number)
+────────────────────────────────────────────────────────── */
+function applyValueOverlay(element, value) {
+  if (!element) return;
+  element.querySelector(".rmu-value-overlay")?.remove();
+
+  const ov = document.createElement("div");
+  ov.className = "rmu-value-overlay";
+  ov.innerHTML = `
+    <div class="rmu-value-overlay-blur"></div>
+    <div class="rmu-value-overlay-text">
+      <div class="rmu-value-overlay-label">Total</div>
+      <div class="rmu-value-overlay-number">${value ?? ""}</div>
+    </div>
+  `;
+  element.classList.add("rmu-button-relative");
+  element.appendChild(ov);
+}
+
+/* ──────────────────────────────────────────────────────────
+   ATTACK ROLLS - categories + attack buttons
 ────────────────────────────────────────────────────────── */
 function defineAttacksMain(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
@@ -303,19 +327,21 @@ function defineAttacksMain(CoreHUD) {
 
     get classes() {
       const c = super.classes.slice();
-      // Only disable when NOT equipped
       if (!this._equipped) c.push("disabled");
       if (this._armed) c.push("armed");
+      c.push("rmu-attack-tile");          // ← add this
       return c;
     }
 
     // Keep the tile clickable even if theme CSS tries to block it; also apply armed visuals
     async _renderInner() {
       await super._renderInner();
+      this.element?.classList.add("rmu-button-relative");
       if (this.element) this.element.style.pointerEvents = "auto";
       this._applyArmedVisual();
       this._updateBadge();
       this._updateOverlay();   // NEW: add this line
+      applyValueOverlay(this.element, this.attack?.totalBonus ?? "");
     }
 
     set _armed(v) {
@@ -325,6 +351,7 @@ function defineAttacksMain(CoreHUD) {
         this._applyArmedVisual();
         this._updateBadge();
         this._updateOverlay();  // NEW: add this line
+        applyValueOverlay(this.element, this.attack?.totalBonus ?? "");
         this.refresh?.();
       }
     }
@@ -332,69 +359,33 @@ function defineAttacksMain(CoreHUD) {
     // Stronger visual: outline + title hint
     _applyArmedVisual() {
       if (!this.element) return;
-      if (this._armed) {
-        this.element.style.outline = "2px solid rgba(255,165,0,0.95)";
-        this.element.title = "Template active: place it on the scene, then click this attack again to resolve.";
-      } else {
-        this.element.style.outline = "";
-        this.element.title = "";
-      }
+      this.element.title = this._armed
+        ? "Template active: place it on the scene, then click this attack again to resolve."
+        : "";
     }
 
     // Big “PLACE TEMPLATE” badge
     _updateBadge() {
       if (!this.element) return;
-      const old = this.element.querySelector(".rmu-place-badge");
-      if (old) old.remove();
-
-      if (this._armed) {
-        const b = document.createElement("div");
-        b.className = "rmu-place-badge";
-        b.textContent = "PLACE TEMPLATE";
-        Object.assign(b.style, {
-          position: "absolute",
-          top: "4px",
-          right: "6px",
-          padding: "2px 6px",
-          fontSize: "10px",
-          fontWeight: "800",
-          letterSpacing: "0.5px",
-          borderRadius: "6px",
-          background: "rgba(255,165,0,0.95)",
-          color: "#000",
-          textShadow: "none",
-          pointerEvents: "none",
-          zIndex: "3"
-        });
-        this.element.style.position = "relative";
-        this.element.appendChild(b);
-      }
+      this.element.querySelector(".rmu-place-badge")?.remove();
+      if (!this._armed) return;
+      const b = document.createElement("div");
+      b.className = "rmu-place-badge";
+      b.textContent = "PLACE TEMPLATE";
+      this.element.classList.add("rmu-button-relative");
+      this.element.appendChild(b);
     }
+
 
     // NEW: add an orange overlay so background visibly changes without touching global CSS
     _updateOverlay() {
       if (!this.element) return;
-
-      // Remove any previous overlay
-      const old = this.element.querySelector(".rmu-armed-overlay");
-      if (old) old.remove();
-
-      if (this._armed) {
-        const ov = document.createElement("div");
-        ov.className = "rmu-armed-overlay";
-        Object.assign(ov.style, {
-          position: "absolute",
-          inset: "0",
-          background: "rgba(255,165,0,0.30)",       // orange tint
-          mixBlendMode: "multiply",                   // boosts visibility over the icon
-          borderRadius: "10px",
-          pointerEvents: "none",
-          zIndex: "2"
-        });
-        // Ensure the button can hold absolutely positioned children
-        this.element.style.position = "relative";
-        this.element.appendChild(ov);
-      }
+      this.element.querySelector(".rmu-armed-overlay")?.remove();
+      if (!this._armed) return;
+      const ov = document.createElement("div");
+      ov.className = "rmu-armed-overlay";
+      this.element.classList.add("rmu-button-relative");
+      this.element.appendChild(ov);
     }
 
     /* ───────── Tooltip ───────── */
@@ -579,6 +570,218 @@ function defineAttacksMain(CoreHUD) {
 }
 
 /* ──────────────────────────────────────────────────────────
+   RESISTANCE ROLLS — category + 5 buttons
+────────────────────────────────────────────────────────── */
+
+/** Extract RMU resistances from the same source used for Attacks, with fallbacks */
+async function getTokenResistances() {
+  await ensureExtendedTokenData();
+
+  // Mirror the Attacks approach first (this is how your attacks getter works)
+  const a = ui.ARGON?._actor;
+  const candidates = [];
+
+  // Candidate paths to try (array or map)
+  const tryPaths = [
+    ["system","_resistanceBlock","_resistances"],
+    ["system","resistanceBlock","_resistances"],
+    ["system","_resistances"],
+    ["system","resistances"]
+  ];
+
+  function getByPath(obj, path) {
+    return path.reduce((o,k) => (o && k in o ? o[k] : undefined), obj);
+  }
+
+  // 1) Try ui.ARGON._actor (preferred, same as attacks)
+  if (a) {
+    for (const p of tryPaths) {
+      const v = getByPath(a, p);
+      if (Array.isArray(v)) { candidates.push(v); break; }
+      if (v && typeof v === "object") { candidates.push(Object.values(v)); break; }
+    }
+  }
+
+  // 2) Fallback to the live token’s actor
+  if (!candidates.length) {
+    const tokenActor = ui.ARGON?._token?.actor;
+    if (tokenActor) {
+      for (const p of tryPaths) {
+        const v = getByPath(tokenActor, p);
+        if (Array.isArray(v)) { candidates.push(v); break; }
+        if (v && typeof v === "object") { candidates.push(Object.values(v)); break; }
+      }
+    }
+  }
+
+  // 3) Final fallback to whatever was on _actor via ID (unlikely needed)
+  if (!candidates.length && a?.id) {
+    const byId = game.actors?.get(a.id);
+    if (byId) {
+      for (const p of tryPaths) {
+        const v = getByPath(byId, p);
+        if (Array.isArray(v)) { candidates.push(v); break; }
+        if (v && typeof v === "object") { candidates.push(Object.values(v)); break; }
+      }
+    }
+  }
+
+  const list = candidates[0] ?? [];
+  console.debug("[ECH-RMU] Resistances found:", {
+    actor: a?.name ?? ui.ARGON?._token?.actor?.name ?? "(none)",
+    count: Array.isArray(list) ? list.length : 0
+  });
+
+  return Array.isArray(list) ? list : [];
+}
+
+
+/** A very simple inline SVG icon */
+const RESISTANCE_ICON = (() => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+    <defs><style>
+      .a{fill:#000000;opacity:.9;}   /* ← black background */
+      .b{fill:#ffffff;opacity:.95;}
+    </style></defs>
+    <rect rx="10" ry="10" x="4" y="4" width="56" height="56" class="a"/>
+    <path class="b" d="M32 7l9 13h-7l7 12h-8l6 12h-6l5 13-21-25h8l-7-12h10l-6-13z"/>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+})();
+
+function defineResistancesMain(CoreHUD) {
+  const ARGON = CoreHUD.ARGON;
+  const { ActionPanel } = ARGON.MAIN;
+  const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
+  const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
+
+  /** Individual roll button */
+  class RMUResistanceActionButton extends ActionButton {
+    constructor(resist) {
+      super();
+      this.resist = resist;
+    }
+
+    get label() {
+      return this.resist?.name || "Resistance";
+    }
+
+    get icon() {
+      return RESISTANCE_ICON;
+    }
+
+    async _renderInner() {
+      await super._renderInner();
+      applyValueOverlay(this.element, this.resist?.total ?? "");
+    }
+
+    get hasTooltip() { return true; }
+    async getTooltipData() {
+      const r = this.resist ?? {};
+      const details = [
+        { label: "Stat",            value: r.statShortName },
+        { label: "Stat Bonus",      value: r.statBonus },
+        { label: "Level Bonus",     value: r.levelBonus },
+        { label: "Racial Bonus",    value: r.racialBonus },
+        { label: "Special Bonus",   value: r.specialBonus },
+        { label: "Armour Bonus",    value: r.armorBonus },
+        { label: "Helmet Bonus",    value: r.helmetBonus },
+        { label: "Same Realm",      value: r.sameRealmBonus },
+        { label: "Total",           value: r.total }
+      ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
+
+      const subtitle = [
+        (r.statShortName || "").toUpperCase(),
+        (r.total != null ? `Total ${r.total}` : null)
+      ].filter(Boolean).join(" · ");
+
+      return { title: this.label, subtitle, details };
+    }
+
+    async _onMouseDown(event) {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      await this._roll();
+    }
+
+    async _onLeftClick(_event) { /* handled by _onMouseDown */ }
+
+    async _roll() {
+      try {
+        const token = ui.ARGON?._token;
+        if (!token) { ui.notifications?.error?.("No active token for HUD."); return; }
+        const api = game.system?.api?.rmuTokenResistanceRollAction;
+        if (typeof api !== "function") {
+          ui.notifications?.error?.("RMU resistance roll API not available."); return;
+        }
+        const tokenName  = token.name ?? token?.document?.name;
+        const resistName = this.resist?.name;
+        if (!resistName) { ui.notifications?.warn?.("Resistance type missing."); return; }
+        await api(tokenName, resistName);
+      } catch (err) {
+        console.error("[ECH-RMU] Resistance roll error:", err);
+        ui.notifications?.error?.(`Resistance roll failed: ${err?.message ?? err}`);
+      }
+    }
+  }
+
+  /** The category toggle button that opens a panel of 5 resistance buttons */
+  class RMUResistanceCategoryButton extends ButtonPanelButton {
+    constructor() {
+      super();
+      this.title = "RESISTANCE ROLLS";
+      this._icon = RESISTANCE_ICON;
+    }
+
+    get label() { return this.title; }
+    get icon()  { return this._icon; }
+    get hasContents() { return true; }
+
+    async _renderInner() {
+      await super._renderInner();
+      try {
+        const list = await getTokenResistances();
+        if (!this.element) return;
+        this.element.classList.add("rmu-button-relative");
+        this.element.querySelector(".rmu-count-badge")?.remove();
+        const b = document.createElement("div");
+        b.className = "rmu-count-badge";
+        b.textContent = String(list.length ?? 0);
+        this.element.appendChild(b);
+      } catch (e) { /* ignore */ }
+    }
+
+    async _getPanel() {
+      const resistances = await getTokenResistances();
+
+      if (!resistances.length) {
+        const empty = new (class NoResistButton extends ActionButton {
+          get label() { return "No resistances"; }
+          get icon()  { return RESISTANCE_ICON; }
+          get classes() { return [...super.classes, "disabled"]; }
+        })();
+
+        return new ButtonPanel({ id: "rmu-resistances", buttons: [empty] });
+      }
+
+      const buttons = resistances.map(r => new RMUResistanceActionButton(r));
+      return new ButtonPanel({ id: "rmu-resistances", buttons });
+    }
+  }
+
+  /** A small ActionPanel which contributes the single “RESISTANCE ROLLS” button */
+  class RMUResistanceActionPanel extends ActionPanel {
+    get label() { return "RESISTANCES"; } // short, matches ATTACKS pattern
+    get maxActions() { return null; }
+    get currentActions() { return null; }
+    async _getButtons() { return [ new RMUResistanceCategoryButton() ]; }
+  }
+
+  CoreHUD.defineMainPanels([RMUResistanceActionPanel]);
+}
+
+/* ──────────────────────────────────────────────────────────
    Drawer Panel (kept simple)
 ────────────────────────────────────────────────────────── */
 function defineDrawerPanel(CoreHUD) {
@@ -610,6 +813,7 @@ function initConfig() {
     defineWeaponSets(CoreHUD);
     defineMovementHud(CoreHUD);
     defineAttacksMain(CoreHUD);
+    defineResistancesMain(CoreHUD);
     defineDrawerPanel(CoreHUD);
   });
 }
