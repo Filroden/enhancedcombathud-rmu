@@ -1,6 +1,5 @@
 // Enhanced Combat HUD — RMU integration
-// Portrait + Movement + (MAIN) "Attacks" panel grouped into Melee/Ranged/Natural/Shield
-// + RESISTANCES panel with static five buttons (temporary)
+// Portrait + Movement + (MAIN) "Attacks" panel grouped into Melee/Ranged/Natural/Shield + Resistance Rolls
 
 const MODULE_ID = "enhancedcombathud-rmu";
 
@@ -199,6 +198,8 @@ const DEFAULT_ICONS = {
   natural: MOD_ICON("fist.svg"),
   shield:  MOD_ICON("vibrating-shield.svg"),
 };
+
+const REST_ICON = MOD_ICON("rest.svg");
 
 function asBool(v) { return !!(v === true || v === "true" || v === 1); }
 
@@ -816,6 +817,78 @@ class RMUResistanceActionButton extends ActionButton {
 }
 
 /* ──────────────────────────────────────────────────────────
+   REST — single action button (far right)
+────────────────────────────────────────────────────────── */
+function defineRestMain(CoreHUD) {
+  const ARGON = CoreHUD.ARGON;
+  const { ActionPanel } = ARGON.MAIN;
+  const { ActionButton } = ARGON.MAIN.BUTTONS;
+
+  class RMURestActionButton extends ActionButton {
+    get label() { return "REST"; }
+    get icon()  { return REST_ICON; }
+
+    // Optional short tooltip (remove these two methods if you truly want none)
+    get hasTooltip() { return true; }
+    async getTooltipData() {
+      return {
+        title: "Rest",
+        subtitle: "Recover resources",
+        details: [
+          { label: "Info", value: "Open the rest dialog to recover Fatigue, Hit Points, and/or Power Points based on type and duration." }
+        ]
+      };
+    }
+
+    async _renderInner() {
+      await super._renderInner();
+      if (this.element) {
+        this.element.style.pointerEvents = "auto";
+        this.element.style.cursor = "pointer";
+      }
+    }
+
+    async _onMouseDown(event) {
+      if (event?.button !== 0) return; // left only
+      event.preventDefault();
+      event.stopPropagation();
+      await this._run();
+    }
+
+    async _onLeftClick(event) {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      // no-op (avoid double fire)
+    }
+
+    async _run() {
+      try {
+        const token = ui.ARGON?._token;
+        if (!token) { ui.notifications?.error?.("No active token for HUD."); return; }
+        const api = game.system?.api?.rmuTokenRestAction;
+        if (typeof api !== "function") {
+          ui.notifications?.error?.("RMU rest API not available.");
+          return;
+        }
+        await api(token); // opens the rest dialog
+      } catch (err) {
+        console.error("[ECH-RMU] Rest API error:", err);
+        ui.notifications?.error?.(`Rest failed: ${err?.message ?? err}`);
+      }
+    }
+  }
+
+  class RMURestActionPanel extends ActionPanel {
+    get label() { return "REST"; } // appears as the group label
+    get maxActions() { return null; }
+    get currentActions() { return null; }
+    async _getButtons() { return [ new RMURestActionButton() ]; }
+  }
+
+  CoreHUD.defineMainPanels([RMURestActionPanel]);
+}
+
+/* ──────────────────────────────────────────────────────────
    Drawer Panel (kept simple)
 ────────────────────────────────────────────────────────── */
 function defineDrawerPanel(CoreHUD) {
@@ -848,6 +921,7 @@ function initConfig() {
     defineMovementHud(CoreHUD);
     defineAttacksMain(CoreHUD);
     defineResistancesMain(CoreHUD);
+    defineRestMain(CoreHUD);
     defineDrawerPanel(CoreHUD);
   });
 }
