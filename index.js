@@ -1,5 +1,6 @@
 // Enhanced Combat HUD — RMU integration
 // Portrait + Movement + (MAIN) "Attacks" panel grouped into Melee/Ranged/Natural/Shield
+// + RESISTANCES panel with static five buttons (temporary)
 
 const MODULE_ID = "enhancedcombathud-rmu";
 
@@ -141,6 +142,24 @@ function defineMovementHud(CoreHUD) {
   CoreHUD.defineMovementHud(RMUMovementHud);
 }
 
+// Return a stable unique key for an attack (prefer the system's itemId)
+function attackKey(att) {
+  return att?.itemId ?? att?.id ?? att?._id ?? [
+    (att?.attackName ?? att?.name ?? "attack"),
+    (att?.chart?.name ?? ""),
+    (att?.size ?? ""),
+    (att?.attackId ?? "")
+  ].join("::");
+}
+
+// Resolve the "live" attack object from the actor by unique key
+function getLiveAttack(srcAttack) {
+  const token = ui.ARGON?._token;
+  const list = token?.actor?.system?._attacks ?? [];
+  const key = attackKey(srcAttack);
+  return list.find(a => attackKey(a) === key) || srcAttack;
+}
+
 /* ──────────────────────────────────────────────────────────
    Weapon Sets (quiet stub)
 ────────────────────────────────────────────────────────── */
@@ -235,8 +254,46 @@ function getShortRange(arr) {
   return dist ? `${dist}` : "—";
 }
 
+/* Mount the value overlay inside the tile's image container (not the full button) */
+function applyValueOverlay(buttonEl, number = "", labelText = "Total") {
+  if (!buttonEl) return;
+
+  // Find a likely image container used by Argon/ECH buttons
+  const img = buttonEl.querySelector(".image, .ech-image, .icon, .thumbnail, .main-button__image, .argon-image");
+  const host = img || buttonEl;           // fallback to full button if no image node
+  host.style.position = host.style.position || "relative";
+  host.style.overflow = "hidden";         // important: clip the blur to the image box
+
+  // Clear any prior overlay
+  host.querySelector(".rmu-value-overlay")?.remove();
+
+  // Build overlay (blur + text stack)
+  const root = document.createElement("div");
+  root.className = "rmu-value-overlay";
+
+  const txt = document.createElement("div");
+  txt.className = "rmu-value-overlay-text";
+
+  if (labelText) {
+    const t = document.createElement("div");
+    t.className = "rmu-value-overlay-label";
+    t.textContent = labelText;
+    txt.appendChild(t);
+  }
+
+  if (number !== "" && number !== null && number !== undefined) {
+    const n = document.createElement("div");
+    n.className = "rmu-value-overlay-number";
+    n.textContent = String(number);
+    txt.appendChild(n);
+  }
+
+  root.appendChild(txt);
+  host.appendChild(root);
+}
+
 /* ──────────────────────────────────────────────────────────
-   MAIN — "Attacks" panel (to the right of the portrait)
+   ATTACK ROLLS - categories + attack buttons
 ────────────────────────────────────────────────────────── */
 function defineAttacksMain(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
@@ -257,8 +314,7 @@ function defineAttacksMain(CoreHUD) {
 
   function tplKeyFor(token, attack) {
     const id = token?.id ?? ui.ARGON?._token?.id ?? "no-token";
-    const name = attack?.attackName ?? attack?.name ?? "attack";
-    return `${id}::${name}`;
+    return `${id}::${attackKey(attack)}`;
   }
 
   class RMUAttackActionButton extends ActionButton {
@@ -266,6 +322,27 @@ function defineAttacksMain(CoreHUD) {
       super();
       this.attack = attack;
       this._catKey = catKey; // "melee" | "ranged" | "natural" | "shield"
+    }
+
+    _updateDisabledPill() {
+      if (!this.element) return;
+      const existing = this.element.querySelector(".rmu-disabled-pill");
+      if (!this._equipped) {
+        if (!existing) {
+          const pill = document.createElement("div");
+          pill.className = "rmu-disabled-pill";
+          pill.textContent = "NOT EQUIPPED";
+          this.element.style.position = "relative";
+          this.element.appendChild(pill);
+        }
+      } else {
+        existing?.remove();
+      }
+    }
+
+    get disabled() {
+      // Argon uses this to decide whether to add its own "disabled" class
+      return !this._equipped;
     }
 
     // Is this attack currently “armed” (waiting for second click)?
@@ -277,33 +354,33 @@ function defineAttacksMain(CoreHUD) {
     set _armed(v) {
       const token = ui.ARGON?._token;
       TEMPLATE_STATE.set(tplKeyFor(token, this.attack), !!v);
-      // If we’re already in the DOM, update visuals immediately
       if (this.element) {
         this._applyArmedVisual();
         this._updateBadge();
-        // Re-render the label so it shows "Place: …"
-        this.refresh?.();
+        this._updateOverlay();
+        this.refresh?.(); // Re-render the label so it shows "Place: …"
       }
     }
 
     get label() {
-      const name = this.attack?.attackName ?? this.attack?.name ?? "Attack";
+      const live = getLiveAttack(this.attack);
+      const name = live?.attackName ?? live?.name ?? "Attack";
       return this._armed ? `Place: ${name}` : name;
     }
 
     get icon() {
-      // Attack image or category default
-      return this.attack?.img || DEFAULT_ICONS[this._catKey] || MOD_ICON("sword-brandish.svg");
+      const live = getLiveAttack(this.attack);
+      return live?.img || DEFAULT_ICONS[this._catKey] || MOD_ICON("sword-brandish.svg");
     }
 
     get _equipped() {
-      const a = this.attack ?? {};
-      return !!(a.isEquipped ?? a.readyState ?? a.equipped ?? a.isReady);
+      const a = getLiveAttack(this.attack);
+      return !!(a?.isEquipped ?? a?.readyState ?? false);
     }
 
     get classes() {
-      const c = super.classes.slice();
-      // Only disable when NOT equipped
+      // Start from super, but remove any pre-set "disabled"
+      const c = super.classes.slice().filter(cls => cls !== "disabled");
       if (!this._equipped) c.push("disabled");
       if (this._armed) c.push("armed");
       return c;
@@ -312,21 +389,21 @@ function defineAttacksMain(CoreHUD) {
     // Keep the tile clickable even if theme CSS tries to block it; also apply armed visuals
     async _renderInner() {
       await super._renderInner();
-      if (this.element) this.element.style.pointerEvents = "auto";
+      if (this.element) {
+        this.element.style.pointerEvents = "auto";
+        this.element.style.cursor = "pointer";
+      }
+
+      // NEW: ensure the DOM class matches live equip state (overrides any base default)
+      this.element?.classList.toggle("disabled", !this._equipped);
+
       this._applyArmedVisual();
       this._updateBadge();
-      this._updateOverlay();   // NEW: add this line
-    }
+      this._updateOverlay();
+      applyValueOverlay(this.element, this.attack?.totalBonus ?? "", "Total");
 
-    set _armed(v) {
-      const token = ui.ARGON?._token;
-      TEMPLATE_STATE.set(tplKeyFor(token, this.attack), !!v);
-      if (this.element) {
-        this._applyArmedVisual();
-        this._updateBadge();
-        this._updateOverlay();  // NEW: add this line
-        this.refresh?.();
-      }
+      // A tiny “NOT EQUIPPED” pill
+      this._updateDisabledPill?.();
     }
 
     // Stronger visual: outline + title hint
@@ -371,7 +448,7 @@ function defineAttacksMain(CoreHUD) {
       }
     }
 
-    // NEW: add an orange overlay so background visibly changes without touching global CSS
+    // Orange overlay when armed so background visibly changes without touching global CSS
     _updateOverlay() {
       if (!this.element) return;
 
@@ -510,7 +587,6 @@ function defineAttacksMain(CoreHUD) {
     }
   }
 
-
   // Category button (opens a small panel of attack tiles)
   class RMUAttackCategoryButton extends ButtonPanelButton {
     constructor({ key, label, icon, attacks }) {
@@ -551,13 +627,18 @@ function defineAttacksMain(CoreHUD) {
         buckets.get(key).push(atk);
       }
 
-      // sort each bucket: equipped first, then name shown on the tile
+      // sort each bucket: equipped first (LIVE), then by the label
       for (const [k, list] of buckets.entries()) {
-        list.sort((a,b) => {
-          const ea = asBool(a.isEquipped ?? a.readyState);
-          const eb = asBool(b.isEquipped ?? b.readyState);
+        list.sort((a, b) => {
+          const la = getLiveAttack(a);
+          const lb = getLiveAttack(b);
+          const ea = !!(la?.isEquipped ?? la?.readyState ?? false);
+          const eb = !!(lb?.isEquipped ?? lb?.readyState ?? false);
           if (ea !== eb) return ea ? -1 : 1;
-          return String(a.attackName ?? a.name ?? "").localeCompare(String(b.attackName ?? b.name ?? ""));
+
+          const na = String(la?.attackName ?? la?.name ?? "");
+          const nb = String(lb?.attackName ?? lb?.name ?? "");
+          return na.localeCompare(nb);
         });
       }
 
@@ -576,6 +657,124 @@ function defineAttacksMain(CoreHUD) {
   }
 
   CoreHUD.defineMainPanels([RMUAttacksActionPanel]);
+}
+
+/* ──────────────────────────────────────────────────────────
+   RESISTANCE ROLLS — category + 5 buttons (static for now)
+────────────────────────────────────────────────────────── */
+
+// File-based resistance icons
+const RESISTANCE_ICONS = {
+  panel:      MOD_ICON("resistance-panel.svg"),
+  Channeling: MOD_ICON("resistance-channeling.svg"),
+  Essence:    MOD_ICON("resistance-essence.svg"),
+  Mentalism:  MOD_ICON("resistance-mentalism.svg"),
+  Physical:   MOD_ICON("resistance-physical.svg"),
+  Fear:       MOD_ICON("resistance-fear.svg")
+};
+
+/* Temporary: hard-wired resistance names for API */
+const STATIC_RESISTANCES = [
+  { name: "Channeling" },
+  { name: "Essence" },
+  { name: "Mentalism" },
+  { name: "Physical" },
+  { name: "Fear" }
+];
+
+/** TEMP: return the five known resistances, no actor probing */
+async function getTokenResistances() {
+  return STATIC_RESISTANCES;
+}
+
+function defineResistancesMain(CoreHUD) {
+  const ARGON = CoreHUD.ARGON;
+  const { ActionPanel } = ARGON.MAIN;
+  const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
+  const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
+
+  /** Individual roll button (minimal, static) */
+  class RMUResistanceActionButton extends ActionButton {
+    constructor(resist) {
+      super();
+      this.resist = resist;
+    }
+
+    get label() { return this.resist?.name || "Resistance"; }
+    get icon() { return RESISTANCE_ICONS[this.resist?.name] || RESISTANCE_ICONS.panel; }
+    get hasTooltip() { return false; } // minimal for now
+
+    async _renderInner() {
+      await super._renderInner();
+      if (this.element) {
+        this.element.style.pointerEvents = "auto";
+        this.element.style.cursor = "pointer";
+      }
+    }
+
+    async _onMouseDown(event) {
+      if (event?.button !== 0) return; // left only
+      event.preventDefault();
+      event.stopPropagation();
+      await this._roll();
+    }
+
+    async _onLeftClick(event) {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      // no-op to avoid double calls
+    }
+
+    async _roll() {
+      try {
+        const token = ui.ARGON?._token;
+        if (!token) { ui.notifications?.error?.("No active token for HUD."); return; }
+        const api = game.system?.api?.rmuTokenResistanceRollAction;
+        if (typeof api !== "function") {
+          ui.notifications?.error?.("RMU resistance roll API not available."); return;
+        }
+        const resistName = this.resist?.name;
+        if (!resistName) { ui.notifications?.warn?.("Resistance type missing."); return; }
+
+        // Dev-confirmed signature: token object + plain string
+        await api(token, resistName);
+
+      } catch (err) {
+        console.error("[ECH-RMU] Resistance roll error:", err);
+        ui.notifications?.error?.(`Resistance roll failed: ${err?.message ?? err}`);
+      }
+    }
+  }
+
+  /** The category toggle button that opens a panel of 5 resistance buttons */
+  class RMUResistanceCategoryButton extends ButtonPanelButton {
+    constructor() {
+      super();
+      this.title = "RESISTANCE ROLLS";
+      this._icon = RESISTANCE_ICONS.panel;
+    }
+
+    get label() { return this.title; }
+    get icon()  { return this._icon; }
+    get hasContents() { return true; }
+
+    async _getPanel() {
+      // Always show the five static buttons for now
+      const list = await getTokenResistances();
+      const buttons = list.map(r => new RMUResistanceActionButton(r));
+      return new ButtonPanel({ id: "rmu-resistances", buttons });
+    }
+  }
+
+  /** A small ActionPanel which contributes the single “RESISTANCE ROLLS” button */
+  class RMUResistanceActionPanel extends ActionPanel {
+    get label() { return "RESISTANCES"; } // short, matches ATTACKS pattern
+    get maxActions() { return null; }
+    get currentActions() { return null; }
+    async _getButtons() { return [ new RMUResistanceCategoryButton() ]; }
+  }
+
+  CoreHUD.defineMainPanels([RMUResistanceActionPanel]);
 }
 
 /* ──────────────────────────────────────────────────────────
@@ -610,6 +809,7 @@ function initConfig() {
     defineWeaponSets(CoreHUD);
     defineMovementHud(CoreHUD);
     defineAttacksMain(CoreHUD);
+    defineResistancesMain(CoreHUD);
     defineDrawerPanel(CoreHUD);
   });
 }
@@ -620,4 +820,19 @@ function initConfig() {
 Hooks.on("setup", () => {
   registerSettings();
   initConfig();
+});
+
+/* ──────────────────────────────────────────────────────────
+   Add document-level class for CSS scoping
+────────────────────────────────────────────────────────── */
+Hooks.once("ready", () => {
+  const body = document.body;
+  if (!body.classList.contains("enhancedcombathud-rmu")) {
+    body.classList.add("enhancedcombathud-rmu");
+    console.info("[ECH-RMU] Added .enhancedcombathud-rmu to <body> for scoped CSS");
+  }
+});
+
+Hooks.once("shutdown", () => {
+  document.body.classList.remove("enhancedcombathud-rmu");
 });
