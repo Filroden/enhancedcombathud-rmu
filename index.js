@@ -673,18 +673,20 @@ const RESISTANCE_ICONS = {
   Fear:       MOD_ICON("resistance-fear.svg")
 };
 
-/* Temporary: hard-wired resistance names for API */
-const STATIC_RESISTANCES = [
-  { name: "Channeling" },
-  { name: "Essence" },
-  { name: "Mentalism" },
-  { name: "Physical" },
-  { name: "Fear" }
-];
+/** Get the live resistances array from the selected actor.
+ * Supports both `_resistances` and `resistances` just in case.
+ */
+function getTokenResistances() {
+  const a = ui.ARGON?._actor ?? ui.ARGON?._token?.actor;
+  if (!a) return [];
+  const block = a.system?._resistanceBlock;
+  const list =
+    block?._resistances ??
+    block?.resistances ??
+    a.system?._resistances ??
+    a.system?.resistances;
 
-/** TEMP: return the five known resistances, no actor probing */
-async function getTokenResistances() {
-  return STATIC_RESISTANCES;
+  return Array.isArray(list) ? list : [];
 }
 
 function defineResistancesMain(CoreHUD) {
@@ -693,58 +695,81 @@ function defineResistancesMain(CoreHUD) {
   const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
   const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
 
-  /** Individual roll button (minimal, static) */
-  class RMUResistanceActionButton extends ActionButton {
-    constructor(resist) {
-      super();
-      this.resist = resist;
-    }
+/** Individual roll button (dynamic, with tooltip + total overlay) */
+class RMUResistanceActionButton extends ActionButton {
+  constructor(resist) {
+    super();
+    this.resist = resist;
+  }
 
-    get label() { return this.resist?.name || "Resistance"; }
-    get icon() { return RESISTANCE_ICONS[this.resist?.name] || RESISTANCE_ICONS.panel; }
-    get hasTooltip() { return false; } // minimal for now
+  get label() { return this.resist?.name || "Resistance"; }
+  get icon()  { return RESISTANCE_ICONS[this.resist?.name] || RESISTANCE_ICONS.panel; }
 
-    async _renderInner() {
-      await super._renderInner();
-      if (this.element) {
-        this.element.style.pointerEvents = "auto";
-        this.element.style.cursor = "pointer";
-      }
-    }
+  get hasTooltip() { return true; }
+  async getTooltipData() {
+    const r = this.resist ?? {};
+    // Show the classic RMU breakdown you shared earlier
+    const details = [
+      { label: "Stat",           value: r.statShortName },
+      { label: "Stat Bonus",     value: r.statBonus },
+      { label: "Level Bonus",    value: r.levelBonus },
+      { label: "Racial Bonus",   value: r.racialBonus },
+      { label: "Special Bonus",  value: r.specialBonus },
+      { label: "Armour Bonus",   value: r.armorBonus },
+      { label: "Helmet Bonus",   value: r.helmetBonus },
+      { label: "Same Realm",     value: r.sameRealmBonus },
+      { label: "Total",          value: r.total }
+    ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
 
-    async _onMouseDown(event) {
-      if (event?.button !== 0) return; // left only
-      event.preventDefault();
-      event.stopPropagation();
-      await this._roll();
-    }
+    const subtitle = [
+      r.statShortName ? r.statShortName.toUpperCase() : null,
+      (r.total != null ? `Total ${r.total}` : null)
+    ].filter(Boolean).join(" · ");
 
-    async _onLeftClick(event) {
-      event?.preventDefault?.();
-      event?.stopPropagation?.();
-      // no-op to avoid double calls
-    }
+    return { title: this.label, subtitle, details };
+  }
 
-    async _roll() {
-      try {
-        const token = ui.ARGON?._token;
-        if (!token) { ui.notifications?.error?.("No active token for HUD."); return; }
-        const api = game.system?.api?.rmuTokenResistanceRollAction;
-        if (typeof api !== "function") {
-          ui.notifications?.error?.("RMU resistance roll API not available."); return;
-        }
-        const resistName = this.resist?.name;
-        if (!resistName) { ui.notifications?.warn?.("Resistance type missing."); return; }
-
-        // Dev-confirmed signature: token object + plain string
-        await api(token, resistName);
-
-      } catch (err) {
-        console.error("[ECH-RMU] Resistance roll error:", err);
-        ui.notifications?.error?.(`Resistance roll failed: ${err?.message ?? err}`);
-      }
+  async _renderInner() {
+    await super._renderInner();
+    if (this.element) {
+      this.element.style.pointerEvents = "auto";
+      this.element.style.cursor = "pointer";
+      // Show total on the tile, like attacks do
+      applyValueOverlay(this.element, this.resist?.total ?? "", "Total");
     }
   }
+
+  async _onMouseDown(event) {
+    if (event?.button !== 0) return; // left only
+    event.preventDefault();
+    event.stopPropagation();
+    await this._roll();
+  }
+
+  async _onLeftClick(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    // no-op (avoid double fire)
+  }
+
+  async _roll() {
+    try {
+      const token = ui.ARGON?._token;
+      if (!token) { ui.notifications?.error?.("No active token for HUD."); return; }
+      const api = game.system?.api?.rmuTokenResistanceRollAction;
+      if (typeof api !== "function") {
+        ui.notifications?.error?.("RMU resistance roll API not available."); return;
+      }
+      const resistName = this.resist?.name;
+      if (!resistName) { ui.notifications?.warn?.("Resistance type missing."); return; }
+
+      await api(token, resistName); // dev-confirmed: token object + plain string
+    } catch (err) {
+      console.error("[ECH-RMU] Resistance roll error:", err);
+      ui.notifications?.error?.(`Resistance roll failed: ${err?.message ?? err}`);
+    }
+  }
+}
 
   /** The category toggle button that opens a panel of 5 resistance buttons */
   class RMUResistanceCategoryButton extends ButtonPanelButton {
@@ -759,8 +784,18 @@ function defineResistancesMain(CoreHUD) {
     get hasContents() { return true; }
 
     async _getPanel() {
-      // Always show the five static buttons for now
-      const list = await getTokenResistances();
+      await ensureExtendedTokenData(); // belt-and-braces here too
+      const list = getTokenResistances();
+
+      if (!list.length) {
+        const empty = new (class NoResistButton extends ActionButton {
+          get label() { return "No resistances"; }
+          get icon()  { return RESISTANCE_ICONS.panel; }
+          get classes() { return [...super.classes, "disabled"]; }
+        })();
+        return new ButtonPanel({ id: "rmu-resistances", buttons: [empty] });
+      }
+
       const buttons = list.map(r => new RMUResistanceActionButton(r));
       return new ButtonPanel({ id: "rmu-resistances", buttons });
     }
@@ -771,7 +806,10 @@ function defineResistancesMain(CoreHUD) {
     get label() { return "RESISTANCES"; } // short, matches ATTACKS pattern
     get maxActions() { return null; }
     get currentActions() { return null; }
-    async _getButtons() { return [ new RMUResistanceCategoryButton() ]; }
+    async _getButtons() {
+      await ensureExtendedTokenData();         // <-- ensure block is derived
+      return [ new RMUResistanceCategoryButton() ];
+    }
   }
 
   CoreHUD.defineMainPanels([RMUResistanceActionPanel]);
