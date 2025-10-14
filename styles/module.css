@@ -171,3 +171,60 @@
   text-align: center;
   pointer-events: none;
 }
+
+/* ────────────────────────────────────────────────
+   SKILLS: headers
+──────────────────────────────────────────────── */
+.enhancedcombathud-rmu .action-hud .action-element.rmu-skill-header,
+.enhancedcombathud-rmu .action-hud .action-element-container .action-element.rmu-skill-header {
+  min-width: 0;
+  padding: 1rem 0.2rem;
+  width: 3rem;
+  flex: 0 0 3rem;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  background: var(--rmu-header-background);
+  color: var(--rmu-header-text);
+  border-color: transparent;
+  border: 1px solid var(--rmu-neutral-050);
+  cursor: pointer;
+}
+
+/* Neutralize Argon’s absolute footer title so our vertical text shows */
+.enhancedcombathud-rmu .rmu-skill-header .action-element-title {
+  position: static !important;
+  bottom: auto !important;
+  left: auto !important;
+  height: auto !important;
+  width: auto !important;
+  padding: 0 !important;
+  background: transparent !important;
+  text-shadow: none !important;
+  white-space: nowrap;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Hover/open states */
+.enhancedcombathud-rmu .rmu-skill-header:hover {
+  opacity: 1;
+  box-shadow: 0 0 8px rgba(0,0,0,0.6);
+  transform: rotate(180deg) scale(1.05);
+}
+
+/* Open state: lighter background, stronger text color, glow */
+.enhancedcombathud-rmu .rmu-skill-header.open {
+  background: var(--rmu-table-row-background) !important;
+  color: var(--rmu-text) !important;
+  box-shadow: 0 0 10px rgba(255,255,255,0.4);
+}
+
+/* Add gap between buttons */
+.enhancedcombathud-rmu .action-hud .features-container {
+  gap: 1rem 0.3rem;
+}

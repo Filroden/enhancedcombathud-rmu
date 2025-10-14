@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs><style>
+    .bg{fill:#000000;opacity:.9}
+    .fg{fill:#ffffff}
+  </style></defs>
+  <rect class="bg" x="4" y="4" width="56" height="56" rx="10" ry="10"/>
+  <!-- stylized quill + book -->
+  <path class="fg" d="M14 44h24a2 2 0 0 0 2-2V22a2 2 0 0 0-2-2H14a2 2 0 0 0-2 2v20a2 2 0 0 0 2 2zm0-2V22h24v20H14z"/>
+  <path class="fg" d="M20 26h12v2H20zm0 6h12v2H20zm0 6h8v2h-8z"/>
+  <path class="fg" d="M50 16c-6 1-12 6-15 12-1 2-2 4-2 6 2-1 4-1 6-2 6-3 11-9 12-15 0-1-1-2-1-1z"/>
+</svg>
