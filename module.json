@@ -50,5 +50,7 @@
     "compatibility": {
         "minimum": "13",
         "verified": "13"
-    }
+    },
+    "manifest": "https://github.com/Filroden/fvtt/releases/download/rmu-hud-latest/module.json",
+    "download": " https://github.com/Filroden/fvtt/releases/download/rmu-hud-latest/rmu-hud.zip"
 }
