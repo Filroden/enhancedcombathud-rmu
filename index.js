@@ -48,6 +48,10 @@ function attachPanelInputGuards(panel) {
     const cap = { capture: true };
     const stopIfControl = (ev) => {
       const t = ev.target;
+      if (t?.closest?.(".rmu-skill-search__clear") && ev.type === "click") {
+        return; // let the clear button's own click handler run
+      }
+      if (ev.type === "input") return;
       if (!t) return;
       if (t.closest("input, textarea, select, .rmu-skill-search, .rmu-skill-search__input, .rmu-skill-search__clear")) {
         // Be aggressive on “down” events so Argon’s closer never sees them
@@ -65,7 +69,7 @@ function attachPanelInputGuards(panel) {
       "touchstart","touchend",
       "contextmenu","wheel",
       "focus","focusin","focusout","blur",
-      "keydown","keyup","input"
+      "keydown","keyup"
     ].forEach(type => el.addEventListener(type, stopIfControl, cap));
   };
   requestAnimationFrame(arm);
@@ -83,8 +87,11 @@ function installGlobalHudInputGuard() {
 
   const guard = (ev) => {
     const t = ev.target;
+    // Allow the clear button's own click handler to run
+    if (t?.closest?.(".rmu-skill-search__clear") && ev.type === "click") {
+      return; // do not stop propagation on this one
+    }
     if (!t || !isSearch(t)) return; // ignore non-search clicks
-
     // Stop Argon's outside-click closer as early as possible.
     if (ev.type === "pointerdown" || ev.type === "mousedown" || ev.type === "touchstart") {
       ev.preventDefault(); // prevents focus loss/fake click on ancestors
@@ -1102,7 +1109,7 @@ function defineSkillsMain(CoreHUD) {
       bar.setAttribute("data-argon-interactive", "true");
       bar.setAttribute("data-tooltip", ""); // Disable Argon tooltip
       bar.innerHTML = `
-        <div class="rmu-skill-search__icon argon-interactive argon-no-close" data-argon-interactive="true">🔎</div>
+        <div class="rmu-skill-search__icon argon-interactive argon-no-close" data-argon-interactive="true"><i class="rmu-mdi rmu-mdi-magnify" aria-hidden="true"></i></div>
         <input type="text" class="rmu-skill-search__input argon-interactive argon-no-close" data-argon-interactive="true" placeholder="Search skills…">
         <button type="button" class="rmu-skill-search__clear argon-interactive argon-no-close" data-argon-interactive="true">×</button>
         <div class="rmu-skill-search__count argon-interactive argon-no-close" data-argon-interactive="true"></div>

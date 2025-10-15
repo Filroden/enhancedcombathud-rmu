@@ -228,7 +228,7 @@
 }
 
 /* ────────────────────────────────────────────────
-   SKILLS: search bar (top of mini-panel)
+   SEARCH BAR
 ──────────────────────────────────────────────── */
 .enhancedcombathud-rmu .rmu-skill-search {
   display: grid !important;
@@ -304,4 +304,13 @@
 /* Ensure text input cursor */
 .rmu-skill-search__input {
   cursor: text !important;
+}
+
+.rmu-mdi-magnify {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  mask-image: url('../icons/search.svg');
+  -webkit-mask-image: url('../icons/search.svg');
+  background-color: var(--rmu-text);
 }
