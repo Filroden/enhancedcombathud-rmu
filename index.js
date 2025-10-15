@@ -1667,6 +1667,7 @@ function defineRestMain(CoreHUD) {
   class RMURestActionButton extends ActionButton {
     get label() { return "REST"; }
     get icon()  { return REST_ICON; }
+    get visible() { return !game.combat?.started; }
     get isInteractive() { return true; }
     // Optional short tooltip (remove these two methods if you truly want none)
     get hasTooltip() { return true; }
@@ -1794,3 +1795,7 @@ Hooks.once("ready", () => {
 Hooks.once("shutdown", () => {
   document.body.classList.remove("enhancedcombathud-rmu");
 });
+
+// Update visibility of REST button when combat starts/ends
+Hooks.on("updateCombat", () => ui.ARGON?.components?.main?.forEach(c => c.updateVisibility?.()));
+Hooks.on("deleteCombat", () => ui.ARGON?.components?.main?.forEach(c => c.updateVisibility?.()));
