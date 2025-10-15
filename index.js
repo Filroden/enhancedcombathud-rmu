@@ -1,45 +1,21 @@
-// Enhanced Combat HUD — RMU integration
-// Portrait + Movement + (MAIN) "Attacks" panel grouped into Melee/Ranged/Natural/Shield + Resistance Rolls
+/**
+ * Enhanced Combat HUD — RMU extension
+ * Purpose: wires RMU data into Argon HUD Core (portrait, movement, attacks, resistances, skills, rest, drawer).
+ * Note: feature parity only. Avoid side-effects outside Argon hooks and UI events.
+ */
 
 const MODULE_ID = "enhancedcombathud-rmu";
 
-/* ──────────────────────────────────────────────────────────
-   Boot logs
-────────────────────────────────────────────────────────── */
 console.info("[ECH-RMU] index.js loaded");
 Hooks.once("init",  () => console.info("[ECH-RMU] init"));
 Hooks.once("setup", () => console.info("[ECH-RMU] setup"));
 Hooks.once("ready", () => console.info("[ECH-RMU] ready"));
 
-/* ──────────────────────────────────────────────────────────
-   Settings (minimal)
-────────────────────────────────────────────────────────── */
-function registerSettings() {
-  game.settings.register(MODULE_ID, "skillsFavoritesOnly", {
-    name: "Skills: show only favorites",
-    hint: "If enabled, only show skills marked as Favorite on the actor.",
-    scope: "world",
-    config: true,
-    type: Boolean,
-    default: false,
-    onChange: () => ui.ARGON?.refresh()
-  });
-
-  game.settings.register(MODULE_ID, "skillsRollableOnly", {
-    name: "Skills: show only rollable",
-    hint: "If enabled, hide skills that cannot be rolled (system flag disables them).",
-    scope: "world",
-    config: true,
-    type: Boolean,
-    default: true,
-    onChange: () => ui.ARGON?.refresh()
-  });
-}
-
-/* ──────────────────────────────────────────────────────────
-   Panel input guards
-────────────────────────────────────────────────────────── */
-/** Keep HUD open for interactive inputs inside a panel (reusable). */
+/**
+ * Keep HUD open when interacting with inputs inside a panel.
+ * Stops Argon’s outside-click closer on pointer+keyboard events within the search/input zone only.
+ * Does not block other panel clicks.
+ */
 function attachPanelInputGuards(panel) {
   const arm = () => {
     const el = panel?.element;
@@ -119,9 +95,7 @@ function installGlobalHudInputGuard() {
   });
 }
 
-/* ──────────────────────────────────────────────────────────
-   Tooltip
-────────────────────────────────────────────────────────── */
+/** Hook-in: registers RMU tooltip class with Argon Core. Pure registration. */
 function defineTooltip(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   class RMUTooltip extends ARGON.CORE.Tooltip {
@@ -130,9 +104,7 @@ function defineTooltip(CoreHUD) {
   CoreHUD.defineTooltip(RMUTooltip);
 }
 
-/* ──────────────────────────────────────────────────────────
-   Portrait Panel (HP / PP / DB summary)
-────────────────────────────────────────────────────────── */
+/** Hook-in: sets the Portrait panel implementation for RMU. No side effects until HUD render. */
 function definePortraitPanel(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   class RMUPortraitPanel extends ARGON.PORTRAIT.PortraitPanel {
@@ -175,16 +147,12 @@ function definePortraitPanel(CoreHUD) {
   CoreHUD.definePortraitPanel(RMUPortraitPanel);
 }
 
-/* ──────────────────────────────────────────────────────────
-   Supported Actor Types
-────────────────────────────────────────────────────────── */
+/** Policy: allow Argon HUD for RMU "Character" and "Creature" actor types only. */
 function defineSupportedActorTypes(CoreHUD) {
   CoreHUD.defineSupportedActorTypes(["Character", "Creature", "character", "creature"]);
 }
 
-/* ──────────────────────────────────────────────────────────
-   Movement HUD (RMU → Argon squares)
-────────────────────────────────────────────────────────── */
+/** Hook-in: movement tracker binding. Reads token moves and shows bars; resets on round/encounter end. */
 function defineMovementHud(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   const Base =
@@ -252,9 +220,7 @@ function getLiveAttack(srcAttack) {
   return list.find(a => attackKey(a) === key) || srcAttack;
 }
 
-/* ──────────────────────────────────────────────────────────
-   Weapon Sets (quiet stub)
-────────────────────────────────────────────────────────── */
+/** Hook-in: enables weapon-set swapping. UI-only; actor flags hold state. */
 function defineWeaponSets(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   const Base =
@@ -275,9 +241,6 @@ function defineWeaponSets(CoreHUD) {
   CoreHUD.defineWeaponSets(RMUWeaponSets);
 }
 
-/* ──────────────────────────────────────────────────────────
-   Helpers used by Attacks
-────────────────────────────────────────────────────────── */
 // Route helper for module icons
 const MOD_ICON = (file) =>
   (foundry?.utils?.getRoute
@@ -423,7 +386,6 @@ function getAllActorSkills(actor) {
   return out;
 }
 
-
 /** Build a normalized display entry for tiles (filters applied later). */
 function toDisplaySkill(sk) {
   const s = sk?.system ?? {};
@@ -441,7 +403,6 @@ function toDisplaySkill(sk) {
     raw: sk
   };
 }
-
 
 /** Group ALL skills (no module filters for now). */
 function getGroupedSkillsForHUD_All() {
@@ -469,10 +430,7 @@ function getGroupedSkillsForHUD_All() {
   return groups;
 }
 
-
-/* ──────────────────────────────────────────────────────────
-   ATTACK ROLLS - categories + attack buttons
-────────────────────────────────────────────────────────── */
+/** Main panel: builds Melee/Ranged/Natural/Shield attack buttons. Non-destructive to actor/system data. */
 function defineAttacksMain(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   const { ActionPanel } = ARGON.MAIN;
@@ -847,10 +805,6 @@ function defineAttacksMain(CoreHUD) {
   CoreHUD.defineMainPanels([RMUAttacksActionPanel]);
 }
 
-/* ──────────────────────────────────────────────────────────
-   RESISTANCE ROLLS — category + 5 buttons (static for now)
-────────────────────────────────────────────────────────── */
-
 // File-based resistance icons
 const RESISTANCE_ICONS = {
   panel:      MOD_ICON("resistance-panel.svg"),
@@ -877,6 +831,7 @@ function getTokenResistances() {
   return Array.isArray(list) ? list : [];
 }
 
+/** Main panel: resistance rolls. Mirrors attack panel patterns for consistency. */
 function defineResistancesMain(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   const { ActionPanel } = ARGON.MAIN;
@@ -1006,9 +961,7 @@ class RMUResistanceActionButton extends ActionButton {
   CoreHUD.defineMainPanels([RMUResistanceActionPanel]);
 }
 
-/* ──────────────────────────────────────────────────────────
-   SKILLS — button → accordion (headers first; click to expand one)
-────────────────────────────────────────────────────────── */
+/** Main panel: skills accordion + search. Uses getAllActorSkills → toDisplaySkill → grouped map. */
 function defineSkillsMain(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   const { ActionPanel } = ARGON.MAIN;
@@ -1038,60 +991,6 @@ function defineSkillsMain(CoreHUD) {
       });
     };
     requestAnimationFrame(tryAttach);
-  }
-
-  // ── Data helpers (show EVERYTHING for now) ───────────────
-  function getAllActorSkills(actor) {
-    const src = actor?.system?._skills;
-    if (!src) return [];
-    const out = [];
-    const pushMaybe = (v) => {
-      if (!v) return;
-      if (Array.isArray(v)) for (const it of v) pushMaybe(it);
-      else if (typeof v === "object") {
-        if (v.system && typeof v.system === "object") out.push(v);
-        else for (const val of Object.values(v)) pushMaybe(val);
-      }
-    };
-    pushMaybe(src);
-    return out;
-  }
-
-  function toDisplaySkill(sk) {
-    const s = sk?.system ?? {};
-    // For testing: include everything (even parents & undeveloped) to verify coverage
-    const name = s.name ?? "";
-    const spec = s.specialization ?? "";
-    const category = s.category ?? "Other";
-    return {
-      key: `${name}::${spec}`,
-      name, spec, category,
-      total: s._bonus,
-      disabledBySystem: s._disableSkillRoll === true,
-      raw: sk
-    };
-  }
-
-  function getGroupedSkillsForHUD_All() {
-    const actor = ui.ARGON?._actor ?? ui.ARGON?._token?.actor;
-    if (!actor) return new Map();
-
-    const all = getAllActorSkills(actor).map(toDisplaySkill).filter(Boolean);
-
-    const groups = new Map();
-    for (const sk of all) {
-      if (!groups.has(sk.category)) groups.set(sk.category, []);
-      groups.get(sk.category).push(sk);
-    }
-
-    for (const [cat, list] of groups.entries()) {
-      list.sort((a, b) => {
-        const da = a.spec ? `${a.name} (${a.spec})` : a.name;
-        const db = b.spec ? `${b.name} (${b.spec})` : b.name;
-        return da.localeCompare(db);
-      });
-    }
-    return groups;
   }
 
   // Normalize a category name to a stable key
@@ -1388,7 +1287,6 @@ function defineSkillsMain(CoreHUD) {
       }
     }
 
-
     async _onMouseDown(event) {
       if (event?.button !== 0 || this.disabled) return;
       event.preventDefault(); event.stopPropagation();
@@ -1492,9 +1390,7 @@ function defineSkillsMain(CoreHUD) {
   CoreHUD.defineMainPanels([RMUSkillsActionPanel]);
 }
 
-/* ──────────────────────────────────────────────────────────
-   SPECIAL CHECKS — panel with Endurance and Concentration
-────────────────────────────────────────────────────────── */
+/** Main panel: endurance checks. */
 function defineSpecialChecksMain(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   const { ActionPanel, BUTTONS } = ARGON.MAIN;
@@ -1629,7 +1525,6 @@ function defineSpecialChecksMain(CoreHUD) {
     async _onLeftClick(e){ e?.preventDefault?.(); e?.stopPropagation?.(); }
   }
 
-
   class RMUSpecialChecksCategoryButton extends ButtonPanelButton {
     get label() { return "ENDURANCE"; }
     get icon()  { return SPECIAL_CHECKS_ICON; }
@@ -1656,9 +1551,7 @@ function defineSpecialChecksMain(CoreHUD) {
   CoreHUD.defineMainPanels([RMUSpecialChecksActionPanel]);
 }
 
-/* ──────────────────────────────────────────────────────────
-   REST — single action button (far right)
-────────────────────────────────────────────────────────── */
+/** Main panel: rest actions. Visibility toggled by encounter state elsewhere. */
 function defineRestMain(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   const { ActionPanel } = ARGON.MAIN;
@@ -1729,9 +1622,7 @@ function defineRestMain(CoreHUD) {
   CoreHUD.defineMainPanels([RMURestActionPanel]);
 }
 
-/* ──────────────────────────────────────────────────────────
-   Drawer Panel (kept simple)
-────────────────────────────────────────────────────────── */
+/** Drawer: secondary actions menu. Collapsible groups; no data mutation. */
 function defineDrawerPanel(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   class RMUDrawer extends ARGON.DRAWER.DrawerPanel {
@@ -1741,9 +1632,6 @@ function defineDrawerPanel(CoreHUD) {
   CoreHUD.defineDrawerPanel(RMUDrawer);
 }
 
-/* ──────────────────────────────────────────────────────────
-   Hooks & wiring
-────────────────────────────────────────────────────────── */
 function initConfig() {
   // Refresh portrait when items on the selected actor change
   Hooks.on("updateItem", (item) => {
@@ -1777,7 +1665,6 @@ function initConfig() {
 
 // Register settings and init config early (Argon may init before ready)
 Hooks.on("setup", () => {
-  registerSettings();
   initConfig();
   installGlobalHudInputGuard();
 });
