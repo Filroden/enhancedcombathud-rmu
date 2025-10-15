@@ -2,7 +2,7 @@
     "title": "Argon - Combat HUD (RMU)",
     "description": "Rolemaster Unified System Argon integration",
     "id": "enhancedcombathud-rmu",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "authors": [
         {
             "name": "Bob Morris (system integration)"
