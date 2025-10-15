@@ -15,14 +15,107 @@ Hooks.once("ready", () => console.info("[ECH-RMU] ready"));
    Settings (minimal)
 ────────────────────────────────────────────────────────── */
 function registerSettings() {
-  game.settings.register(MODULE_ID, "showRMUSpecialActions", {
-    name: "Show RMU Special Actions",
-    hint: "Show common RMU manoeuvre buttons such as Parry/Full Parry/Disengage (future).",
+  game.settings.register(MODULE_ID, "skillsFavoritesOnly", {
+    name: "Skills: show only favorites",
+    hint: "If enabled, only show skills marked as Favorite on the actor.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: () => ui.ARGON?.refresh()
+  });
+
+  game.settings.register(MODULE_ID, "skillsRollableOnly", {
+    name: "Skills: show only rollable",
+    hint: "If enabled, hide skills that cannot be rolled (system flag disables them).",
     scope: "world",
     config: true,
     type: Boolean,
     default: true,
     onChange: () => ui.ARGON?.refresh()
+  });
+}
+
+/* ──────────────────────────────────────────────────────────
+   Panel input guards
+────────────────────────────────────────────────────────── */
+/** Keep HUD open for interactive inputs inside a panel (reusable). */
+function attachPanelInputGuards(panel) {
+  const arm = () => {
+    const el = panel?.element;
+    if (!el) return requestAnimationFrame(arm);
+
+    const cap = { capture: true };
+    const stopIfControl = (ev) => {
+      const t = ev.target;
+      if (t?.closest?.(".rmu-skill-search__clear") && ev.type === "click") {
+        return; // let the clear button's own click handler run
+      }
+      if (ev.type === "input") return;
+      if (!t) return;
+      if (t.closest("input, textarea, select, .rmu-skill-search, .rmu-skill-search__input, .rmu-skill-search__clear")) {
+        // Be aggressive on “down” events so Argon’s closer never sees them
+        if (ev.type === "pointerdown" || ev.type === "mousedown" || ev.type === "touchstart") {
+          ev.preventDefault();
+        }
+        ev.stopImmediatePropagation();
+        ev.stopPropagation();
+      }
+    };
+
+    [
+      "pointerdown","pointerup",
+      "mousedown","mouseup","click",
+      "touchstart","touchend",
+      "contextmenu","wheel",
+      "focus","focusin","focusout","blur",
+      "keydown","keyup"
+    ].forEach(type => el.addEventListener(type, stopIfControl, cap));
+  };
+  requestAnimationFrame(arm);
+}
+
+/** Global capture guard so interactions inside the Skills search don't close the HUD. */
+function installGlobalHudInputGuard() {
+  const cap = { capture: true, passive: false };
+
+  // We protect the bar container, its input, and the clear button.
+  const SEARCH_SELECTORS =
+        ".rmu-skill-search, .rmu-skill-search__input, .rmu-skill-search__clear, .rmu-skill-search__count, .argon-interactive, .argon-no-close, [data-argon-interactive='true']";
+
+  const isSearch = (t) => !!(t && t.closest?.(SEARCH_SELECTORS));
+
+  const guard = (ev) => {
+    const t = ev.target;
+    // Allow the clear button's own click handler to run
+    if (t?.closest?.(".rmu-skill-search__clear") && ev.type === "click") {
+      return; // do not stop propagation on this one
+    }
+    if (!t || !isSearch(t)) return; // ignore non-search clicks
+    // Stop Argon's outside-click closer as early as possible.
+    if (ev.type === "pointerdown" || ev.type === "mousedown" || ev.type === "touchstart") {
+      ev.preventDefault(); // prevents focus loss/fake click on ancestors
+    }
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+
+    // Ensure the input still focuses even though we prevented default on pointerdown.
+    if (t.matches?.(".rmu-skill-search__input")) {
+      setTimeout(() => t.focus?.(), 0);
+    }
+  };
+
+  // Register broadly, at capture phase, once.
+  [
+    "pointerdown","pointerup","pointercancel",
+    "mousedown","mouseup","click","dblclick",
+    "touchstart","touchend",
+    "contextmenu","wheel",
+    "focus","focusin","focusout","blur"
+  ].forEach(type => {
+    // window first (earliest), then document as a fallback
+    window.addEventListener(type, guard, cap);
+    document.addEventListener(type, guard, cap);
   });
 }
 
@@ -199,6 +292,10 @@ const DEFAULT_ICONS = {
   shield:  MOD_ICON("vibrating-shield.svg"),
 };
 
+const SKILLS_ICON = MOD_ICON("skills.svg");
+const SPECIAL_CHECKS_ICON = MOD_ICON("hazard-sign.svg");
+const ENDURANCE_ICON = MOD_ICON("mountain-climbing.svg");
+const CONCENTRATION_ICON = MOD_ICON("meditation.svg");
 const REST_ICON = MOD_ICON("rest.svg");
 
 function asBool(v) { return !!(v === true || v === "true" || v === 1); }
@@ -255,6 +352,14 @@ function getShortRange(arr) {
   return dist ? `${dist}` : "—";
 }
 
+/** Ensure RMU HUD data is derived on the selected actor (once per actor). */
+async function ensureRMUReady() {
+  const actor = ui.ARGON?._actor ?? ui.ARGON?._token?.actor;
+  if (!actor) return;
+  if (actor.system?._hudInitialized === true) return; // already derived
+  await ensureExtendedTokenData(); // system-provided derivation
+}
+
 /* Mount the value overlay inside the tile's image container (not the full button) */
 function applyValueOverlay(buttonEl, number = "", labelText = "Total") {
   if (!buttonEl) return;
@@ -292,6 +397,78 @@ function applyValueOverlay(buttonEl, number = "", labelText = "Total") {
   root.appendChild(txt);
   host.appendChild(root);
 }
+
+/** Flatten RMU skills from actor.system._skills (handles paged groups). */
+function getAllActorSkills(actor) {
+  const src = actor?.system?._skills;
+  if (!src) return [];
+
+  const out = [];
+
+  const pushMaybe = (v) => {
+    if (!v) return;
+    if (Array.isArray(v)) {
+      for (const it of v) pushMaybe(it);
+    } else if (typeof v === "object") {
+      // If it looks like a skill document (has .system), push
+      if (v.system && (typeof v.system === "object")) out.push(v);
+      else {
+        // Otherwise, iterate its values (handles { "0_99": [skills], "100_126": [skills] })
+        for (const val of Object.values(v)) pushMaybe(val);
+      }
+    }
+  };
+
+  pushMaybe(src);
+  return out;
+}
+
+
+/** Build a normalized display entry for tiles (filters applied later). */
+function toDisplaySkill(sk) {
+  const s = sk?.system ?? {};
+  // For testing: show everything (no exclusions)
+  const name = s.name ?? "";
+  const spec = s.specialization ?? "";
+  const category = s.category ?? "Other";
+
+  return {
+    key: `${name}::${spec}`,
+    name, spec, category,
+    total: s._bonus,
+    favorite: !!s.favorite,
+    disabledBySystem: s._disableSkillRoll === true,
+    raw: sk
+  };
+}
+
+
+/** Group ALL skills (no module filters for now). */
+function getGroupedSkillsForHUD_All() {
+  const actor = ui.ARGON?._actor ?? ui.ARGON?._token?.actor;
+  if (!actor) return new Map();
+
+  const all = getAllActorSkills(actor)
+    .map(toDisplaySkill)
+    .filter(Boolean);
+
+  const groups = new Map();
+  for (const sk of all) {
+    if (!groups.has(sk.category)) groups.set(sk.category, []);
+    groups.get(sk.category).push(sk);
+  }
+
+  // Sort alpha by display name within each category
+  for (const [cat, list] of groups.entries()) {
+    list.sort((a, b) => {
+      const da = a.spec ? `${a.name} (${a.spec})` : a.name;
+      const db = b.spec ? `${b.name} (${b.spec})` : b.name;
+      return da.localeCompare(db);
+    });
+  }
+  return groups;
+}
+
 
 /* ──────────────────────────────────────────────────────────
    ATTACK ROLLS - categories + attack buttons
@@ -340,6 +517,8 @@ function defineAttacksMain(CoreHUD) {
         existing?.remove();
       }
     }
+
+    get isInteractive() { return true; }
 
     get disabled() {
       // Argon uses this to decide whether to add its own "disabled" class
@@ -600,13 +779,21 @@ function defineAttacksMain(CoreHUD) {
     get label() { return this.title; }
     get icon()  { return this._icon; }
     get hasContents() { return this._attacks.length > 0; }
+    get isInteractive() { return true; }
 
     async _getPanel() {
-      const buttons = this._attacks.map(a => new RMUAttackActionButton(a, this.key));
-      return new ButtonPanel({
+      // Build the attack tiles for this category
+      const buttons = (this._attacks || []).map(a => new RMUAttackActionButton(a, this.key));
+
+      const panel = new ButtonPanel({
         id: `rmu-attacks-${this.key}`,
         buttons
       });
+
+      // Keep HUD open if we add inputs here later (future-proof)
+      attachPanelInputGuards(panel);
+
+      return panel;
     }
   }
 
@@ -617,7 +804,7 @@ function defineAttacksMain(CoreHUD) {
     get currentActions() { return null; }
 
     async _getButtons() {
-      await ensureExtendedTokenData();
+      await ensureRMUReady();
       const all = getTokenAttacks();
 
       // bucket attacks
@@ -705,7 +892,7 @@ class RMUResistanceActionButton extends ActionButton {
 
   get label() { return this.resist?.name || "Resistance"; }
   get icon()  { return RESISTANCE_ICONS[this.resist?.name] || RESISTANCE_ICONS.panel; }
-
+  get isInteractive() { return true; }
   get hasTooltip() { return true; }
   async getTooltipData() {
     const r = this.resist ?? {};
@@ -783,9 +970,10 @@ class RMUResistanceActionButton extends ActionButton {
     get label() { return this.title; }
     get icon()  { return this._icon; }
     get hasContents() { return true; }
+    get isInteractive() { return true; }
 
     async _getPanel() {
-      await ensureExtendedTokenData(); // belt-and-braces here too
+      await ensureRMUReady();
       const list = getTokenResistances();
 
       if (!list.length) {
@@ -798,7 +986,9 @@ class RMUResistanceActionButton extends ActionButton {
       }
 
       const buttons = list.map(r => new RMUResistanceActionButton(r));
-      return new ButtonPanel({ id: "rmu-resistances", buttons });
+      const panel = new ButtonPanel({ id: "rmu-resistances", buttons });
+      attachPanelInputGuards(panel);        // future-proof (if we add inputs later)
+      return panel;
     }
   }
 
@@ -808,12 +998,662 @@ class RMUResistanceActionButton extends ActionButton {
     get maxActions() { return null; }
     get currentActions() { return null; }
     async _getButtons() {
-      await ensureExtendedTokenData();         // <-- ensure block is derived
+      await ensureRMUReady();
       return [ new RMUResistanceCategoryButton() ];
     }
   }
 
   CoreHUD.defineMainPanels([RMUResistanceActionPanel]);
+}
+
+/* ──────────────────────────────────────────────────────────
+   SKILLS — button → accordion (headers first; click to expand one)
+────────────────────────────────────────────────────────── */
+function defineSkillsMain(CoreHUD) {
+  const ARGON = CoreHUD.ARGON;
+  const { ActionPanel } = ARGON.MAIN;
+  const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
+  const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
+
+  // ── Accordion open-state per token ───────────────────────
+  const SKILLS_OPEN_CAT = new Map(); // tokenId -> string | null
+  function getOpenSkillsCategory() {
+    const tokenId = ui.ARGON?._token?.id ?? "no-token";
+    return SKILLS_OPEN_CAT.get(tokenId) ?? null;
+  }
+  function setOpenSkillsCategory(catOrNull) {
+    const tokenId = ui.ARGON?._token?.id ?? "no-token";
+    if (catOrNull) SKILLS_OPEN_CAT.set(tokenId, String(catOrNull));
+    else SKILLS_OPEN_CAT.delete(tokenId);
+  }
+
+  // Keep HUD open while clicking inside skills panel (bubble-phase)
+  function attachSkillsPanelGuards(panel) {
+    const tryAttach = () => {
+      const el = panel?.element;
+      if (!el) return requestAnimationFrame(tryAttach);
+      const stop = (e) => { e.stopPropagation(); }; // don’t block capture → lets headers receive clicks
+      ["pointerdown","pointerup","mousedown","mouseup","click","touchstart","touchend","contextmenu","wheel","focusin","focusout","blur","keydown","keyup"].forEach(type => {
+        el.addEventListener(type, stop, { capture: false });
+      });
+    };
+    requestAnimationFrame(tryAttach);
+  }
+
+  // ── Data helpers (show EVERYTHING for now) ───────────────
+  function getAllActorSkills(actor) {
+    const src = actor?.system?._skills;
+    if (!src) return [];
+    const out = [];
+    const pushMaybe = (v) => {
+      if (!v) return;
+      if (Array.isArray(v)) for (const it of v) pushMaybe(it);
+      else if (typeof v === "object") {
+        if (v.system && typeof v.system === "object") out.push(v);
+        else for (const val of Object.values(v)) pushMaybe(val);
+      }
+    };
+    pushMaybe(src);
+    return out;
+  }
+
+  function toDisplaySkill(sk) {
+    const s = sk?.system ?? {};
+    // For testing: include everything (even parents & undeveloped) to verify coverage
+    const name = s.name ?? "";
+    const spec = s.specialization ?? "";
+    const category = s.category ?? "Other";
+    return {
+      key: `${name}::${spec}`,
+      name, spec, category,
+      total: s._bonus,
+      disabledBySystem: s._disableSkillRoll === true,
+      raw: sk
+    };
+  }
+
+  function getGroupedSkillsForHUD_All() {
+    const actor = ui.ARGON?._actor ?? ui.ARGON?._token?.actor;
+    if (!actor) return new Map();
+
+    const all = getAllActorSkills(actor).map(toDisplaySkill).filter(Boolean);
+
+    const groups = new Map();
+    for (const sk of all) {
+      if (!groups.has(sk.category)) groups.set(sk.category, []);
+      groups.get(sk.category).push(sk);
+    }
+
+    for (const [cat, list] of groups.entries()) {
+      list.sort((a, b) => {
+        const da = a.spec ? `${a.name} (${a.spec})` : a.name;
+        const db = b.spec ? `${b.name} (${b.spec})` : b.name;
+        return da.localeCompare(db);
+      });
+    }
+    return groups;
+  }
+
+  // Normalize a category name to a stable key
+  const catKeyOf = (s) => String(s ?? "")
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+  /* Install a search bar at the top of the skills panel (robust version). */
+  function installSkillsSearch(panel) {
+    const makeBar = () => {
+      const bar = document.createElement("div");
+      bar.className = "rmu-skill-search argon-interactive argon-no-close";
+      bar.setAttribute("data-argon-interactive", "true");
+      bar.setAttribute("data-tooltip", ""); // Disable Argon tooltip
+      bar.innerHTML = `
+        <div class="rmu-skill-search__icon argon-interactive argon-no-close" data-argon-interactive="true"><i class="rmu-mdi rmu-mdi-magnify" aria-hidden="true"></i></div>
+        <input type="text" class="rmu-skill-search__input argon-interactive argon-no-close" data-argon-interactive="true" placeholder="Search skills…">
+        <button type="button" class="rmu-skill-search__clear argon-interactive argon-no-close" data-argon-interactive="true">×</button>
+        <div class="rmu-skill-search__count argon-interactive argon-no-close" data-argon-interactive="true"></div>
+      `;
+      return bar;
+    };
+
+    const waitAndMount = (tries = 0) => {
+      const root = panel?.element;
+      if (!root?.isConnected) {
+        if (tries < 180) return requestAnimationFrame(() => waitAndMount(tries + 1));
+        return;
+      }
+
+      if (root.querySelector(".rmu-skill-search")) return;
+
+      const firstHeader = root.querySelector(".rmu-skill-header");
+      const bar = makeBar();
+      
+      root.prepend(bar);
+
+      // Re-assert the search bar if the panel re-renders
+      const mo = new MutationObserver(() => {
+        if (root.isConnected && !root.contains(bar)) {
+          root.prepend(bar);
+        }
+      });
+      mo.observe(root, { childList: true, subtree: true });
+
+      const input = bar.querySelector(".rmu-skill-search__input");
+      const clear = bar.querySelector(".rmu-skill-search__clear");
+      const count = bar.querySelector(".rmu-skill-search__count");
+
+      // CRITICAL: Install guards BEFORE the element is fully in the DOM
+      const PROTECTED_EVENTS = [
+        "pointerdown", "pointercancel",
+        "mousedown",
+        "touchstart", "touchcancel",
+        "focus", "focusin", "focusout", "blur"
+      ];
+
+      // Ultra-aggressive guard: stop everything at the bar level
+      const ultraGuard = (ev) => {
+        ev.stopImmediatePropagation();
+        ev.stopPropagation();
+        if (["pointerdown", "mousedown", "touchstart"].includes(ev.type)) {
+          ev.preventDefault();
+        }
+      };
+
+      PROTECTED_EVENTS.forEach(type => {
+        bar.addEventListener(type, ultraGuard, { capture: true, passive: false });
+        input.addEventListener(type, ultraGuard, { capture: true, passive: false });
+        clear.addEventListener(type, ultraGuard, { capture: true, passive: false });
+        count.addEventListener(type, ultraGuard, { capture: true, passive: false });
+      });
+
+      // Special handler for input to ensure it can focus
+      ["pointerdown", "mousedown", "touchstart"].forEach(type => {
+        input.addEventListener(type, (ev) => {
+          ev.stopImmediatePropagation();
+          ev.stopPropagation();
+          ev.preventDefault();
+          requestAnimationFrame(() => {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+          });
+        }, { capture: true, passive: false });
+      });
+
+      // Clear button handler
+      clear.addEventListener("click", (ev) => {
+        ev.stopImmediatePropagation();
+        ev.stopPropagation();
+        ev.preventDefault();
+        input.value = "";
+        input.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+        requestAnimationFrame(() => input.focus());
+      }, { capture: true });
+
+      // Setup filtering logic (LIVE index each time)
+      const getTiles   = () => Array.from(root.querySelectorAll(".rmu-skill-tile"));
+      const getHeaders = () => Array.from(root.querySelectorAll(".rmu-skill-header"));
+      const buildIndex = () => getTiles().map(el => ({
+        el,
+        text: (el.dataset.nameNorm || "").toLowerCase(),
+        cat:  (el.dataset.catKey  || "").toLowerCase()
+      }));
+
+      const filter = (qRaw) => {
+        const q = String(qRaw || "").toLowerCase().trim();
+        const tiles   = getTiles();
+        const headers = getHeaders();
+
+        if (!q) {
+          tiles.forEach(t => t.style.display = "none");
+          headers.forEach(h => {
+            h.style.display = "";
+            h.classList.remove("open");
+            h.classList.add("closed");
+          });
+          count.textContent = "";
+          return;
+        }
+
+        const index = buildIndex();
+        let hits = 0;
+        index.forEach(e => {
+          const match = e.text.includes(q) || e.cat.includes(q);
+          e.el.style.display = match ? "" : "none";
+          if (match) hits++;
+        });
+
+        count.textContent = `${hits} match${hits === 1 ? "" : "es"}`;
+
+        const visibleCats = new Set(
+          getTiles().filter(t => t.style.display !== "none").map(t => t.dataset.catKey)
+        );
+
+        headers.forEach(h => {
+          const key = h.dataset.catKey || "";
+          const show = visibleCats.has(key);
+          h.style.display = show ? "" : "none";
+          h.classList.toggle("open", show);
+          h.classList.toggle("closed", !show);
+        });
+
+        setOpenSkillsCategory(null);
+      };
+
+      input.addEventListener("input", () => filter(input.value), { passive: true });
+      
+      // Initial state
+      filter("");
+    };
+
+    requestAnimationFrame(waitAndMount);
+  }
+
+  // ── Header (category) tile ───────────────────────────────
+  class RMUSkillHeaderButton extends ActionButton {
+    constructor(title) { 
+      super(); 
+      this._title = title; 
+      this._catKey = catKeyOf(title);
+      this._panelEl = null; // set later by _bindPanel
+    }
+    get label() { return this._title; }
+    get icon()  { return ""; } // IMPORTANT: empty string (not null) to avoid /null 404
+    get isInteractive() { return true; }
+    get classes() {
+      const open = getOpenSkillsCategory() === this._catKey;
+      return [...super.classes, "rmu-skill-header", open ? "open" : "closed"];
+    }
+    get hasTooltip() { return false; }
+
+    // Called by the category button after the panel is created so we can toggle DOM
+    _bindPanel(panel) {
+      const tryBind = () => {
+        const el = panel?.element;
+        if (!el) return requestAnimationFrame(tryBind);
+        this._panelEl = el;
+        // After binding, apply the current visibility
+        this._applyVisibility();
+      };
+      requestAnimationFrame(tryBind);
+    }
+
+    _applyVisibility() {
+      if (!this._panelEl) return;
+      const openKey = getOpenSkillsCategory(); // normalized key, or null
+
+      // Toggle header open/closed classes for all headers
+      const headers = this._panelEl.querySelectorAll(".rmu-skill-header");
+      headers.forEach(h => {
+        const key = h.dataset.catKey || "";
+        h.classList.toggle("open",   key === openKey);
+        h.classList.toggle("closed", key !== openKey);
+      });
+
+      // Show only tiles whose normalized key matches the open key
+      const tiles = this._panelEl.querySelectorAll(".rmu-skill-tile");
+      tiles.forEach(t => {
+        const key = t.dataset.catKey || "";
+        const visible = !!openKey && (key === openKey);
+        t.style.display = visible ? "" : "none";
+      });
+    }
+
+    async _renderInner() {
+      await super._renderInner();
+      if (this.element) {
+        this.element.style.pointerEvents = "auto";
+        this.element.style.cursor = "pointer";
+        // Store the category name on the header element (optional, for debug/selector)
+        this.element.dataset.catKey = this._catKey;
+      }
+    }
+
+    async _onMouseDown(event) {
+      if (event?.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation(); // stop any global close handler
+
+      const openKey = getOpenSkillsCategory();
+      const isOpen = openKey === this._catKey;
+      setOpenSkillsCategory(isOpen ? null : this._catKey);
+
+      // Update visibility in-place (no Argon refresh needed)
+      this._applyVisibility();
+    }
+
+    async _onLeftClick(e){ e?.preventDefault?.(); e?.stopPropagation?.(); }
+  }
+
+
+  // ── Skill (text-only) tile ───────────────────────────────
+  class RMUSkillActionButton extends ActionButton {
+    constructor(entry, startHidden = false) { 
+      super(); 
+      this.entry = entry; 
+      this._startHidden = !!startHidden;
+    }
+    get label() { 
+      const e = this.entry;
+      return e?.spec ? `${e.name} (${e.spec})` : e?.name ?? "Skill";
+    }
+    get icon()  { return ""; } // IMPORTANT: empty string
+    get isInteractive() { return true; }
+    get disabled() { return !!this.entry?.disabledBySystem; }
+    get classes() {
+      const c = super.classes.slice().filter(cls => cls !== "disabled");
+      if (this.disabled) c.push("disabled");
+      c.push("rmu-skill-tile");
+      return c;
+    }
+
+    get hasTooltip() { return true; }
+    async getTooltipData() {
+      const sys = this.entry?.raw?.system ?? {};
+      const details = [
+        { label: "Name",             value: sys.name },
+        { label: "Specialization",   value: sys.specialization },
+        { label: "Category",         value: sys.category },
+        { label: "Total ranks",      value: sys._totalRanks },
+        { label: "Rank bonus",       value: sys._rankBonus },
+        { label: "Culture ranks",    value: sys.cultureRanks },
+        { label: "Stat",             value: sys.stat },
+        { label: "Stat bonus",       value: sys._statBonus },
+        { label: "Prof bonus",       value: sys._professsionalBonus },
+        { label: "Knack",            value: sys._knack },
+        { label: "Total bonus",      value: sys._bonus }
+      ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
+      return { title: this.label, subtitle: sys.category ?? "", details };
+    }
+
+    async _renderInner() {
+      await super._renderInner();
+      if (this.element) {
+        this.element.style.pointerEvents = "auto";
+        this.element.style.cursor = this.disabled ? "not-allowed" : "pointer";
+        applyValueOverlay(this.element, this.entry?.total ?? "", "Total");
+
+        // Search attributes
+        const label = this.label || "";
+        const cat   = this.entry?.category || "";
+        const spec  = this.entry?.spec || "";
+        const norm  = (label + " " + cat + " " + spec).toLowerCase();
+
+        this.element.dataset.catKey   = catKeyOf(cat);
+        this.element.dataset.name     = label;
+        this.element.dataset.nameNorm = norm;
+
+        if (this._startHidden) this.element.style.display = "none";
+      }
+    }
+
+
+    async _onMouseDown(event) {
+      if (event?.button !== 0 || this.disabled) return;
+      event.preventDefault(); event.stopPropagation();
+      await this._roll();
+    }
+    async _onLeftClick(event) { event?.preventDefault?.(); event?.stopPropagation?.(); }
+
+    async _roll() {
+      try {
+        const token = ui.ARGON?._token;
+        if (!token) { ui.notifications?.error?.("No active token for HUD."); return; }
+        const api = game.system?.api?.rmuTokenSkillAction;
+        if (typeof api !== "function") {
+          ui.notifications?.error?.("RMU skill API not available."); return;
+        }
+        const skillObj = this.entry?.raw;
+
+        // Ensure the token is controlled (the API warns if not)
+        try {
+          if (!token.controlled && typeof token.control === "function") {
+            await token.control({ releaseOthers: true });
+          }
+        } catch (_) { /* non-fatal if control fails */ }
+        await api(token, skillObj, undefined);
+      } catch (err) {
+        console.error("[ECH-RMU] Skill roll error:", err);
+        ui.notifications?.error?.(`Skill roll failed: ${err?.message ?? err}`);
+      }
+    }
+  }
+
+  // ── SKILLS category button (opens the accordion panel) ───
+  class RMUSkillsCategoryButton extends ButtonPanelButton {
+    constructor() {
+      super();
+      this.title = "SKILLS";
+      this._icon = SKILLS_ICON; // you added this earlier
+    }
+    get label() { return this.title; }
+    get icon()  { return this._icon; }
+    get hasContents() { return true; }
+    get isInteractive() { return true; }
+    async _getPanel() {
+      await ensureRMUReady();
+      const groups = getGroupedSkillsForHUD_All();
+      const buttons = [];
+
+      if (!groups.size) {
+        const empty = new (class NoSkillsButton extends ActionButton {
+          get label() { return "No skills"; }
+          get icon()  { return ""; }
+          get classes() { return [...super.classes, "disabled"]; }
+        })();
+        const panel = new ButtonPanel({ id: "rmu-skills", buttons: [empty] });
+        attachSkillsPanelGuards(panel);
+        return panel;
+      }
+
+      const cats = Array.from(groups.keys()).sort((a,b) => a.localeCompare(b));
+
+      // Build headers, then ALL their skill tiles (we'll hide/show via header)
+      const headerInstances = [];
+      for (const cat of cats) {
+        const header = new RMUSkillHeaderButton(cat);
+        headerInstances.push(header);
+        buttons.push(header);
+        for (const entry of groups.get(cat)) {
+          buttons.push(new RMUSkillActionButton(entry, true)); // start hidden
+        }
+      }
+
+      const panel = new ButtonPanel({ id: "rmu-skills", buttons });
+      attachSkillsPanelGuards(panel);
+      attachPanelInputGuards(panel);
+      installSkillsSearch(panel);
+
+      // Bind headers to the real panel DOM so they can toggle visibility
+      headerInstances.forEach(h => h._bindPanel(panel));
+
+      // Start collapsed (only headers visible)
+      setOpenSkillsCategory(null);
+      // Apply collapsed state once the DOM is ready
+      requestAnimationFrame(() => {
+        const el = panel.element;
+        if (!el) return;
+        const tiles = el.querySelectorAll(".rmu-skill-tile");
+        tiles.forEach(t => t.style.display = "none");
+      });
+
+      return panel;
+    }
+  }
+
+  class RMUSkillsActionPanel extends ActionPanel {
+    get label() { return "SKILLS"; }
+    get maxActions() { return null; }
+    get currentActions() { return null; }
+    async _getButtons() { return [ new RMUSkillsCategoryButton() ]; }
+  }
+
+  CoreHUD.defineMainPanels([RMUSkillsActionPanel]);
+}
+
+/* ──────────────────────────────────────────────────────────
+   SPECIAL CHECKS — panel with Endurance and Concentration
+────────────────────────────────────────────────────────── */
+function defineSpecialChecksMain(CoreHUD) {
+  const ARGON = CoreHUD.ARGON;
+  const { ActionPanel, BUTTONS } = ARGON.MAIN;
+  const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
+  const { ActionButton, ButtonPanelButton } = BUTTONS;
+
+  // Helpers
+  function getSkillByName(actor, name) {
+    const list = getAllActorSkills(actor);
+    return list.find(s => (s?.system?.name ?? s?.name) === name);
+  }
+
+  async function rollSkillWithOption(token, skillObj, optionText) {
+    const api = game.system?.api?.rmuTokenSkillAction;
+    if (typeof api !== "function") {
+      ui.notifications?.error?.("RMU skill API not available."); return;
+    }
+    try {
+      // RMU API expects the token object, not a string name.
+      await api(token, skillObj, { specialManeuver: optionText });
+    } catch (err) {
+      console.error("[ECH-RMU] Special Check error:", err);
+      ui.notifications?.error?.(`Special Check failed: ${err?.message ?? err}`);
+    }
+  }
+
+  class RMUSpecialCheck_Endurance extends ActionButton {
+    constructor() { super(); this._skill = null; }
+    get label() { return "PHYSICAL"; }
+    get icon()  { return ENDURANCE_ICON; }
+    get isInteractive() { return true; }
+    get hasTooltip() { return true; }
+
+    async getTooltipData() {
+      const sys = this._skill?.system ?? {};
+      const details = [
+        { label: "Name",             value: sys.name },
+        { label: "Specialization",   value: sys.specialization },
+        { label: "Category",         value: sys.category },
+        { label: "Total ranks",      value: sys._totalRanks },
+        { label: "Rank bonus",       value: sys._rankBonus },
+        { label: "Culture ranks",    value: sys.cultureRanks },
+        { label: "Stat",             value: sys.stat },
+        { label: "Stat bonus",       value: sys._statBonus },
+        { label: "Prof bonus",       value: sys._professsionalBonus },
+        { label: "Knack",            value: sys._knack },
+        { label: "Total bonus",      value: sys._bonus }
+      ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
+      return { title: this.label, subtitle: sys.category ?? "", details };
+    }
+
+    async _renderInner() {
+      await super._renderInner();
+      if (!this.element) return;
+      this.element.style.pointerEvents = "auto";
+      this.element.style.cursor = "pointer";
+
+      // Resolve and cache the skill so tooltip + overlay work before clicking
+      const actor = ui.ARGON?._token?.actor;
+      this._skill = actor ? getSkillByName(actor, "Body Development") : null;
+
+      // Overlay “Total” like skills do
+      const total = this._skill?.system?._bonus ?? "";
+      applyValueOverlay(this.element, total, "Total");
+    }
+
+    async _onMouseDown(event) {
+      if (event?.button !== 0) return;
+      event.preventDefault(); event.stopPropagation();
+      await ensureRMUReady();
+      const token = ui.ARGON?._token;
+      const actor = token?.actor;
+      if (!actor) { ui.notifications?.error?.("No active token for HUD."); return; }
+      const skill = this._skill ?? getSkillByName(actor, "Body Development");
+      if (!skill) { ui.notifications?.warn?.("Skill not found: Body Development"); return; }
+      await rollSkillWithOption(token, skill, "Endurance");
+    }
+
+    async _onLeftClick(e){ e?.preventDefault?.(); e?.stopPropagation?.(); }
+  }
+
+  class RMUSpecialCheck_Concentration extends ActionButton {
+    constructor() { super(); this._skill = null; }
+    get label() { return "MENTAL"; }
+    get icon()  { return CONCENTRATION_ICON; }
+    get isInteractive() { return true; }
+    get hasTooltip() { return true; }
+
+    async getTooltipData() {
+      const sys = this._skill?.system ?? {};
+      const details = [
+        { label: "Name",             value: sys.name },
+        { label: "Specialization",   value: sys.specialization },
+        { label: "Category",         value: sys.category },
+        { label: "Total ranks",      value: sys._totalRanks },
+        { label: "Rank bonus",       value: sys._rankBonus },
+        { label: "Culture ranks",    value: sys.cultureRanks },
+        { label: "Stat",             value: sys.stat },
+        { label: "Stat bonus",       value: sys._statBonus },
+        { label: "Prof bonus",       value: sys._professsionalBonus },
+        { label: "Knack",            value: sys._knack },
+        { label: "Total bonus",      value: sys._bonus }
+      ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
+      return { title: this.label, subtitle: sys.category ?? "", details };
+    }
+
+    async _renderInner() {
+      await super._renderInner();
+      if (!this.element) return;
+      this.element.style.pointerEvents = "auto";
+      this.element.style.cursor = "pointer";
+
+      const actor = ui.ARGON?._token?.actor;
+      this._skill = actor ? getSkillByName(actor, "Mental Focus") : null;
+
+      const total = this._skill?.system?._bonus ?? "";
+      applyValueOverlay(this.element, total, "Total");
+    }
+
+    async _onMouseDown(event) {
+      if (event?.button !== 0) return;
+      event.preventDefault(); event.stopPropagation();
+      await ensureRMUReady();
+      const token = ui.ARGON?._token;
+      const actor = token?.actor;
+      if (!actor) { ui.notifications?.error?.("No active token for HUD."); return; }
+      const skill = this._skill ?? getSkillByName(actor, "Mental Focus");
+      if (!skill) { ui.notifications?.warn?.("Skill not found: Mental Focus"); return; }
+      await rollSkillWithOption(token, skill, "Concentration");
+    }
+
+    async _onLeftClick(e){ e?.preventDefault?.(); e?.stopPropagation?.(); }
+  }
+
+
+  class RMUSpecialChecksCategoryButton extends ButtonPanelButton {
+    get label() { return "ENDURANCE"; }
+    get icon()  { return SPECIAL_CHECKS_ICON; }
+    get isInteractive() { return true; }
+    async _getPanel() {
+      await ensureRMUReady();
+      const buttons = [
+        new RMUSpecialCheck_Endurance(),
+        new RMUSpecialCheck_Concentration(),
+      ];
+      const panel = new ButtonPanel({ id: "rmu-special-checks", buttons });
+      attachPanelInputGuards(panel);
+      return panel;
+    }
+  }
+
+  class RMUSpecialChecksActionPanel extends ActionPanel {
+    get label() { return "ENDURANCE"; }
+    get maxActions() { return null; }
+    get currentActions() { return null; }
+    async _getButtons() { return [ new RMUSpecialChecksCategoryButton() ]; }
+  }
+
+  CoreHUD.defineMainPanels([RMUSpecialChecksActionPanel]);
 }
 
 /* ──────────────────────────────────────────────────────────
@@ -827,7 +1667,7 @@ function defineRestMain(CoreHUD) {
   class RMURestActionButton extends ActionButton {
     get label() { return "REST"; }
     get icon()  { return REST_ICON; }
-
+    get isInteractive() { return true; }
     // Optional short tooltip (remove these two methods if you truly want none)
     get hasTooltip() { return true; }
     async getTooltipData() {
@@ -911,6 +1751,12 @@ function initConfig() {
     }
   });
 
+  // Refresh entire HUD when the selected actor changes (e.g. new token selected)
+  Hooks.on("updateActor", (actor) => {
+    if (actor === ui.ARGON?._actor && ui.ARGON?.rendered) ui.ARGON.refresh();
+  });
+
+  // Also refresh when the active token changes (e.g. user clicked a different token)
   Hooks.on("argonInit", (CoreHUD) => {
     if (game.system.id !== "rmu") return;
 
@@ -921,22 +1767,21 @@ function initConfig() {
     defineMovementHud(CoreHUD);
     defineAttacksMain(CoreHUD);
     defineResistancesMain(CoreHUD);
+    defineSkillsMain(CoreHUD);
+    defineSpecialChecksMain(CoreHUD);
     defineRestMain(CoreHUD);
     defineDrawerPanel(CoreHUD);
   });
 }
 
-/* ──────────────────────────────────────────────────────────
-   Boot
-────────────────────────────────────────────────────────── */
+// Register settings and init config early (Argon may init before ready)
 Hooks.on("setup", () => {
   registerSettings();
   initConfig();
+  installGlobalHudInputGuard();
 });
 
-/* ──────────────────────────────────────────────────────────
-   Add document-level class for CSS scoping
-────────────────────────────────────────────────────────── */
+// Add a special class to <body> so CSS can be scoped to RMU + ECH
 Hooks.once("ready", () => {
   const body = document.body;
   if (!body.classList.contains("enhancedcombathud-rmu")) {
@@ -945,6 +1790,7 @@ Hooks.once("ready", () => {
   }
 });
 
+// Clean up on shutdown
 Hooks.once("shutdown", () => {
   document.body.classList.remove("enhancedcombathud-rmu");
 });
