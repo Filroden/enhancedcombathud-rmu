@@ -37,6 +37,82 @@ function registerSettings() {
 }
 
 /* ──────────────────────────────────────────────────────────
+   Panel input guards
+────────────────────────────────────────────────────────── */
+/** Keep HUD open for interactive inputs inside a panel (reusable). */
+function attachPanelInputGuards(panel) {
+  const arm = () => {
+    const el = panel?.element;
+    if (!el) return requestAnimationFrame(arm);
+
+    const cap = { capture: true };
+    const stopIfControl = (ev) => {
+      const t = ev.target;
+      if (!t) return;
+      if (t.closest("input, textarea, select, .rmu-skill-search, .rmu-skill-search__input, .rmu-skill-search__clear")) {
+        // Be aggressive on “down” events so Argon’s closer never sees them
+        if (ev.type === "pointerdown" || ev.type === "mousedown" || ev.type === "touchstart") {
+          ev.preventDefault();
+        }
+        ev.stopImmediatePropagation();
+        ev.stopPropagation();
+      }
+    };
+
+    [
+      "pointerdown","pointerup",
+      "mousedown","mouseup","click",
+      "touchstart","touchend",
+      "contextmenu","wheel",
+      "focus","focusin","focusout","blur",
+      "keydown","keyup","input"
+    ].forEach(type => el.addEventListener(type, stopIfControl, cap));
+  };
+  requestAnimationFrame(arm);
+}
+
+/** Global capture guard so interactions inside the Skills search don't close the HUD. */
+function installGlobalHudInputGuard() {
+  const cap = { capture: true, passive: false };
+
+  // We protect the bar container, its input, and the clear button.
+  const SEARCH_SELECTORS =
+        ".rmu-skill-search, .rmu-skill-search__input, .rmu-skill-search__clear, .rmu-skill-search__count, .argon-interactive, .argon-no-close, [data-argon-interactive='true']";
+
+  const isSearch = (t) => !!(t && t.closest?.(SEARCH_SELECTORS));
+
+  const guard = (ev) => {
+    const t = ev.target;
+    if (!t || !isSearch(t)) return; // ignore non-search clicks
+
+    // Stop Argon's outside-click closer as early as possible.
+    if (ev.type === "pointerdown" || ev.type === "mousedown" || ev.type === "touchstart") {
+      ev.preventDefault(); // prevents focus loss/fake click on ancestors
+    }
+    ev.stopImmediatePropagation();
+    ev.stopPropagation();
+
+    // Ensure the input still focuses even though we prevented default on pointerdown.
+    if (t.matches?.(".rmu-skill-search__input")) {
+      setTimeout(() => t.focus?.(), 0);
+    }
+  };
+
+  // Register broadly, at capture phase, once.
+  [
+    "pointerdown","pointerup","pointercancel",
+    "mousedown","mouseup","click","dblclick",
+    "touchstart","touchend",
+    "contextmenu","wheel",
+    "focus","focusin","focusout","blur"
+  ].forEach(type => {
+    // window first (earliest), then document as a fallback
+    window.addEventListener(type, guard, cap);
+    document.addEventListener(type, guard, cap);
+  });
+}
+
+/* ──────────────────────────────────────────────────────────
    Tooltip
 ────────────────────────────────────────────────────────── */
 function defineTooltip(CoreHUD) {
@@ -210,7 +286,9 @@ const DEFAULT_ICONS = {
 };
 
 const SKILLS_ICON = MOD_ICON("skills.svg");
-
+const SPECIAL_CHECKS_ICON = MOD_ICON("hazard-sign.svg");
+const ENDURANCE_ICON = MOD_ICON("mountain-climbing.svg");
+const CONCENTRATION_ICON = MOD_ICON("meditation.svg");
 const REST_ICON = MOD_ICON("rest.svg");
 
 function asBool(v) { return !!(v === true || v === "true" || v === 1); }
@@ -432,6 +510,8 @@ function defineAttacksMain(CoreHUD) {
         existing?.remove();
       }
     }
+
+    get isInteractive() { return true; }
 
     get disabled() {
       // Argon uses this to decide whether to add its own "disabled" class
@@ -692,13 +772,21 @@ function defineAttacksMain(CoreHUD) {
     get label() { return this.title; }
     get icon()  { return this._icon; }
     get hasContents() { return this._attacks.length > 0; }
+    get isInteractive() { return true; }
 
     async _getPanel() {
-      const buttons = this._attacks.map(a => new RMUAttackActionButton(a, this.key));
-      return new ButtonPanel({
+      // Build the attack tiles for this category
+      const buttons = (this._attacks || []).map(a => new RMUAttackActionButton(a, this.key));
+
+      const panel = new ButtonPanel({
         id: `rmu-attacks-${this.key}`,
         buttons
       });
+
+      // Keep HUD open if we add inputs here later (future-proof)
+      attachPanelInputGuards(panel);
+
+      return panel;
     }
   }
 
@@ -797,7 +885,7 @@ class RMUResistanceActionButton extends ActionButton {
 
   get label() { return this.resist?.name || "Resistance"; }
   get icon()  { return RESISTANCE_ICONS[this.resist?.name] || RESISTANCE_ICONS.panel; }
-
+  get isInteractive() { return true; }
   get hasTooltip() { return true; }
   async getTooltipData() {
     const r = this.resist ?? {};
@@ -875,6 +963,7 @@ class RMUResistanceActionButton extends ActionButton {
     get label() { return this.title; }
     get icon()  { return this._icon; }
     get hasContents() { return true; }
+    get isInteractive() { return true; }
 
     async _getPanel() {
       await ensureRMUReady();
@@ -890,7 +979,9 @@ class RMUResistanceActionButton extends ActionButton {
       }
 
       const buttons = list.map(r => new RMUResistanceActionButton(r));
-      return new ButtonPanel({ id: "rmu-resistances", buttons });
+      const panel = new ButtonPanel({ id: "rmu-resistances", buttons });
+      attachPanelInputGuards(panel);        // future-proof (if we add inputs later)
+      return panel;
     }
   }
 
@@ -934,9 +1025,9 @@ function defineSkillsMain(CoreHUD) {
     const tryAttach = () => {
       const el = panel?.element;
       if (!el) return requestAnimationFrame(tryAttach);
-      const stop = (e) => { e.stopPropagation(); }; // allow clicks, just stop bubbling
-      ["pointerdown","mousedown","click","mouseup"].forEach(type => {
-        el.addEventListener(type, stop, { capture: false }); // bubble phase
+      const stop = (e) => { e.stopPropagation(); }; // don’t block capture → lets headers receive clicks
+      ["pointerdown","pointerup","mousedown","mouseup","click","touchstart","touchend","contextmenu","wheel","focusin","focusout","blur","keydown","keyup"].forEach(type => {
+        el.addEventListener(type, stop, { capture: false });
       });
     };
     requestAnimationFrame(tryAttach);
@@ -1003,6 +1094,154 @@ function defineSkillsMain(CoreHUD) {
     .toLowerCase()
     .replace(/\s+/g, " ");
 
+  /* Install a search bar at the top of the skills panel (robust version). */
+  function installSkillsSearch(panel) {
+    const makeBar = () => {
+      const bar = document.createElement("div");
+      bar.className = "rmu-skill-search argon-interactive argon-no-close";
+      bar.setAttribute("data-argon-interactive", "true");
+      bar.setAttribute("data-tooltip", ""); // Disable Argon tooltip
+      bar.innerHTML = `
+        <div class="rmu-skill-search__icon argon-interactive argon-no-close" data-argon-interactive="true">🔎</div>
+        <input type="text" class="rmu-skill-search__input argon-interactive argon-no-close" data-argon-interactive="true" placeholder="Search skills…">
+        <button type="button" class="rmu-skill-search__clear argon-interactive argon-no-close" data-argon-interactive="true">×</button>
+        <div class="rmu-skill-search__count argon-interactive argon-no-close" data-argon-interactive="true"></div>
+      `;
+      return bar;
+    };
+
+    const waitAndMount = (tries = 0) => {
+      const root = panel?.element;
+      if (!root?.isConnected) {
+        if (tries < 180) return requestAnimationFrame(() => waitAndMount(tries + 1));
+        return;
+      }
+
+      if (root.querySelector(".rmu-skill-search")) return;
+
+      const firstHeader = root.querySelector(".rmu-skill-header");
+      const bar = makeBar();
+      
+      root.prepend(bar);
+
+      // Re-assert the search bar if the panel re-renders
+      const mo = new MutationObserver(() => {
+        if (root.isConnected && !root.contains(bar)) {
+          root.prepend(bar);
+        }
+      });
+      mo.observe(root, { childList: true, subtree: true });
+
+      const input = bar.querySelector(".rmu-skill-search__input");
+      const clear = bar.querySelector(".rmu-skill-search__clear");
+      const count = bar.querySelector(".rmu-skill-search__count");
+
+      // CRITICAL: Install guards BEFORE the element is fully in the DOM
+      const PROTECTED_EVENTS = [
+        "pointerdown", "pointercancel",
+        "mousedown",
+        "touchstart", "touchcancel",
+        "focus", "focusin", "focusout", "blur"
+      ];
+
+      // Ultra-aggressive guard: stop everything at the bar level
+      const ultraGuard = (ev) => {
+        ev.stopImmediatePropagation();
+        ev.stopPropagation();
+        if (["pointerdown", "mousedown", "touchstart"].includes(ev.type)) {
+          ev.preventDefault();
+        }
+      };
+
+      PROTECTED_EVENTS.forEach(type => {
+        bar.addEventListener(type, ultraGuard, { capture: true, passive: false });
+        input.addEventListener(type, ultraGuard, { capture: true, passive: false });
+        clear.addEventListener(type, ultraGuard, { capture: true, passive: false });
+        count.addEventListener(type, ultraGuard, { capture: true, passive: false });
+      });
+
+      // Special handler for input to ensure it can focus
+      ["pointerdown", "mousedown", "touchstart"].forEach(type => {
+        input.addEventListener(type, (ev) => {
+          ev.stopImmediatePropagation();
+          ev.stopPropagation();
+          ev.preventDefault();
+          requestAnimationFrame(() => {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+          });
+        }, { capture: true, passive: false });
+      });
+
+      // Clear button handler
+      clear.addEventListener("click", (ev) => {
+        ev.stopImmediatePropagation();
+        ev.stopPropagation();
+        ev.preventDefault();
+        input.value = "";
+        input.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+        requestAnimationFrame(() => input.focus());
+      }, { capture: true });
+
+      // Setup filtering logic (LIVE index each time)
+      const getTiles   = () => Array.from(root.querySelectorAll(".rmu-skill-tile"));
+      const getHeaders = () => Array.from(root.querySelectorAll(".rmu-skill-header"));
+      const buildIndex = () => getTiles().map(el => ({
+        el,
+        text: (el.dataset.nameNorm || "").toLowerCase(),
+        cat:  (el.dataset.catKey  || "").toLowerCase()
+      }));
+
+      const filter = (qRaw) => {
+        const q = String(qRaw || "").toLowerCase().trim();
+        const tiles   = getTiles();
+        const headers = getHeaders();
+
+        if (!q) {
+          tiles.forEach(t => t.style.display = "none");
+          headers.forEach(h => {
+            h.style.display = "";
+            h.classList.remove("open");
+            h.classList.add("closed");
+          });
+          count.textContent = "";
+          return;
+        }
+
+        const index = buildIndex();
+        let hits = 0;
+        index.forEach(e => {
+          const match = e.text.includes(q) || e.cat.includes(q);
+          e.el.style.display = match ? "" : "none";
+          if (match) hits++;
+        });
+
+        count.textContent = `${hits} match${hits === 1 ? "" : "es"}`;
+
+        const visibleCats = new Set(
+          getTiles().filter(t => t.style.display !== "none").map(t => t.dataset.catKey)
+        );
+
+        headers.forEach(h => {
+          const key = h.dataset.catKey || "";
+          const show = visibleCats.has(key);
+          h.style.display = show ? "" : "none";
+          h.classList.toggle("open", show);
+          h.classList.toggle("closed", !show);
+        });
+
+        setOpenSkillsCategory(null);
+      };
+
+      input.addEventListener("input", () => filter(input.value), { passive: true });
+      
+      // Initial state
+      filter("");
+    };
+
+    requestAnimationFrame(waitAndMount);
+  }
+
   // ── Header (category) tile ───────────────────────────────
   class RMUSkillHeaderButton extends ActionButton {
     constructor(title) { 
@@ -1013,6 +1252,7 @@ function defineSkillsMain(CoreHUD) {
     }
     get label() { return this._title; }
     get icon()  { return ""; } // IMPORTANT: empty string (not null) to avoid /null 404
+    get isInteractive() { return true; }
     get classes() {
       const open = getOpenSkillsCategory() === this._catKey;
       return [...super.classes, "rmu-skill-header", open ? "open" : "closed"];
@@ -1092,7 +1332,7 @@ function defineSkillsMain(CoreHUD) {
       return e?.spec ? `${e.name} (${e.spec})` : e?.name ?? "Skill";
     }
     get icon()  { return ""; } // IMPORTANT: empty string
-
+    get isInteractive() { return true; }
     get disabled() { return !!this.entry?.disabledBySystem; }
     get classes() {
       const c = super.classes.slice().filter(cls => cls !== "disabled");
@@ -1126,10 +1366,21 @@ function defineSkillsMain(CoreHUD) {
         this.element.style.pointerEvents = "auto";
         this.element.style.cursor = this.disabled ? "not-allowed" : "pointer";
         applyValueOverlay(this.element, this.entry?.total ?? "", "Total");
-        this.element.dataset.catKey = catKeyOf(this.entry?.category || "");
+
+        // Search attributes
+        const label = this.label || "";
+        const cat   = this.entry?.category || "";
+        const spec  = this.entry?.spec || "";
+        const norm  = (label + " " + cat + " " + spec).toLowerCase();
+
+        this.element.dataset.catKey   = catKeyOf(cat);
+        this.element.dataset.name     = label;
+        this.element.dataset.nameNorm = norm;
+
         if (this._startHidden) this.element.style.display = "none";
       }
     }
+
 
     async _onMouseDown(event) {
       if (event?.button !== 0 || this.disabled) return;
@@ -1172,7 +1423,7 @@ function defineSkillsMain(CoreHUD) {
     get label() { return this.title; }
     get icon()  { return this._icon; }
     get hasContents() { return true; }
-
+    get isInteractive() { return true; }
     async _getPanel() {
       await ensureRMUReady();
       const groups = getGroupedSkillsForHUD_All();
@@ -1204,6 +1455,8 @@ function defineSkillsMain(CoreHUD) {
 
       const panel = new ButtonPanel({ id: "rmu-skills", buttons });
       attachSkillsPanelGuards(panel);
+      attachPanelInputGuards(panel);
+      installSkillsSearch(panel);
 
       // Bind headers to the real panel DOM so they can toggle visibility
       headerInstances.forEach(h => h._bindPanel(panel));
@@ -1232,7 +1485,169 @@ function defineSkillsMain(CoreHUD) {
   CoreHUD.defineMainPanels([RMUSkillsActionPanel]);
 }
 
+/* ──────────────────────────────────────────────────────────
+   SPECIAL CHECKS — panel with Endurance and Concentration
+────────────────────────────────────────────────────────── */
+function defineSpecialChecksMain(CoreHUD) {
+  const ARGON = CoreHUD.ARGON;
+  const { ActionPanel, BUTTONS } = ARGON.MAIN;
+  const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
+  const { ActionButton, ButtonPanelButton } = BUTTONS;
 
+  // Helpers
+  function getSkillByName(actor, name) {
+    const list = getAllActorSkills(actor);
+    return list.find(s => (s?.system?.name ?? s?.name) === name);
+  }
+
+  async function rollSkillWithOption(token, skillObj, optionText) {
+    const api = game.system?.api?.rmuTokenSkillAction;
+    if (typeof api !== "function") {
+      ui.notifications?.error?.("RMU skill API not available."); return;
+    }
+    try {
+      // RMU API expects the token object, not a string name.
+      await api(token, skillObj, { specialManeuver: optionText });
+    } catch (err) {
+      console.error("[ECH-RMU] Special Check error:", err);
+      ui.notifications?.error?.(`Special Check failed: ${err?.message ?? err}`);
+    }
+  }
+
+  class RMUSpecialCheck_Endurance extends ActionButton {
+    constructor() { super(); this._skill = null; }
+    get label() { return "PHYSICAL"; }
+    get icon()  { return ENDURANCE_ICON; }
+    get isInteractive() { return true; }
+    get hasTooltip() { return true; }
+
+    async getTooltipData() {
+      const sys = this._skill?.system ?? {};
+      const details = [
+        { label: "Name",             value: sys.name },
+        { label: "Specialization",   value: sys.specialization },
+        { label: "Category",         value: sys.category },
+        { label: "Total ranks",      value: sys._totalRanks },
+        { label: "Rank bonus",       value: sys._rankBonus },
+        { label: "Culture ranks",    value: sys.cultureRanks },
+        { label: "Stat",             value: sys.stat },
+        { label: "Stat bonus",       value: sys._statBonus },
+        { label: "Prof bonus",       value: sys._professsionalBonus },
+        { label: "Knack",            value: sys._knack },
+        { label: "Total bonus",      value: sys._bonus }
+      ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
+      return { title: this.label, subtitle: sys.category ?? "", details };
+    }
+
+    async _renderInner() {
+      await super._renderInner();
+      if (!this.element) return;
+      this.element.style.pointerEvents = "auto";
+      this.element.style.cursor = "pointer";
+
+      // Resolve and cache the skill so tooltip + overlay work before clicking
+      const actor = ui.ARGON?._token?.actor;
+      this._skill = actor ? getSkillByName(actor, "Body Development") : null;
+
+      // Overlay “Total” like skills do
+      const total = this._skill?.system?._bonus ?? "";
+      applyValueOverlay(this.element, total, "Total");
+    }
+
+    async _onMouseDown(event) {
+      if (event?.button !== 0) return;
+      event.preventDefault(); event.stopPropagation();
+      await ensureRMUReady();
+      const token = ui.ARGON?._token;
+      const actor = token?.actor;
+      if (!actor) { ui.notifications?.error?.("No active token for HUD."); return; }
+      const skill = this._skill ?? getSkillByName(actor, "Body Development");
+      if (!skill) { ui.notifications?.warn?.("Skill not found: Body Development"); return; }
+      await rollSkillWithOption(token, skill, "Endurance");
+    }
+
+    async _onLeftClick(e){ e?.preventDefault?.(); e?.stopPropagation?.(); }
+  }
+
+  class RMUSpecialCheck_Concentration extends ActionButton {
+    constructor() { super(); this._skill = null; }
+    get label() { return "MENTAL"; }
+    get icon()  { return CONCENTRATION_ICON; }
+    get isInteractive() { return true; }
+    get hasTooltip() { return true; }
+
+    async getTooltipData() {
+      const sys = this._skill?.system ?? {};
+      const details = [
+        { label: "Name",             value: sys.name },
+        { label: "Specialization",   value: sys.specialization },
+        { label: "Category",         value: sys.category },
+        { label: "Total ranks",      value: sys._totalRanks },
+        { label: "Rank bonus",       value: sys._rankBonus },
+        { label: "Culture ranks",    value: sys.cultureRanks },
+        { label: "Stat",             value: sys.stat },
+        { label: "Stat bonus",       value: sys._statBonus },
+        { label: "Prof bonus",       value: sys._professsionalBonus },
+        { label: "Knack",            value: sys._knack },
+        { label: "Total bonus",      value: sys._bonus }
+      ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
+      return { title: this.label, subtitle: sys.category ?? "", details };
+    }
+
+    async _renderInner() {
+      await super._renderInner();
+      if (!this.element) return;
+      this.element.style.pointerEvents = "auto";
+      this.element.style.cursor = "pointer";
+
+      const actor = ui.ARGON?._token?.actor;
+      this._skill = actor ? getSkillByName(actor, "Mental Focus") : null;
+
+      const total = this._skill?.system?._bonus ?? "";
+      applyValueOverlay(this.element, total, "Total");
+    }
+
+    async _onMouseDown(event) {
+      if (event?.button !== 0) return;
+      event.preventDefault(); event.stopPropagation();
+      await ensureRMUReady();
+      const token = ui.ARGON?._token;
+      const actor = token?.actor;
+      if (!actor) { ui.notifications?.error?.("No active token for HUD."); return; }
+      const skill = this._skill ?? getSkillByName(actor, "Mental Focus");
+      if (!skill) { ui.notifications?.warn?.("Skill not found: Mental Focus"); return; }
+      await rollSkillWithOption(token, skill, "Concentration");
+    }
+
+    async _onLeftClick(e){ e?.preventDefault?.(); e?.stopPropagation?.(); }
+  }
+
+
+  class RMUSpecialChecksCategoryButton extends ButtonPanelButton {
+    get label() { return "ENDURANCE"; }
+    get icon()  { return SPECIAL_CHECKS_ICON; }
+    get isInteractive() { return true; }
+    async _getPanel() {
+      await ensureRMUReady();
+      const buttons = [
+        new RMUSpecialCheck_Endurance(),
+        new RMUSpecialCheck_Concentration(),
+      ];
+      const panel = new ButtonPanel({ id: "rmu-special-checks", buttons });
+      attachPanelInputGuards(panel);
+      return panel;
+    }
+  }
+
+  class RMUSpecialChecksActionPanel extends ActionPanel {
+    get label() { return "ENDURANCE"; }
+    get maxActions() { return null; }
+    get currentActions() { return null; }
+    async _getButtons() { return [ new RMUSpecialChecksCategoryButton() ]; }
+  }
+
+  CoreHUD.defineMainPanels([RMUSpecialChecksActionPanel]);
+}
 
 /* ──────────────────────────────────────────────────────────
    REST — single action button (far right)
@@ -1245,7 +1660,7 @@ function defineRestMain(CoreHUD) {
   class RMURestActionButton extends ActionButton {
     get label() { return "REST"; }
     get icon()  { return REST_ICON; }
-
+    get isInteractive() { return true; }
     // Optional short tooltip (remove these two methods if you truly want none)
     get hasTooltip() { return true; }
     async getTooltipData() {
@@ -1346,6 +1761,7 @@ function initConfig() {
     defineAttacksMain(CoreHUD);
     defineResistancesMain(CoreHUD);
     defineSkillsMain(CoreHUD);
+    defineSpecialChecksMain(CoreHUD);
     defineRestMain(CoreHUD);
     defineDrawerPanel(CoreHUD);
   });
@@ -1355,6 +1771,7 @@ function initConfig() {
 Hooks.on("setup", () => {
   registerSettings();
   initConfig();
+  installGlobalHudInputGuard();
 });
 
 // Add a special class to <body> so CSS can be scoped to RMU + ECH

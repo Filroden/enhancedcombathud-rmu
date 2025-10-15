@@ -1,14 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs><style>
-    .bg{fill:#000000;opacity:.9}
-    .fg{fill:#ffffff}
-  </style></defs>
-  <rect class="bg" x="4" y="4" width="56" height="56" rx="10" ry="10"/>
-  <!-- Moon -->
-  <circle class="fg" cx="48" cy="16" r="4"/>
-  <!-- Bed -->
-  <rect class="fg" x="12" y="34" width="40" height="12" rx="2"/>
-  <rect class="fg" x="12" y="28" width="12" height="6" rx="2"/>
-  <rect class="fg" x="10" y="28" width="2" height="18"/>
-  <rect class="fg" x="52" y="28" width="2" height="18"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="height: 512px; width: 512px;"><path d="M0 0h512v512H0z" fill="#000000" fill-opacity="1"></path><g class="" transform="translate(0,0)" style=""><path d="M247 28v80h18V28zm35 0v64l80-32zm-26 96c-48 48-144 112-192 128 0 64-16 208-32 240h160c16-16 64-144 64-192 0 48 48 176 64 192h160c-16-32-32-176-32-240-48-16-144-80-192-128zM112 300h80v80h-80z" fill="#ffffff" fill-opacity="1"></path></g></svg>
