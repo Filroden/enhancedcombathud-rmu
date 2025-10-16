@@ -45,6 +45,7 @@ const ENDURANCE_ICON = MOD_ICON("mountain-climbing.svg");
 const CONCENTRATION_ICON = MOD_ICON("meditation.svg");
 const REST_ICON = MOD_ICON("rest.svg");
 const COMBAT_ICON = MOD_ICON("skip-next-circle.svg");
+const STAR_ICON = MOD_ICON("star.svg");
 
 // -----------------------------------------------------------------------------
 // II. Core Utilities (Reusable logic, API wrappers)
@@ -286,7 +287,7 @@ const RMUData = {
       spec: s.specialization ?? "",
       category: s.category ?? "Other",
       total: s._bonus,
-      favorite: !!s.favorite,
+      favorite: (s.favorite === true) || (sk?.favorite === true),
       disabledBySystem: s._disableSkillRoll === true,
       raw: sk
     };
@@ -353,14 +354,14 @@ const UIGuards = {
       const cap = { capture: true };
       const stopIfControl = (ev) => {
         const t = ev.target;
-        if (t?.closest?.(".rmu-skill-search__clear") && ev.type === "click") {
-          return; // let the clear button's own click handler run
-        }
+
+        // allow star and clear to handle their own events
+        if (t?.closest?.(".rmu-skill-search__fav, .rmu-skill-search__clear")) return;
+
         if (ev.type === "input") return;
         if (!t) return;
-        // Target form controls and RMU specific search components
+
         if (t.closest("input, textarea, select, .rmu-skill-search, .rmu-skill-search__input, .rmu-skill-search__clear")) {
-          // Be aggressive on “down” events so Argon’s closer never sees them
           if (ev.type === "pointerdown" || ev.type === "mousedown" || ev.type === "touchstart") {
             ev.preventDefault();
           }
@@ -398,8 +399,8 @@ const UIGuards = {
 
     const guard = (ev) => {
       const t = ev.target;
-      // Allow the clear button's own click handler to run
-      if (t?.closest?.(".rmu-skill-search__clear") && ev.type === "click") {
+      // Allow the clear and fav buttons' own handlers to run (all pointer/mouse/touch types)
+      if (t?.closest?.(".rmu-skill-search__clear, .rmu-skill-search__fav")) {
         return;
       }
       if (!t || !isSearch(t)) return;
@@ -1022,6 +1023,17 @@ function defineSkillsMain(CoreHUD) {
     else SKILLS_OPEN_CAT.delete(tokenId);
   }
 
+  // ── Favorites-only filter state per token ───────────────
+  const SKILLS_FAV_ONLY = new Map();
+  function getFavOnly() {
+    const id = ui.ARGON?._token?.id ?? "no-token";
+    return SKILLS_FAV_ONLY.get(id) === true;
+  }
+  function setFavOnly(v) {
+    const id = ui.ARGON?._token?.id ?? "no-token";
+    if (v) SKILLS_FAV_ONLY.set(id, true); else SKILLS_FAV_ONLY.delete(id);
+  }
+
   // Normalize a category name to a stable key
   const catKeyOf = (s) => String(s ?? "")
     .normalize("NFKC")
@@ -1039,6 +1051,7 @@ function defineSkillsMain(CoreHUD) {
       bar.innerHTML = `
         <div class="rmu-skill-search__icon argon-interactive argon-no-close" data-argon-interactive="true"><i class="rmu-mdi rmu-mdi-magnify" aria-hidden="true"></i></div>
         <input type="text" class="rmu-skill-search__input argon-interactive argon-no-close" data-argon-interactive="true" placeholder="Search skills…">
+        <button type="button" class="rmu-skill-search__fav argon-interactive argon-no-close" data-argon-interactive="true" aria-pressed="false" title="Only favorites"></button>
         <button type="button" class="rmu-skill-search__clear argon-interactive argon-no-close" data-argon-interactive="true" aria-label="Clear"></button>
         <div class="rmu-skill-search__count argon-interactive argon-no-close" data-argon-interactive="true"></div>
       `;
@@ -1069,6 +1082,21 @@ function defineSkillsMain(CoreHUD) {
       const clear = bar.querySelector(".rmu-skill-search__clear");
       const count = bar.querySelector(".rmu-skill-search__count");
 
+      // Favorite-only toggle
+      const fav = bar.querySelector(".rmu-skill-search__fav");
+      const applyFavUI = () => {
+        const on = getFavOnly();
+        fav.classList.toggle("active", on);
+        fav.setAttribute("aria-pressed", on ? "true" : "false");
+      };
+      fav.addEventListener("pointerdown", (ev) => {
+        ev.stopImmediatePropagation(); ev.stopPropagation(); ev.preventDefault();
+        setFavOnly(!getFavOnly());
+        applyFavUI();
+        input.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+      }, { capture: true, passive: false });
+      applyFavUI();
+
       // Toggle clear button visibility
       const toggleClearVisibility = () => {
         clear.style.visibility = input.value ? "visible" : "hidden";
@@ -1085,6 +1113,10 @@ function defineSkillsMain(CoreHUD) {
       ];
 
       const ultraGuard = (ev) => {
+        const t = ev.target;
+        // Let the star and clear buttons handle their own events
+        if (t?.closest?.(".rmu-skill-search__fav, .rmu-skill-search__clear")) return;
+
         ev.stopImmediatePropagation();
         ev.stopPropagation();
         if (["pointerdown", "mousedown", "touchstart"].includes(ev.type)) {
@@ -1129,7 +1161,8 @@ function defineSkillsMain(CoreHUD) {
       const buildIndex = () => getTiles().map(el => ({
         el,
         text: (el.dataset.nameNorm || "").toLowerCase(),
-        cat:  (el.dataset.catKey  || "").toLowerCase()
+        cat:  (el.dataset.catKey  || "").toLowerCase(),
+        fav:  el.dataset.favorite === "true"
       }));
 
       const filter = (qRaw) => {
@@ -1138,20 +1171,49 @@ function defineSkillsMain(CoreHUD) {
         const headers = getHeaders();
 
         if (!q) {
-          tiles.forEach(t => t.style.display = "none");
-          headers.forEach(h => {
-            h.style.display = "";
-            h.classList.remove("open");
-            h.classList.add("closed");
+          const favOnly = getFavOnly();
+          if (!favOnly) {
+            tiles.forEach(t => t.style.display = "none");
+            headers.forEach(h => {
+              h.style.display = "";
+              h.classList.remove("open");
+              h.classList.add("closed");
+            });
+            count.textContent = "";
+            return;
+          }
+
+          // Show only favorites when Fav-only is on and query is empty
+          const index = buildIndex();
+          let hits = 0;
+          index.forEach(e => {
+            const match = e.fav;
+            e.el.style.display = match ? "" : "none";
+            if (match) hits++;
           });
-          count.textContent = "";
+          count.textContent = hits ? `${hits} favorite${hits === 1 ? "" : "s"}` : "0 favorites";
+
+          const visibleCats = new Set(
+            getTiles().filter(t => t.style.display !== "none").map(t => t.dataset.catKey)
+          );
+
+          headers.forEach(h => {
+            const key = h.dataset.catKey || "";
+            const show = visibleCats.has(key);
+            h.style.display = show ? "" : "none";
+            h.classList.toggle("open", show);
+            h.classList.toggle("closed", !show);
+          });
+
+          setOpenSkillsCategory(null);
           return;
         }
 
         const index = buildIndex();
         let hits = 0;
         index.forEach(e => {
-          const match = e.text.includes(q) || e.cat.includes(q);
+          const favOnly = getFavOnly();
+          const match = (e.text.includes(q) || e.cat.includes(q)) && (!favOnly || e.fav);
           e.el.style.display = match ? "" : "none";
           if (match) hits++;
         });
@@ -1313,6 +1375,18 @@ function defineSkillsMain(CoreHUD) {
         this.element.dataset.catKey   = catKeyOf(cat);
         this.element.dataset.name     = label;
         this.element.dataset.nameNorm = norm;
+
+        // Favorite chip
+        const sys = this.entry?.raw?.system ?? {};
+        const isFav = (sys.favorite === true) || (this.entry?.favorite === true);
+        this.element.dataset.favorite = isFav ? "true" : "false";
+        if (isFav) {
+          const chip = document.createElement("div");
+          chip.className = "rmu-fav-chip";
+          chip.title = "Favorite";
+          this.element.classList.add("rmu-button-relative");
+          this.element.appendChild(chip);
+        }
 
         if (this._startHidden) this.element.style.display = "none";
       }
