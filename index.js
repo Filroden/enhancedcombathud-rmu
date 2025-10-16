@@ -44,15 +44,13 @@ const SPECIAL_CHECKS_ICON = MOD_ICON("hazard-sign.svg");
 const ENDURANCE_ICON = MOD_ICON("mountain-climbing.svg");
 const CONCENTRATION_ICON = MOD_ICON("meditation.svg");
 const REST_ICON = MOD_ICON("rest.svg");
+const COMBAT_ICON = MOD_ICON("skip-next-circle.svg");
 
 // -----------------------------------------------------------------------------
 // II. Core Utilities (Reusable logic, API wrappers)
 // -----------------------------------------------------------------------------
 
 const RMUUtils = {
-
-  /** Converts a common value to a boolean, robustly. */
-  asBool(v) { return !!(v === true || v === "true" || v === 1); },
 
   /**
    * Mounts a translucent overlay containing a number and label inside an action button.
@@ -1041,7 +1039,7 @@ function defineSkillsMain(CoreHUD) {
       bar.innerHTML = `
         <div class="rmu-skill-search__icon argon-interactive argon-no-close" data-argon-interactive="true"><i class="rmu-mdi rmu-mdi-magnify" aria-hidden="true"></i></div>
         <input type="text" class="rmu-skill-search__input argon-interactive argon-no-close" data-argon-interactive="true" placeholder="Search skills…">
-        <button type="button" class="rmu-skill-search__clear argon-interactive argon-no-close" data-argon-interactive="true">×</button>
+        <button type="button" class="rmu-skill-search__clear argon-interactive argon-no-close" data-argon-interactive="true" aria-label="Clear"></button>
         <div class="rmu-skill-search__count argon-interactive argon-no-close" data-argon-interactive="true"></div>
       `;
       return bar;
@@ -1070,6 +1068,13 @@ function defineSkillsMain(CoreHUD) {
       const input = bar.querySelector(".rmu-skill-search__input");
       const clear = bar.querySelector(".rmu-skill-search__clear");
       const count = bar.querySelector(".rmu-skill-search__count");
+
+      // Toggle clear button visibility
+      const toggleClearVisibility = () => {
+        clear.style.visibility = input.value ? "visible" : "hidden";
+      };
+      input.addEventListener("input", toggleClearVisibility);
+      toggleClearVisibility();
 
       // CRITICAL: Install local guards *inside* the skill search bar for max robustness
       const PROTECTED_EVENTS = [
@@ -1114,6 +1119,7 @@ function defineSkillsMain(CoreHUD) {
         ev.preventDefault();
         input.value = "";
         input.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+        toggleClearVisibility();
         requestAnimationFrame(() => input.focus());
       }, { capture: true });
 
@@ -1608,6 +1614,98 @@ function defineRestMain(CoreHUD) {
   CoreHUD.defineMainPanels([RMURestActionPanel]);
 }
 
+/** Main panel: combat tools shown only on the actor’s own turn. */
+function defineCombatMain(CoreHUD) {
+  const ARGON = CoreHUD.ARGON;
+  const { ActionPanel } = ARGON.MAIN;
+  const { ActionButton } = ARGON.MAIN.BUTTONS;
+
+  /** @augments ActionButton */
+  class RMUEndTurnActionButton extends ActionButton {
+    get label() { return "End Turn"; }
+    get icon()  { return COMBAT_ICON; }
+    get isInteractive() { return true; }
+    get hasTooltip() { return true; }
+
+    /** Visible only when combat is running and this token is the active combatant. */
+    get visible() {
+      const tokenId = ui.ARGON?._token?.id;
+      const c = game.combat;
+      if (!c?.started || !tokenId) return false;
+      const activeId = c.combatant?.tokenId ?? c.current?.tokenId ?? null;
+      return activeId === tokenId;
+    }
+
+    async getTooltipData() {
+      return {
+        title: "End Turn",
+        subtitle: "Advance to next combatant",
+        details: [{ label: "Action", value: "Ends this token’s turn in the Combat Tracker." }]
+      };
+    }
+
+    async _renderInner() {
+      await super._renderInner();
+      if (this.element) {
+        this.element.style.pointerEvents = "auto";
+        this.element.style.cursor = "pointer";
+      }
+    }
+
+    async _onMouseDown(ev) {
+      if (ev?.button !== 0) return;
+      ev.preventDefault(); ev.stopPropagation();
+      await this._endTurn();
+    }
+    async _onLeftClick(ev) { ev?.preventDefault?.(); ev?.stopPropagation?.(); }
+
+    async _endTurn() {
+      const c = game.combat;
+      const tokenId = ui.ARGON?._token?.id;
+      const activeId = c?.combatant?.tokenId ?? c?.current?.tokenId ?? null;
+      if (!c?.started || !tokenId || activeId !== tokenId) {
+        ui.notifications?.warn?.("It is not this token’s turn.");
+        return;
+      }
+      try {
+        // Foundry v10–v12 compatibility
+        if (typeof c.nextTurn === "function") await c.nextTurn();
+        else if (typeof c.advanceTurn === "function") await c.advanceTurn();
+        else ui.notifications?.error?.("Combat API does not support advancing turns.");
+      } catch (e) {
+        console.error("[ECH-RMU] End Turn failed:", e);
+        ui.notifications?.error?.(`End Turn failed: ${e?.message ?? e}`);
+      }
+    }
+  }
+
+  /** @augments ActionPanel */
+  class RMUCombatActionPanel extends ActionPanel {
+    get label() { return "COMBAT"; }
+
+    // Show only during combat and only on this token’s turn
+    get visible() {
+      const c = game.combat;
+      const tokenId = ui.ARGON?._token?.id;
+      if (!c?.started || !tokenId) return false;
+      const activeId =
+        c.combatant?.tokenId ??
+        c.current?.tokenId ??
+        c.combatant?.token?.id ??   // fallback (older schemas)
+        c.current?.token?.id ?? null;
+      // final fallback: actor match
+      const isActorMatch = c.combatant?.actorId && (c.combatant.actorId === ui.ARGON?._token?.actor?.id);
+      return activeId === tokenId || isActorMatch;
+    }
+
+    get maxActions() { return null; }
+    get currentActions() { return null; }
+    async _getButtons() { return [ new RMUEndTurnActionButton() ]; }
+  }
+
+  CoreHUD.defineMainPanels([RMUCombatActionPanel]);
+}
+
 /** Drawer: secondary actions menu. */
 function defineDrawerPanel(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
@@ -1655,6 +1753,7 @@ function initConfig() {
     defineSkillsMain(CoreHUD);
     defineSpecialChecksMain(CoreHUD);
     defineRestMain(CoreHUD);
+    defineCombatMain(CoreHUD);
 
     // D. Drawer
     defineDrawerPanel(CoreHUD);
