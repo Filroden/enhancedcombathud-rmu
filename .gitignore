@@ -2,6 +2,8 @@
 /packs
 /dist
 /unpacked
+/enhancedcombathud
+/enhancedcombathud-dnd5e
 
-*.iml
 GEMINI.md
+*.iml
