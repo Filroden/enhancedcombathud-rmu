@@ -54,6 +54,35 @@ const STAR_ICON = MOD_ICON("star.svg");
 const RMUUtils = {
 
   /**
+   * Formats a number as a string with a leading plus sign for positive values.
+   * @param {any} n - The value to format.
+   * @returns {string} The formatted number string, or original value if not a number.
+   */
+  formatBonus(n) {
+    if (n === null || n === undefined) return n;
+    const s = String(n).trim();
+    if (s === '') return s; // Return trimmed string if empty
+    const num = Number(s);
+    if (isNaN(num)) return n; // Return original if not a number (e.g. "Yes")
+    return num > 0 ? `+${num}` : String(num);
+  },
+
+  /**
+   * Formats tooltip detail values, adding a leading plus sign to positive numbers.
+   * @param {Array<object>} details - The array of {label, value} pairs.
+   * @returns {Array<object>} The formatted array.
+   */
+  formatTooltipDetails(details) {
+    const excludedLabels = ["Ranks", "Total ranks", "Culture ranks", "Fumble"];
+    return details.map(detail => {
+      if (excludedLabels.includes(detail.label)) {
+        return detail;
+      }
+      return { ...detail, value: this.formatBonus(detail.value) };
+    });
+  },
+  
+  /**
    * Mounts a translucent overlay containing a number and label inside an action button.
    * This is used to display the total bonus for skills and resistances.
    * @param {HTMLElement} buttonEl - The root button element.
@@ -88,7 +117,7 @@ const RMUUtils = {
     if (number !== "" && number !== null && number !== undefined) {
       const n = document.createElement("div");
       n.className = "rmu-value-overlay-number";
-      n.textContent = String(number);
+      n.textContent = this.formatBonus(number);
       txt.appendChild(n);
     }
 
@@ -755,7 +784,7 @@ function defineAttacksMain(CoreHUD) {
         { label: "Total OB",         value: a.totalBonus }
       ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
 
-      return { title: this.label, subtitle: a.skill?.name ?? "", details };
+      return { title: this.label, subtitle: a.skill?.name ?? "", details: RMUUtils.formatTooltipDetails(details) };
     }
 
     /* ───────── Clicks ───────── */
@@ -920,10 +949,10 @@ function defineResistancesMain(CoreHUD) {
 
       const subtitle = [
         r.statShortName ? r.statShortName.toUpperCase() : null,
-        (r.total != null ? `Total ${r.total}` : null)
+        (r.total != null ? `Total ${RMUUtils.formatBonus(r.total)}` : null)
       ].filter(Boolean).join(" · ");
 
-      return { title: this.label, subtitle, details };
+      return { title: this.label, subtitle, details: RMUUtils.formatTooltipDetails(details) };
     }
 
     async _renderInner() {
@@ -1357,7 +1386,7 @@ function defineSkillsMain(CoreHUD) {
         { label: "Knack",            value: sys._knack },
         { label: "Total bonus",      value: sys._bonus }
       ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
-      return { title: this.label, subtitle: sys.category ?? "", details };
+      return { title: this.label, subtitle: sys.category ?? "", details: RMUUtils.formatTooltipDetails(details) };
     }
 
     async _renderInner() {
@@ -1514,10 +1543,19 @@ function defineSpecialChecksMain(CoreHUD) {
     async getTooltipData() {
       const sys = this._skill?.system ?? {};
       const details = [
-        // Omitted for brevity, assumed to be same as full skill tooltip logic
-        { label: "Roll Type", value: "Body Development (Endurance)" }
+        { label: "Name",             value: sys.name },
+        { label: "Specialization",   value: sys.specialization },
+        { label: "Category",         value: sys.category },
+        { label: "Total ranks",      value: sys._totalRanks },
+        { label: "Rank bonus",       value: sys._rankBonus },
+        { label: "Culture ranks",    value: sys.cultureRanks },
+        { label: "Stat",             value: sys.stat },
+        { label: "Stat bonus",       value: sys._statBonus },
+        { label: "Prof bonus",       value: sys._professsionalBonus },
+        { label: "Knack",            value: sys._knack },
+        { label: "Total bonus",      value: sys._bonus }
       ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
-      return { title: this.label, subtitle: sys.category ?? "Endurance Check", details };
+      return { title: this.label, subtitle: sys.category ?? "Endurance Check", details: RMUUtils.formatTooltipDetails(details) };
     }
 
     async _renderInner() {
@@ -1562,10 +1600,19 @@ function defineSpecialChecksMain(CoreHUD) {
     async getTooltipData() {
       const sys = this._skill?.system ?? {};
       const details = [
-        // Omitted for brevity, assumed to be same as full skill tooltip logic
-        { label: "Roll Type", value: "Mental Focus (Concentration)" }
+        { label: "Name",             value: sys.name },
+        { label: "Specialization",   value: sys.specialization },
+        { label: "Category",         value: sys.category },
+        { label: "Total ranks",      value: sys._totalRanks },
+        { label: "Rank bonus",       value: sys._rankBonus },
+        { label: "Culture ranks",    value: sys.cultureRanks },
+        { label: "Stat",             value: sys.stat },
+        { label: "Stat bonus",       value: sys._statBonus },
+        { label: "Prof bonus",       value: sys._professsionalBonus },
+        { label: "Knack",            value: sys._knack },
+        { label: "Total bonus",      value: sys._bonus }
       ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
-      return { title: this.label, subtitle: sys.category ?? "Concentration Check", details };
+      return { title: this.label, subtitle: sys.category ?? "Concentration Check", details: RMUUtils.formatTooltipDetails(details) };
     }
 
     async _renderInner() {
