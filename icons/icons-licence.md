@@ -19,6 +19,7 @@ The following icons included within this module are from Game-icons.net (<https:
 * mountain-climbing.svg
 * rest.svg
 * skills.svg
+* spell-book.svg
 * sword-brandish.svg
 * vibrating-shield.svg
 
