@@ -134,25 +134,22 @@ export function defineResistancesMain(CoreHUD) {
     get isInteractive() { return true; }
     get hasTooltip() { return true; }
 
-		async getTooltipData() {
-      const sys = this._skill?.system ?? {};
+    async getTooltipData() {
+      const r = this.resist ?? {};
       const details = [
-          { label: "Name",             value: sys.name },
-          { label: "Specialization",   value: sys.specialization },
-          { label: "Category",         value: sys.category },
-          { label: "Total ranks",      value: sys._totalRanks },
-          { label: "Rank bonus",       value: sys._rankBonus },
-          { label: "Culture ranks",    value: sys.cultureRanks },
-          { label: "Stat",             value: sys.stat },
-          { label: "Stat bonus",       value: sys._statBonus },
-          { label: "Prof bonus",       value: sys._professionalBonus },
-          { label: "Knack",            value: sys._knack },
-          { label: "Total bonus",      value: sys._bonus }
+        { label: "Stat",           value: r.statShortName },
+        { label: "Stat Bonus",     value: r.statBonus },
+        { label: "Level Bonus",    value: r.levelBonus },
+        { label: "Racial Bonus",   value: r.racialBonus },
+        { label: "Special Bonus",  value: r.specialBonus },
+        { label: "Armour Bonus",   value: r.armorBonus },
+        { label: "Helmet Bonus",   value: r.helmetBonus },
+        { label: "Same Realm",     value: r.sameRealmBonus },
+        { label: "Total",          value: r.total }
       ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
 
-			return { 
-        title: this.label, 
-        subtitle: sys.name ?? "Endurance Check", 
+      return {
+        title: this.label,
         details: RMUUtils.formatTooltipDetails(details)
       };
     }
@@ -226,12 +223,19 @@ export function defineSpecialChecksMain(CoreHUD) {
     async getTooltipData() {
       const sys = this._skill?.system ?? {};
       const details = [
-          { label: "Skill", value: sys.name },
-          { label: "Stat", value: sys.stat },
-          { label: "Ranks", value: sys._totalRanks },
-          { label: "Total Bonus", value: sys._bonus }
-      ].filter(x => x.value);
-      
+          { label: "Name",             value: sys.name },
+          { label: "Specialization",   value: sys.specialization },
+          { label: "Category",         value: sys.category },
+          { label: "Total ranks",      value: sys._totalRanks },
+          { label: "Rank bonus",       value: sys._rankBonus },
+          { label: "Culture ranks",    value: sys.cultureRanks },
+          { label: "Stat",             value: sys.stat },
+          { label: "Stat bonus",       value: sys._statBonus },
+          { label: "Prof bonus",       value: sys._professionalBonus },
+          { label: "Knack",            value: sys._knack },
+          { label: "Total bonus",      value: sys._bonus }
+      ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
+
       return { 
         title: this.label, 
         subtitle: sys.name ?? "Endurance Check", 
