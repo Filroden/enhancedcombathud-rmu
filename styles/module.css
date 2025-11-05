@@ -184,12 +184,8 @@
 .enhancedcombathud-rmu .action-hud .action-element.rmu-skill-header,
 .enhancedcombathud-rmu .action-hud .action-element-container .action-element.rmu-skill-header {
   min-width: 0;
-  padding: 1rem 0.2rem;
-  width: 3rem;
-  flex: 0 0 3rem;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  transform: rotate(180deg);
+  padding: 1rem 0.4rem;
+  flex: 0 0 200px;
   display: flex;
   align-items: center;
   justify-content: left;
@@ -220,7 +216,6 @@
 .enhancedcombathud-rmu .rmu-skill-header:hover {
   opacity: 1;
   box-shadow: 0 0 8px rgba(0,0,0,0.6);
-  transform: rotate(180deg) scale(1.05);
 }
 
 /* Open state: lighter background, stronger text color, glow */
@@ -367,4 +362,127 @@
   background-color: var(--rmu-fav);
   z-index: 3;
   pointer-events: none;
+}
+
+/* =============================================
+   FINAL GRID LAYOUT (SKILLS & SPELLS)
+   ============================================= */
+
+/*
+ * 1. Target the main panel container ONLY IF it contains our list items.
+ */
+.extended-combat-hud .action-hud .features-container:has(.rmu-list-item) {
+  /* ** FIX: Use clamp() for a responsive-but-safe width ** */
+  /* Format is clamp(MINIMUM, IDEAL, MAXIMUM) */
+  max-width: clamp(824px, 70vw, 1248px);
+  margin-left: auto;
+  margin-right: auto;
+  
+  /* Your correct hide/show logic */
+  opacity: 1 !important;
+  transform: none !important;
+  display: none !important;
+}
+.extended-combat-hud .action-hud .features-container.show:has(.rmu-list-item) {
+    display: flex !important;
+}
+
+/*
+ * 2. Make the search bar span the full width.
+ */
+.features-container:has(.rmu-list-item) .rmu-skill-search {
+  flex-basis: 100%;
+  width: 100%;
+}
+
+/*
+ * 3. Style the Accordion Headers
+ */
+.features-container:has(.rmu-list-item) .rmu-skill-header {
+  min-width: 0;
+  min-height: 0;
+  height: 100px; /* Your preferred height */
+  width: auto;
+  
+  flex-basis: 200px; /* Your preferred width */
+  flex-grow: 1;
+  max-width: 200px;
+  
+  margin: 2px;
+  padding: 4px 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/*
+ * 4. Style the Skill/Spell Tiles
+ */
+.features-container:has(.rmu-list-item) .rmu-list-item {
+  min-width: 0;
+  min-height: 0;
+  height: 100px; /* Your preferred height (matches header) */
+  width: auto;
+  
+  flex-basis: 200px; /* Your preferred width */
+  flex-grow: 1;
+  max-width: 200px;
+  
+  margin: 2px;
+  padding: 4px 6px;
+  
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/*
+ * 5. Reset titles for BOTH headers and tiles
+ */
+.features-container:has(.rmu-list-item) .rmu-skill-header .action-element-title,
+.features-container:has(.rmu-list-item) .rmu-list-item .action-element-title {
+  all: unset;
+  
+  /* ** FIX: Make the title a block element to respect text-align ** */
+  display: block;
+  width: 100%;
+  
+  font-weight: bold;
+  font-size: 1.2rem; /* Your preferred font size */
+  text-align: center; /* This will now work correctly */
+  white-space: normal;
+  line-height: 1.4;
+  padding: 0; /* Fixes padding issues */
+}
+
+/*
+ * 6. Reset and style the value overlay for the *tiles*
+ */
+.features-container:has(.rmu-list-item) .rmu-list-item .rmu-value-overlay {
+  position: relative;
+  inset: 0;
+  width: 100%; 
+  height: auto;
+  flex-shrink: 0;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.rmu-list-item .rmu-value-overlay-text {
+  position: relative;
+  inset: 0;
+  transform: none;
+  width: 100%;
+  padding: 2px;
+}
+
+.rmu-list-item .rmu-value-overlay-number {
+  font-weight: bold;
+  text-align: center;
+  font-size: 1.2rem; /* Your preferred font size */
 }
