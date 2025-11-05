@@ -279,6 +279,7 @@ export function defineSpellsMain(CoreHUD) {
     get isInteractive() { return true; }
 
     async _getPanel() {
+      // 1. Set the initial state to fully closed.
       setOpenSpellState(null, null); 
 
       await RMUData.ensureRMUReady();
@@ -304,19 +305,11 @@ export function defineSpellsMain(CoreHUD) {
 
       for (const listType of sortedListTypes) {
         const listMap = allSpellsByListType.get(listType);
-        
-        // --- Create L1 Header ---
         allButtons.push(new RMUSpellListTypeButton(listType));
-        
         const sortedListNames = Array.from(listMap.keys()).sort((a,b) => a.localeCompare(b));
-        
         for (const listName of sortedListNames) {
           const spells = listMap.get(listName);
-          
-          // --- Create L2 Header ---
           allButtons.push(new RMUSpellListButton(listName, spells, listType));
-
-          // --- Create L3 Tiles ---
           for (const spell of spells) {
             allButtons.push(new RMUSpellActionButton(spell));
           }
@@ -327,13 +320,20 @@ export function defineSpellsMain(CoreHUD) {
       UIGuards.attachPanelInteractionGuards(panel); 
       UIGuards.attachPanelInputGuards(panel); 
       
+      // 2. Install search (this will incorrectly set L2 headers to display: "")
       installListSearch(panel, ".rmu-spell-tile", ".rmu-spell-type-header, .rmu-spell-list-header", "spell");
 
-      // ** FIX 1: Bind ALL header instances (L1 and L2) **
+      // 3. ** Force the panel to render its DOM *now* by accessing .element **
+      const panelEl = panel.element;
+      
+      // 4. Manually bind all headers to the panel element.
       const allHeaderInstances = allButtons.filter(b => 
         b instanceof RMUSpellListTypeButton || b instanceof RMUSpellListButton
       );
-      allHeaderInstances.forEach(h => h._bindPanel(panel));
+      allHeaderInstances.forEach(h => h._panelEl = panelEl);
+      
+      // 5. Run the visibility logic *synchronously*.
+      applyAccordionVisibility(panelEl);
       
       return panel;
     }
