@@ -59,7 +59,7 @@ export function defineSkillsMain(CoreHUD) {
         h.classList.toggle("closed", key !== openKey);
       });
 
-      const tiles = this._panelEl.querySelectorAll(".rmu-list-item");
+      const tiles = this._panelEl.querySelectorAll(".rmu-skill-tile");
       tiles.forEach(t => {
         const key = t.dataset.catKey || "";
         const visible = !!openKey && (key === openKey);
@@ -108,7 +108,7 @@ export function defineSkillsMain(CoreHUD) {
     get classes() {
       const c = super.classes.slice().filter(cls => cls !== "disabled");
       if (this.disabled) c.push("disabled");
-      c.push("rmu-list-item");
+      c.push("rmu-skill-tile");
       return c;
     }
 
@@ -141,7 +141,8 @@ export function defineSkillsMain(CoreHUD) {
         this.element.style.pointerEvents = "auto";
         this.element.style.cursor = this.disabled ? "not-allowed" : "pointer";
         const total = this.entry?.total ?? "";
-        RMUUtils.applyValueOverlay(this.element, `Total: ${window.formatBonus(total)}`, null);
+        
+        RMUUtils.applyValueOverlay(this.element, this.entry?.total ?? "", "Total");
 
         const label = this.label || "";
         const cat   = this.entry?.category || "";
@@ -229,7 +230,7 @@ export function defineSkillsMain(CoreHUD) {
       UIGuards.attachPanelInputGuards(panel); 
       
       // Use the generalized search function for the Skills panel
-      installListSearch(panel, ".rmu-list-item", ".rmu-skill-header", "skill");
+      installListSearch(panel, ".rmu-skill-tile", ".rmu-skill-header", "skill");
 
       headerInstances.forEach(h => h._bindPanel(panel));
 
