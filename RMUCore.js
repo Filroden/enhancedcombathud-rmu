@@ -81,7 +81,7 @@ const RMUUtils = {
    * Formats tooltip detail values.
    */
   formatTooltipDetails(details) {
-    const excludedLabels = ["Ranks", "Total ranks", "Culture ranks", "Fumble"];
+    const excludedLabels = ["Ranks", "Total ranks", "Culture ranks", "Fumble", "Level"];
     return details.map(detail => {
       if (excludedLabels.includes(detail.label)) {
         return detail;

@@ -117,9 +117,6 @@ export function defineSkillsMain(CoreHUD) {
         // ** RESTORED: Original Skill Tooltip **
         const sys = this.entry?.raw?.system ?? {};
         const details = [
-          { label: "Name",             value: sys.name },
-          { label: "Specialization",   value: sys.specialization },
-          { label: "Category",         value: sys.category },
           { label: "Total ranks",      value: sys._totalRanks },
           { label: "Rank bonus",       value: sys._rankBonus },
           { label: "Culture ranks",    value: sys.cultureRanks },
@@ -130,7 +127,12 @@ export function defineSkillsMain(CoreHUD) {
           { label: "Total bonus",      value: sys._bonus }
         ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
         
-        return { title: this.label, subtitle: sys.category ?? "", details: RMUUtils.formatTooltipDetails(details) };
+        return {
+          title: this.label,
+          subtitle: sys.category ?? "",
+          description: sys.description,
+          details: RMUUtils.formatTooltipDetails(details) 
+        };
     }
 
     async _renderInner() {

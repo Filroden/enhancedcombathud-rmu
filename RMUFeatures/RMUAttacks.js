@@ -22,11 +22,11 @@ export function defineAttacksMain(CoreHUD) {
   const { UIGuards } = window; 
 
   const CATS = [
-    { key: "melee",   label: "Melee",   icon: ICONS.melee   },
-    { key: "ranged",  label: "Ranged",  icon: ICONS.ranged  },
-    { key: "spell",   label: "Spells",  icon: ICONS.spells }, 
+    { key: "melee",   label: "Melee",   icon: ICONS.melee },
+    { key: "ranged",  label: "Ranged",  icon: ICONS.ranged },
     { key: "natural", label: "Natural", icon: ICONS.natural },
-    { key: "shield",  label: "Shield",  icon: ICONS.shield  }
+    { key: "shield",  label: "Shield",  icon: ICONS.shield },
+    { key: "spell",   label: "Spells",  icon: ICONS.spells }
   ];
 
   /** @augments ActionButton */
@@ -74,8 +74,12 @@ export function defineAttacksMain(CoreHUD) {
       this._updateBadge();
       this._updateOverlay();
       
-      const valueLabel = this._isSpellAttack ? "SCR" : "Total";
-      RMUUtils.applyValueOverlay(this.element, this.attack?.totalBonus ?? "", valueLabel);
+      const valueLabel = "Total";
+      const value = this._isSpellAttack 
+        ? this.attack?._totalBonus
+        : this.attack?.totalBonus;
+        
+      RMUUtils.applyValueOverlay(this.element, value ?? "", valueLabel);
 
       this._updateDisabledPill?.();
     }
@@ -116,45 +120,55 @@ export function defineAttacksMain(CoreHUD) {
       }
     }
 
-    /* ───────── Tooltip (Restored) ───────── */
+    /* ───────── Tooltip ───────── */
     get hasTooltip() { return true; }
     async getTooltipData() {
       const a = this.attack ?? {};
 
-      // Spell Attack Tooltip (New - remains simple)
+      // ** Spell Attack Tooltip **
       if (this._isSpellAttack) {
           return { 
             title: a.name, 
-            subtitle: a._spellListInfo,
+            subtitle: `Lvl ${a.level} - ${a.spellList}`,
             details: [
-                { label: "Level", value: a.level },
-                { label: "SCR Bonus", value: a.scr },
-                { label: "Attack Type", value: a.attack },
+              { label: "Attack Type", value: a.attack },
+              { label: "Specialization", value: a.spellAttack.specialization },
+              { label: "Size", value: a.spellAttack.size },
+              { label: "Chart", value: a.spellAttack.chart?.name },
+              { label: "Fumble", value: a.spellAttack.fumble },
+              { label: "Range (interval)", value: a._modifiedRange.range || a.range },
+              { label: "AoE", value: a._modifiedAoE.range || a.AoE },
+              { label: "Targets", value: a._modifiedAoE.targets },
+              { label: "Total OB", value: a._totalBonus },
             ].filter(x => x.value !== undefined && x.value !== null && x.value !== "")
           };
       }
       
-      // ** RESTORED: Original Physical Attack Tooltip **
+      // ** Physical Attack Tooltip **
       const details = [
-        { label: "Specialization",   value: a.skill?.specialization },
-        { label: "Size",             value: a.size },
-        { label: "Chart",            value: a.chart?.name },
-        { label: "Fumble",           value: a.fumble },
+        { label: "Specialization", value: a.skill?.specialization },
+        { label: "Size", value: a.size },
+        { label: "Chart", value: a.chart?.name },
+        { label: "Fumble", value: a.fumble },
         ...( ["melee","natural","shield"].includes(this._catKey)
             ? [{ label: "Melee reach", value: a.meleeRange }]
             : [] ),
         ...( this._catKey === "ranged"
             ? [{ label: "Range (short)", value: RMUData.getShortRange(a.rangeInrements ?? a.rangeIncrements ?? a.rangeIntervals ?? a.range) }]
             : [] ),
-        { label: "Item Strength",    value: a.itemStrength },
-        { label: "Ranks",            value: a.skill?.ranks },
-        { label: "Combat Training",  value: a.skill?.name },
-        { label: "2H",               value: (Number(a.twoHandedBonus) === 10 ? "Yes" : "No") },
-        { label: "Bonus OB",         value: a.itemBonus },
-        { label: "Total OB",         value: a.totalBonus }
+        { label: "Item Strength", value: a.itemStrength },
+        { label: "Ranks", value: a.skill?.ranks },
+        { label: "Combat Training", value: a.skill?.name },
+        { label: "2H", value: (Number(a.twoHandedBonus) === 10 ? "Yes" : "No") },
+        { label: "Bonus OB", value: a.itemBonus },
+        { label: "Total OB", value: a.totalBonus }
       ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
 
-      return { title: this.label, subtitle: a.skill?.name ?? "", details: RMUUtils.formatTooltipDetails(details) };
+      return {
+        title: this.label,
+        subtitle: a.skill?.name ?? "",
+        details: RMUUtils.formatTooltipDetails(details)
+      };
     }
 
 
@@ -183,11 +197,16 @@ export function defineAttacksMain(CoreHUD) {
         ui.notifications?.warn?.(`${(live?.attackName ?? this.label).replace(/^Place:\s*/, "")} is not equipped.`);
         return;
       }
-
+      
+      // Determine the correct API to call based on the attack type
+      const apiToCall = this._isSpellAttack 
+        ? "rmuTokenSpellAttackAction"   // API for spell attacks
+        : "rmuTokenAttackAction";       // API for physical attacks
+ 
       const needsTemplate = live.isAoE === true;
 
       if (this._armed) {
-        await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenAttackAction", live);
+        await RMUUtils.rmuTokenActionWrapper(token, apiToCall, live);
         this._armed = false;
         return;
       }
@@ -195,11 +214,11 @@ export function defineAttacksMain(CoreHUD) {
       if (needsTemplate) {
         this._armed = true;
         ui.notifications?.info?.("Place the template on the scene, then click this attack again to resolve.");
-        await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenAttackAction", live);
+        await RMUUtils.rmuTokenActionWrapper(token, apiToCall, live);
         return;
       }
 
-      await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenAttackAction", live);
+      await RMUUtils.rmuTokenActionWrapper(token, apiToCall, live);
     }
   }
 

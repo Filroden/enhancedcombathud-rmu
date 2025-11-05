@@ -137,7 +137,6 @@ export function defineResistancesMain(CoreHUD) {
     async getTooltipData() {
       const r = this.resist ?? {};
       const details = [
-        { label: "Stat",           value: r.statShortName },
         { label: "Stat Bonus",     value: r.statBonus },
         { label: "Level Bonus",    value: r.levelBonus },
         { label: "Racial Bonus",   value: r.racialBonus },
@@ -150,6 +149,7 @@ export function defineResistancesMain(CoreHUD) {
 
       return {
         title: this.label,
+        subtitle: r.statShortName,
         details: RMUUtils.formatTooltipDetails(details)
       };
     }
@@ -223,9 +223,6 @@ export function defineSpecialChecksMain(CoreHUD) {
     async getTooltipData() {
       const sys = this._skill?.system ?? {};
       const details = [
-          { label: "Name",             value: sys.name },
-          { label: "Specialization",   value: sys.specialization },
-          { label: "Category",         value: sys.category },
           { label: "Total ranks",      value: sys._totalRanks },
           { label: "Rank bonus",       value: sys._rankBonus },
           { label: "Culture ranks",    value: sys.cultureRanks },
@@ -271,9 +268,6 @@ export function defineSpecialChecksMain(CoreHUD) {
 		async getTooltipData() {
       const sys = this._skill?.system ?? {};
       const details = [
-          { label: "Name",             value: sys.name },
-          { label: "Specialization",   value: sys.specialization },
-          { label: "Category",         value: sys.category },
           { label: "Total ranks",      value: sys._totalRanks },
           { label: "Rank bonus",       value: sys._rankBonus },
           { label: "Culture ranks",    value: sys.cultureRanks },

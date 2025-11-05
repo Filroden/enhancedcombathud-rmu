@@ -38,18 +38,34 @@ export function defineSpellsMain(CoreHUD) {
       return [...super.classes, "rmu-spell-tile"];
     }
 
-    get hasTooltip() { return true; }
+  get hasTooltip() { return true; }
     async getTooltipData() {
-        const s = this.spell;
-        const listInfo = s._rawListInfo || {};
-        return { 
-          title: s.name, 
-          subtitle: `Lvl ${s.level} · ${listInfo.listName}`, 
-          details: [
-              { label: "SCR Total", value: s.scr },
-              { label: "Level", value: s.level }
-          ]
-        };
+      const s = this.spell;
+      if (!s) return { title: "Spell", subtitle: "", details: [] };
+
+      // 1. Special fallback for Duration (handles inconsistent data structure)
+      const duration = s._modifiedDuration?.duration || s._modifiedDuration?.dur?.duration || s.duration;
+
+      // 2. Standard fallbacks for AoE and Range
+      const aoe = s._modifiedAoE?.aoe || s.aoe;
+      const range = s._modifiedRange?.range || s.range;
+
+      const details = [
+        { label: "List type",   value: s.listType },
+        { label: "Realm(s)",    value: s.realms },
+        { label: "AoE",         value: aoe },
+        { label: "Duration",    value: duration },
+        { label: "Range",       value: range },
+        { label: "Spell type",  value: s.spellType },
+        { label: "SCR",         value: s.scr }
+      ].filter(x => x.value !== undefined && x.value !== null && x.value !== ""); // Filters out any empty fields
+
+      return { 
+        title: s.name, 
+        subtitle: `Lvl ${s.level} - ${s.spellList}`, 
+        description: s.description,
+        details: RMUUtils.formatTooltipDetails(details) // Calls the core formatter
+      };
     }
 
     async _renderInner() {
@@ -97,12 +113,11 @@ export function defineSpellsMain(CoreHUD) {
     async _roll() {
       await RMUUtils.rmuTokenActionWrapper(
         ui.ARGON?._token,
-        "rmuTokenSpellAction",
-        this.spell,
-        undefined
+        "rmuTokenSCRAction",
+        this.spell
       );
-      if (typeof game.system?.api?.rmuTokenSpellAction !== "function") {
-         ui.notifications?.info?.(`Spell Casting Roll for ${this.spell.name} triggered (API TBD).`);
+      if (typeof game.system?.api?.rmuTokenSCRAction !== "function") {
+         ui.notifications?.info?.(`Spell Casting Roll for ${this.spell.name} triggered (rmuTokenSCRAction API TBD).`);
       }
     }
   }
