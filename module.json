@@ -2,7 +2,7 @@
     "title": "Argon - Combat HUD (RMU)",
     "description": "Rolemaster Unified System Argon integration",
     "id": "enhancedcombathud-rmu",
-    "version": "0.4.4",
+    "version": "0.5.0",
     "authors": [
         { "name": "Bob Morris (system integration)" },
         { "name": "Ken Dearman (system integration)" }
@@ -16,6 +16,12 @@
     ],
     "scripts": [],
     "esmodules": [
+        "RMUCore.js",
+        "RMUData.js",
+        "RMUFeatures/RMUAttacks.js",
+        "RMUFeatures/RMUSkills.js",
+        "RMUFeatures/RMUSpells.js",
+        "RMUFeatures/RMUOther.js",
         "index.js"
     ],
     "styles": [
