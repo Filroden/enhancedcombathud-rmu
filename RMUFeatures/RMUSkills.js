@@ -114,23 +114,42 @@ export function defineSkillsMain(CoreHUD) {
 
     get hasTooltip() { return true; }
     async getTooltipData() {
-        // ** RESTORED: Original Skill Tooltip **
         const sys = this.entry?.raw?.system ?? {};
+        const skill = this.entry?.raw; 
+
+        // 1. Get the standard details
         const details = [
           { label: "Total ranks",      value: sys._totalRanks },
           { label: "Rank bonus",       value: sys._rankBonus },
           { label: "Culture ranks",    value: sys.cultureRanks },
           { label: "Stat",             value: sys.stat },
           { label: "Stat bonus",       value: sys._statBonus },
-          { label: "Prof bonus",       value: sys._professionalBonus }, // Corrected from original typo
+          { label: "Prof bonus",       value: sys._professionalBonus },
           { label: "Knack",            value: sys._knack },
           { label: "Total bonus",      value: sys._bonus }
         ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
         
+        // 2. ** NEW DEBUGGING API LOGIC **
+        let description = "";
+        const api = game.system?.api?.rmuGetSkillDescription;
+
+        // ** Run the original logic **
+        if (typeof api === "function" && skill) {
+            try {
+                description = (await api(skill)) ?? ""; 
+            } catch (err) {
+                console.error("[ECH-RMU] rmuGetSkillDescription API call FAILED!", err);
+                description = ""; 
+            }
+        } else {
+            description = ""; // Fallback
+        }
+
+        // 3. Return the tooltip data
         return {
           title: this.label,
           subtitle: sys.category ?? "",
-          description: sys.description,
+          description: description,
           details: RMUUtils.formatTooltipDetails(details) 
         };
     }

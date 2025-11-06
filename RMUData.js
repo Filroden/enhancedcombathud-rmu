@@ -250,8 +250,10 @@ RMUData.getDirectedSpellAttacks = function() {
             if (!Array.isArray(spellList.spells)) continue;
             for (const spell of spellList.spells) {
                 if (spell.known === true && spell.spellAttack && spell.spellAttack.chart?.name) {
+                    const baseName = spell.name.replace(/ (I|II|III|IV|V|VI|VII|VIII|IX|X|True)$/, '').trim();
                     const attack = {
                         ...spell,
+                        baseName: baseName,
                         attackName: `${spell.name} (Lvl ${spell.level})`,
                         totalBonus: spell.scr,
                         chart: spell.spellAttack.chart,

@@ -11,6 +11,7 @@ The following icons included within this module are from Google's Material Desig
 
 The following icons included within this module are from Game-icons.net (<https://game-icons.net/>) and are licensed under a Creative Commons BY 3.0 Licence (<https://creativecommons.org/licenses/by/3.0/>):
 
+* bright-explosion.svg
 * fist.svg
 * hazard-sign.svg
 * high-shot.svg
@@ -18,6 +19,7 @@ The following icons included within this module are from Game-icons.net (<https:
 * meditation.svg
 * mountain-climbing.svg
 * rest.svg
+* ringed-beam.svg
 * skills.svg
 * spell-book.svg
 * sword-brandish.svg

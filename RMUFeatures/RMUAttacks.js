@@ -1,6 +1,6 @@
 /**
  * RMUFeatures/RMUAttacks.js
- * Defines the main Attacks panel, including Melee, Ranged, and Directed Spell Attacks.
+ * Defines the main Attacks panel, including Melee, Ranged, and two new Spell Attack categories.
  */
 
 const { ICONS, RMUUtils, RMUData } = window;
@@ -21,12 +21,14 @@ export function defineAttacksMain(CoreHUD) {
   const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
   const { UIGuards } = window; 
 
+  // ** UPDATED: "spell" is now two separate categories **
   const CATS = [
-    { key: "melee",   label: "Melee",   icon: ICONS.melee },
-    { key: "ranged",  label: "Ranged",  icon: ICONS.ranged },
-    { key: "natural", label: "Natural", icon: ICONS.natural },
-    { key: "shield",  label: "Shield",  icon: ICONS.shield },
-    { key: "spell",   label: "Spells",  icon: ICONS.spells }
+    { key: "melee",       label: "Melee",           icon: ICONS.melee },
+    { key: "ranged",      label: "Ranged",          icon: ICONS.ranged },
+    { key: "natural",     label: "Natural",         icon: ICONS.natural },
+    { key: "shield",      label: "Shield",          icon: ICONS.shield },
+    { key: "spellTarget", label: "Spells (Target)", icon: ICONS.beam },
+    { key: "spellArea",   label: "Spells (Area)",   icon: ICONS.explosion }
   ];
 
   /** @augments ActionButton */
@@ -43,7 +45,19 @@ export function defineAttacksMain(CoreHUD) {
     get _armed() { return TEMPLATE_STATE.get(tplKeyFor(ui.ARGON?._token, this.attack)) === true; }
     set _armed(v) { TEMPLATE_STATE.set(tplKeyFor(ui.ARGON?._token, this.attack), !!v); this._applyArmedVisual(); this._updateBadge(); this._updateOverlay(); this.refresh?.(); }
     get label() { const name = this.attack?.attackName ?? this.attack?.name ?? "Attack"; return this._armed ? `Place: ${name}` : name; }
-    get icon() { return this._isSpellAttack ? ICONS.spells : this.attack?.img || ICONS[this._catKey] || ICONS.melee; }
+    
+    get icon() { 
+      if (this._isSpellAttack && window.SPELL_ATTACK_ICONS[this.attack.baseName]) {
+        return window.SPELL_ATTACK_ICONS[this.attack.baseName];
+      }
+
+      // Fallback for other spell attacks
+      if (this._catKey === 'spellTarget') return ICONS.beam;
+      if (this._catKey === 'spellArea') return ICONS.explosion;
+      // Fallback for physical attacks
+      return this.attack?.img || ICONS[this._catKey] || ICONS.melee; 
+    }
+    
     get _equipped() { const a = RMUData.getLiveAttack(this.attack); return !!(a?.isEquipped ?? a?.readyState ?? false); }
     get classes() { const c = super.classes.slice().filter(cls => cls !== "disabled"); if (this.disabled) c.push("disabled"); if (this._armed) c.push("armed"); return c; }
 
@@ -198,11 +212,10 @@ export function defineAttacksMain(CoreHUD) {
         return;
       }
       
-      // Determine the correct API to call based on the attack type
       const apiToCall = this._isSpellAttack 
-        ? "rmuTokenSpellAttackAction"   // API for spell attacks
-        : "rmuTokenAttackAction";       // API for physical attacks
- 
+        ? "rmuTokenSpellAttackAction"
+        : "rmuTokenAttackAction";
+
       const needsTemplate = live.isAoE === true;
 
       if (this._armed) {
@@ -222,7 +235,11 @@ export function defineAttacksMain(CoreHUD) {
     }
   }
 
-  /** @augments ButtonPanelButton */
+  // ** DELETED: RMUSpellAttackFilterButton is no longer needed. **
+
+  /** * @augments ButtonPanelButton
+   * REVERTED: This class is now simple again. It just builds a grid.
+   */
   class RMUAttackCategoryButton extends ButtonPanelButton {
     constructor({ key, label, icon, attacks }) {
       super();
@@ -237,9 +254,10 @@ export function defineAttacksMain(CoreHUD) {
     get isInteractive() { return true; }
 
     async _getPanel() {
+      // ** REVERTED to original, simple logic **
       const buttons = (this._attacks || []).map(a => new RMUAttackActionButton(a, this.key));
       const panel = new ButtonPanel({ id: `rmu-attacks-${this.key}`, buttons });
-      UIGuards.attachPanelInputGuards(panel);
+      UIGuards.attachPanelInteractionGuards(panel);
       return panel;
     }
   }
@@ -264,26 +282,36 @@ export function defineAttacksMain(CoreHUD) {
         buckets.get(key).push(atk);
       }
       
-      // 2. Bucket Spell Attacks
-      if (allSpellAttacks.length > 0) {
-          buckets.get("spell").push(...allSpellAttacks);
+      // 2. ** UPDATED: Bucket Spell Attacks into new categories **
+      for (const spell of allSpellAttacks) {
+        if (spell.isAoE) {
+          buckets.get("spellArea").push(spell);
+        } else {
+          buckets.get("spellTarget").push(spell);
+        }
       }
 
-      // Sort logic
+      // 3. ** UPDATED: Sort logic **
       for (const [k, list] of buckets.entries()) {
-        if (k !== "spell") {
-            list.sort((a, b) => {
-              const la = RMUData.getLiveAttack(a);
-              const lb = RMUData.getLiveAttack(b);
-              const ea = !!(la?.isEquipped ?? la?.readyState ?? false);
-              const eb = !!(lb?.isEquipped ?? lb?.readyState ?? false);
-              if (ea !== eb) return ea ? -1 : 1;
-              const na = String(la?.attackName ?? la?.name ?? "");
-              const nb = String(lb?.attackName ?? lb?.name ?? "");
-              return na.localeCompare(nb);
-            });
+        if (k === "spellTarget" || k === "spellArea") {
+          // Sort spells by Name, then Level
+          list.sort((a, b) => {
+            const nameA = a.attackName || a.name;
+            const nameB = b.attackName || b.name;
+            return nameA.localeCompare(nameB) || a.level - b.level;
+          });
         } else {
-             list.sort((a, b) => a.level - b.level || String(a.name).localeCompare(String(b.name)));
+          // Original sort for physical attacks
+          list.sort((a, b) => {
+            const la = RMUData.getLiveAttack(a);
+            const lb = RMUData.getLiveAttack(b);
+            const ea = !!(la?.isEquipped ?? la?.readyState ?? false);
+            const eb = !!(lb?.isEquipped ?? lb?.readyState ?? false);
+            if (ea !== eb) return ea ? -1 : 1;
+            const na = String(la?.attackName ?? la?.name ?? "");
+            const nb = String(lb?.attackName ?? lb?.name ?? "");
+            return na.localeCompare(nb);
+          });
         }
       }
 

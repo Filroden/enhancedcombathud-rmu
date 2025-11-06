@@ -18,29 +18,60 @@ const MOD_ICON = (file) =>
 
 const ICONS = {
   // Main
-  melee:   MOD_ICON("sword-brandish.svg"),
-  ranged:  MOD_ICON("high-shot.svg"),
+  melee: MOD_ICON("sword-brandish.svg"),
+  ranged: MOD_ICON("high-shot.svg"),
   natural: MOD_ICON("fist.svg"),
-  shield:  MOD_ICON("vibrating-shield.svg"),
-  skills:  MOD_ICON("skills.svg"),
-  spells:  MOD_ICON("spell-book.svg"),
-  combat:  MOD_ICON("skip-next-circle.svg"),
-  rest:    MOD_ICON("rest.svg"),
+  shield: MOD_ICON("vibrating-shield.svg"),
+  skills: MOD_ICON("skills.svg"),
+  spells: MOD_ICON("spell-book.svg"),
+  combat: MOD_ICON("skip-next-circle.svg"),
+  rest: MOD_ICON("rest.svg"),
   special: MOD_ICON("hazard-sign.svg"),
   endurance: MOD_ICON("mountain-climbing.svg"),
   concentration: MOD_ICON("meditation.svg"),
-  star:    MOD_ICON("star.svg"),
-  wand:    MOD_ICON("wand.svg"),
-  scroll:  MOD_ICON("scroll-unfurled.svg"),
-  bolt:    MOD_ICON("lightning-bolt.svg"),
+  star: MOD_ICON("star.svg"),
+  beam: MOD_ICON("ringed-beam.svg"),
+  scroll: MOD_ICON("scroll-unfurled.svg"),
+  explosion: MOD_ICON("bright-explosion.svg"),
   
   // Resistances
   panel: MOD_ICON("resistance-panel.svg"),
   Channeling: MOD_ICON("resistance-channeling.svg"),
-  Essence:    MOD_ICON("resistance-essence.svg"),
-  Mentalism:  MOD_ICON("resistance-mentalism.svg"),
-  Physical:   MOD_ICON("resistance-physical.svg"),
-  Fear:       MOD_ICON("resistance-fear.svg")
+  Essence: MOD_ICON("resistance-essence.svg"),
+  Mentalism: MOD_ICON("resistance-mentalism.svg"),
+  Physical: MOD_ICON("resistance-physical.svg"),
+  Fear: MOD_ICON("resistance-fear.svg")
+};
+
+const SPELL_ATTACK_ICONS = {
+  "Acidic Bolt": "icons/magic/acid/projectile-smoke-glowing.webp",
+  "Bolt of Fire": "icons/magic/fire/beam-jet-stream-embers.webp",
+  "Bolt of Water": "icons/magic/water/projectile-water-rings.webp",
+  "Corner Fires": "icons/magic/fire/beam-strike-whip-red.webp",
+  "Corner Lightning Bolt": "icons/magic/lightning/bolt-strike-beam-yellow.webp",
+  "Dragon's Fire": "icons/magic/fire/blast-jet-stream-embers-orange.webp",
+  "Fire Bolt": "icons/magic/fire/beam-jet-stream-embers.webp",
+  "Flare": "icons/magic/fire/projectile-fireball-embers-yellow.webp",
+  "Following Fires": "icons/magic/fire/beam-strike-whip-red.webp",
+  "Following Lightning Bolt": "icons/magic/lightning/bolt-strike-beam-yellow.webp",
+  "Greater Hurling": "icons/magic/earth/projectile-boulder-yellow.webp",
+  "Hand of Fire": "icons/magic/fire/beam-jet-stream-embers.webp",
+  "Hurling": "icons/magic/earth/projectile-boulder-debris.webp",
+  "Ice Bolt Barrage": "icons/magic/water/projectile-bolts-salvo-blue.webp",
+  "Ice Bolt": "icons/magic/water/projectile-ice-chunk-blue.webp",
+  "Lightning Bolt": "icons/magic/lightning/orb-ball-blue.webp",
+  "Shock Bolt": "icons/magic/lightning/bolt-strike-sparks-yellow.webp",
+  "Shocking Bolts": "icons/magic/lightning/bolt-forked-orange.webp",
+  "Steam Bolt": "icons/magic/water/beam-ice-impact.webp",
+  "Strike": "icons/magic/fire/flame-burning-fist-strike.webp",
+  "Striking": "icons/magic/fire/flame-burning-fist-strike.webp",
+  "Triad of Flame": "icons/magic/fire/projectiles-salvo-trio-orange.webp",
+  "Triad of Ice": "icons/magic/water/projectile-ice-teardrops-salvo.webp",
+  "Triad of Water": "icons/magic/water/projectile-ice-teardrops-salvo.webp",
+  "Water Bolt": "icons/magic/water/projectile-water-rings.webp",
+  "Cold Ball": "icons/magic/water/projectile-ice-snowball.webp",
+  "Fire Ball": "icons/magic/fire/explosion-fireball-large-orange.webp",
+  "Shock Ball": "icons/magic/lightning/orb-ball-blue.webp",
 };
 
 // -----------------------------------------------------------------------------
@@ -400,20 +431,28 @@ function installListSearch(panel, tileSelector, headerSelector, countLabel) {
 
       count.textContent = `${hits} ${countLabel}${hits === 1 ? "" : "s"} match${hits === 1 ? "" : "es"}`;
       
-      const visibleCats = new Set(
-        getTiles().filter(t => t.style.display !== "none").map(t => t.dataset.catKey)
-      );
-
-      headers.forEach(h => {
-        const key = h.dataset.catKey || "";
-        const show = visibleCats.has(key);
-        h.style.display = show ? "" : "none";
-        h.classList.toggle("open", show); 
-        h.classList.toggle("closed", !show);
-      });
-
-      if (isSpellSearch) { RMUData.setOpenSpellState(null, null); } 
-      else { RMUData.setOpenSkillsCategory(null); }
+      if (isSpellSearch) {
+          // For spells: ALWAYS show all headers and force them open
+          headers.forEach(h => {
+            h.style.display = "";
+            h.classList.add("open");
+            h.classList.remove("closed");
+          });
+          RMUData.setOpenSpellState(null, null); // Still reset accordion state
+      } else {
+          // For skills: Use the original logic
+          const visibleCats = new Set(
+            getTiles().filter(t => t.style.display !== "none").map(t => t.dataset.catKey)
+          );
+          headers.forEach(h => {
+            const key = h.dataset.catKey || "";
+            const show = visibleCats.has(key);
+            h.style.display = show ? "" : "none"; 
+            h.classList.toggle("open", show); 
+            h.classList.toggle("closed", !show);
+          });
+          RMUData.setOpenSkillsCategory(null);
+      }
     };
 
     input.addEventListener("input", debounce(() => filter(input.value), 200), { passive: true });
@@ -456,10 +495,10 @@ function defineSupportedActorTypes(CoreHUD) {
 
 // Attach all utilities to the window object for other modules to use
 window.ICONS = ICONS;
+window.SPELL_ATTACK_ICONS = SPELL_ATTACK_ICONS;
 window.RMUUtils = RMUUtils;
 window.UIGuards = UIGuards;
 window.installListSearch = installListSearch;
-// ** CRITICAL FIX: Export formatBonus to the window **
 window.formatBonus = formatBonus; 
 
 export { RMUUtils, UIGuards, installListSearch, defineTooltip, defineSupportedActorTypes };

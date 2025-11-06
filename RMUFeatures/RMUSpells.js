@@ -33,9 +33,13 @@ function applyAccordionVisibility(panelEl) {
     const isMyParentOpen = (hType === openType);
     const isMeOpen = (isMyParentOpen && hName === openName);
 
-    h.style.display = isMyParentOpen ? "" : "none"; 
+    // ** FIX: L2 HEADERS ARE ALWAYS VISIBLE **
+    h.style.display = ""; // <-- ALWAYS SHOW
     h.classList.toggle("open", isMeOpen);
     h.classList.toggle("closed", !isMeOpen);
+    
+    // Dim L2 headers whose L1 parent is closed
+    h.style.opacity = isMyParentOpen ? "1" : "0.6"; 
   });
 
   // L3 Tiles (Spells)
@@ -189,7 +193,6 @@ export function defineSpellsMain(CoreHUD) {
         this.element.dataset.nameNorm = (this.label).toLowerCase();
         this.element.dataset.catKey = this._listName;
         this.element.dataset.favorite = "false";
-        this.element.style.display = "none";
       }
     }
 
