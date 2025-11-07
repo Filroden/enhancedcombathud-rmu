@@ -107,10 +107,13 @@ export function defineWeaponSets(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   const Base = ARGON?.WEAPONS?.WeaponSets || ARGON?.WeaponSets || ARGON?.HUD?.WeaponSets;
   if (!Base) { console.warn("[ECH-RMU] WeaponSets base not found; skipping."); return; }
+  
   class RMUWeaponSets extends Base {
     get sets() { return []; }
     _onSetChange(_id) { /* no-op in RMU */ }
+    get visible() { return false; }
   }
+  
   CoreHUD.defineWeaponSets(RMUWeaponSets);
 }
 
@@ -414,12 +417,79 @@ export function defineCombatMain(CoreHUD) {
 
 export function defineDrawerPanel(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
-  const Base = ARGON.DRAWER.DrawerPanel;
-  if (!Base) { console.warn("[ECH-RMU] DrawerPanel base not found; skipping."); return; }
+  const BaseDrawer = ARGON.DRAWER.DrawerPanel;
+  const BaseDrawerButton = ARGON.DRAWER.DrawerButton;
 
-  class RMUDrawer extends Base {
-    get title()   { return "Actions"; }
-    get buttons() { return []; }
+  if (!BaseDrawer || !BaseDrawerButton) {
+      console.warn("[ECH-RMU] DrawerPanel or DrawerButton base not found; skipping macro drawer.");
+      return;
   }
+
+  class RMUMacroDrawerButton extends BaseDrawerButton {
+    constructor(macro) {
+      const buttonParts = [
+        {
+          label: macro.name,
+          // This onClick will be attached by the base class
+          onClick: (e) => {
+            if (this.interceptDialogs) ui.ARGON.interceptNextDialog(e.currentTarget.closest(".ability"));
+            macro.execute();
+          }
+        }
+      ];
+      
+      super(buttonParts); // Pass this array to the base constructor
+      this.macro = macro;
+    }
+
+    async getData() {
+      const data = await super.getData();
+      const part = data.buttons[0]; // Get the first (and only) button part
+      if (part) {
+        part.label = this.macro.name;
+      }
+      return data;
+    }
+
+    setGrid(gridCols) {
+      this.element.style.gridTemplateColumns = "1fr";
+    }
+
+    setAlign(align) {
+      this._textAlign = ["left"];
+      this.setTextAlign();
+    }
+  }
+
+  class RMUDrawer extends BaseDrawer {
+    
+    get title() { return "Macros"; }
+    
+    get categories() {
+      const hotbarMacros = Object.values(game.user.hotbar)
+        .map(id => game.macros.get(id))
+        .filter(macro => macro); 
+
+      let macroButtons;
+      if (!hotbarMacros.length) {
+        // Create a disabled-looking button part
+        const emptyButtonPart = [{ label: "No Macros in Hotbar" }];
+        // Pass it to the base DrawerButton
+        macroButtons = [new BaseDrawerButton(emptyButtonPart)];
+      } else {
+        macroButtons = hotbarMacros.map(macro => new RMUMacroDrawerButton(macro));
+      }
+      
+      return [
+        {
+          gridCols: "1fr", // Each DrawerButton (row) will have 1 column
+          captions: [{ label: "Hotbar Macros", align: "left" }], // A title for the section
+          align: ["left"], // Align the content of the single column
+          buttons: macroButtons // The array of RMUMacroDrawerButton instances
+        }
+      ];
+    }
+  }
+  
   CoreHUD.defineDrawerPanel(RMUDrawer);
 }
