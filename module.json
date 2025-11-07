@@ -2,7 +2,7 @@
     "title": "Argon - Combat HUD (RMU)",
     "description": "Rolemaster Unified System Argon integration",
     "id": "enhancedcombathud-rmu",
-    "version": "0.5.0",
+    "version": "0.5.1",
     "authors": [
         { "name": "Bob Morris (system integration)" },
         { "name": "Ken Dearman (system integration)" }
@@ -50,7 +50,7 @@
     },
     "compatibility": {
         "minimum": "13",
-        "verified": "13"
+        "verified": "13.350"
     },
     "manifest": "https://github.com/Filroden/fvtt/releases/download/rmu-hud-latest/module.json",
     "download": " https://github.com/Filroden/fvtt/releases/download/rmu-hud-latest/rmu-hud.zip"

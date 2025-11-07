@@ -2,6 +2,7 @@
 
 | Version   | Changes |
 | :--- | :--- |
+| **0.5.1** | * Added macro drawer above portrait.<br>* Hidden weapon swap bar. |
 | **0.5.0** | * Refactored and modularised the codebase.<br>* Added Spell SCR (Spell panel) and Spell Attack rolls (attack panel). Spell Mastery rolls were already available in the Skills panel.<br>* Added additional styling for dual level accordion panels for SCR rolls.<br>* Added description to the skill tooltip. |
 | **0.4.4** | * Added leading + to positive bonus values.<br>* Added tooltips to Endurance buttons. |
 | **0.4.3** | * Minor CSS change to consolidate styles. |
