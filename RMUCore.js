@@ -33,6 +33,8 @@ const ICONS = {
   beam: MOD_ICON("ringed-beam.svg"),
   scroll: MOD_ICON("scroll-unfurled.svg"),
   explosion: MOD_ICON("bright-explosion.svg"),
+  equip_closed: MOD_ICON("back_hand_closed.svg"),
+  equip_open: MOD_ICON("back_hand_open.svg"),
   
   // Resistances
   panel: MOD_ICON("resistance-panel.svg"),
