@@ -164,25 +164,6 @@
   z-index: 2;
 }
 
-/* Small pill in the corner; added/removed by JS */
-.enhancedcombathud-rmu .rmu-disabled-pill {
-  position: absolute;
-  left: 50%;
-  top: 6px;
-  transform: translateX(-50%);
-  padding: 2px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--rmu-neutral-050);
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.3px;
-  background: rgba(0, 0, 0, 0.85);
-  color: var(--rmu-neutral-050);
-  z-index: 3;
-  text-align: center;
-  pointer-events: none;
-}
-
 /* ────────────────────────────────────────────────
    SKILLS: headers
 ──────────────────────────────────────────────── */
@@ -398,4 +379,36 @@
 .enhancedcombathud-rmu .ability-menu .collapsible-panel .ability:not(.ability-title):hover {
   background-color: rgba(255, 255, 255, 0.1);
   cursor: pointer;
+}
+
+/* =============================================
+   WEAPON EQUIP TOGGLE (SVG ICON)
+   ============================================= */
+
+.enhancedcombathud-rmu .rmu-equip-toggle {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 4; /* Above badges and overlays */
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: none; /* No border needed for icon */
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.2s ease;
+}
+
+.enhancedcombathud-rmu .rmu-equip-toggle:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+.enhancedcombathud-rmu .rmu-equip-toggle .rmu-equip-icon {
+  width: 20px;
+  height: 20px;
 }

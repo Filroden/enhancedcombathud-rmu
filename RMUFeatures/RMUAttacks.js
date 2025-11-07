@@ -38,44 +38,35 @@ export function defineAttacksMain(CoreHUD) {
       this.attack = attack;
       this._catKey = catKey;
       this._isSpellAttack = !!attack._isSpellAttack;
+
+      // ** NEW: Check if this is a physical, equip-able item **
+      this._isPhysicalWeapon = !this._isSpellAttack && this._catKey !== "natural";
+      
+      // ** NEW: Get the live equipped state for styling the toggle **
+      const live = RMUData.getLiveAttack(this.attack);
+      this._equipped = this._isSpellAttack ? true : !!(live?.isEquipped ?? live?.readyState ?? false);
     }
 
     get isInteractive() { return true; }
-    get disabled() { return !this._equipped && !this._isSpellAttack; }
+    
+    // ** UPDATED: Use the new _equipped definition **
+    get disabled() { return !this._equipped; }
+    
     get _armed() { return TEMPLATE_STATE.get(tplKeyFor(ui.ARGON?._token, this.attack)) === true; }
     set _armed(v) { TEMPLATE_STATE.set(tplKeyFor(ui.ARGON?._token, this.attack), !!v); this._applyArmedVisual(); this._updateBadge(); this._updateOverlay(); this.refresh?.(); }
     get label() { const name = this.attack?.attackName ?? this.attack?.name ?? "Attack"; return this._armed ? `Place: ${name}` : name; }
     
+    // This is your up-to-date icon logic from the file
     get icon() { 
-      if (this._isSpellAttack && window.SPELL_ATTACK_ICONS[this.attack.baseName]) {
-        return window.SPELL_ATTACK_ICONS[this.attack.baseName];
-      }
-
-      // Fallback for other spell attacks
-      if (this._catKey === 'spellTarget') return ICONS.beam;
-      if (this._catKey === 'spellArea') return ICONS.explosion;
-      // Fallback for physical attacks
-      return this.attack?.img || ICONS[this._catKey] || ICONS.melee; 
+        if (this._isSpellAttack && window.SPELL_ATTACK_ICONS[this.attack.baseName]) {
+          return window.SPELL_ATTACK_ICONS[this.attack.baseName];
+        }
+        if (this._catKey === 'spellTarget') return ICONS.wand;
+        if (this._catKey === 'spellArea') return ICONS.bolt;
+        return this.attack?.img || ICONS[this._catKey] || ICONS.melee; 
     }
     
-    get _equipped() { const a = RMUData.getLiveAttack(this.attack); return !!(a?.isEquipped ?? a?.readyState ?? false); }
     get classes() { const c = super.classes.slice().filter(cls => cls !== "disabled"); if (this.disabled) c.push("disabled"); if (this._armed) c.push("armed"); return c; }
-
-    _updateDisabledPill() {
-      if (!this.element) return;
-      const existing = this.element.querySelector(".rmu-disabled-pill");
-      if (!this._equipped && !this._isSpellAttack) {
-        if (!existing) {
-          const pill = document.createElement("div");
-          pill.className = "rmu-disabled-pill";
-          pill.textContent = "NOT EQUIPPED";
-          this.element.classList.add("rmu-button-relative");
-          this.element.appendChild(pill);
-        }
-      } else {
-        existing?.remove();
-      }
-    }
 
     async _renderInner() {
       await super._renderInner();
@@ -95,7 +86,57 @@ export function defineAttacksMain(CoreHUD) {
         
       RMUUtils.applyValueOverlay(this.element, value ?? "", valueLabel);
 
-      this._updateDisabledPill?.();
+      // ** Add the Equip Toggle Button **
+      if (this._isPhysicalWeapon && this.attack.itemId) {
+        const toggle = document.createElement("div");
+        toggle.className = "rmu-equip-toggle";
+        
+        const iconSrc = this._equipped ? ICONS.equip_closed : ICONS.equip_open;
+        toggle.innerHTML = `<img src="${iconSrc}" class="rmu-equip-icon" alt="Toggle Equip"/>`; 
+        
+        toggle.classList.toggle("equipped", this._equipped);
+        toggle.title = this._equipped ? "Click to Unequip" : "Click to Equip";
+
+        toggle.addEventListener("pointerdown", (e) => {
+            e.stopImmediatePropagation();
+        });
+        toggle.addEventListener("click", (e) => {
+            e.stopImmediatePropagation();
+            this._onToggleEquip(e); // Calls the new method
+        });
+
+        this.element.appendChild(toggle);
+      }
+    }
+
+    // ** Handles the toggle click **
+    async _onToggleEquip(event) {
+      // Get the token (for the API wrapper)
+      const token = ui.ARGON?._token;
+      
+      // Check for token and the itemId
+      if (!token || !this.attack.itemId) {
+        console.error("[ECH-RMU] Cannot toggle equip: No token or itemID.");
+        return;
+      }
+
+      try {
+          // Call the new system API via the wrapper
+          const apiFunctionName = "rmuTokenToggleEquippedState";
+          
+          await window.RMUUtils.rmuTokenActionWrapper(
+              token,
+              apiFunctionName,
+              this.attack.itemId // Pass the itemId as the only argument
+          );
+          
+          // Refresh the HUD to show the new state
+          ui.ARGON?.refresh?.();
+          
+      } catch (err) {
+          console.error(`[ECH-RMU] Failed to toggle equip state via API (${apiFunctionName})`, err);
+          ui.notifications.error("Failed to toggle equip state.");
+      }
     }
     
     _applyArmedVisual() {
@@ -111,7 +152,6 @@ export function defineAttacksMain(CoreHUD) {
       if (!this.element) return;
       const old = this.element.querySelector(".rmu-place-badge");
       if (old) old.remove();
-
       if (this._armed) {
         const b = document.createElement("div");
         b.className = "rmu-place-badge";
@@ -125,7 +165,6 @@ export function defineAttacksMain(CoreHUD) {
       if (!this.element) return;
       const old = this.element.querySelector(".rmu-armed-overlay");
       if (old) old.remove();
-
       if (this._armed) {
         const ov = document.createElement("div");
         ov.className = "rmu-armed-overlay";
@@ -187,8 +226,17 @@ export function defineAttacksMain(CoreHUD) {
 
 
     /* ───────── Clicks ───────── */
+    // ** MODIFIED: _onMouseDown to respect 'disabled' and the toggle **
     async _onMouseDown(event) {
-      if (event.button !== 0) return;
+      // 1. Check if button is disabled
+      if (event.button !== 0 || this.disabled) return;
+      
+      // 2. Check if click was on the toggle
+      if (event.target.closest(".rmu-equip-toggle")) {
+          return; 
+      }
+      
+      // 3. OK to attack
       event.preventDefault(); event.stopPropagation();
       await this._invokeAttack();
     }
@@ -207,6 +255,8 @@ export function defineAttacksMain(CoreHUD) {
 
       const live = this._isSpellAttack ? this.attack : RMUData.getLiveAttack(this.attack);
 
+      // This check is now redundant because _onMouseDown handles 'this.disabled',
+      // but it's good defensive coding to leave it.
       if (!live.isEquipped && !this._isSpellAttack) {
         ui.notifications?.warn?.(`${(live?.attackName ?? this.label).replace(/^Place:\s*/, "")} is not equipped.`);
         return;
