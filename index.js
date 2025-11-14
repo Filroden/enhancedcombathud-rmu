@@ -36,14 +36,13 @@ function initConfig(CoreHUD) {
   defineSpellsMain(CoreHUD);
   defineSkillsMain(CoreHUD);
   
-  // C. Main Panels (Smaller/Stable Panels from RMUOther.js)
-  // ** REMOVED DUPLICATE CALLS **
+  // D. Main Panels (Smaller Panels from RMUOther.js)
   defineResistancesMain(CoreHUD);
   defineSpecialChecksMain(CoreHUD);
   defineRestMain(CoreHUD);
   defineCombatMain(CoreHUD);
 
-  // D. Drawer (from RMUOther.js)
+  // E. Drawer (from RMUOther.js)
   defineDrawerPanel(CoreHUD);
 }
 

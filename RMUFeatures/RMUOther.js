@@ -3,7 +3,6 @@
  * Defines smaller, stable panels: Portrait, Movement, Resistance, Special Checks, Rest, and Combat.
  */
 
-// ** CRITICAL FIX: Import formatBonus from window **
 const { ICONS, RMUUtils, RMUData, formatBonus } = window;
 
 // -----------------------------------------------------------------------------
@@ -34,6 +33,170 @@ export function definePortraitPanel(CoreHUD) {
       const hp = this.actor?.system?.health?.hp;
       return Number(hp?.value ?? 0) <= 0;
     }
+
+    /**
+     * Opens the Defenses Dialog when the new button is clicked.
+     */
+    async _onOpenDefenseDialog(event) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      // 1. Get Actor data for the form
+      const actor = this.actor;
+      if (!actor) return;
+      await RMUData.ensureRMUReady(); 
+
+      const dbBlock = actor.system?._dbBlock;
+      const defenseState = actor.system?.defense;
+      
+      const dodgeOptions = dbBlock?.dodgeOptions;
+      const blockOptions = dbBlock?.blockOptions;
+      const currentDodge = defenseState?.dodge;
+      const currentBlock = defenseState?.block;
+      const currentOther = defenseState?.other ?? 0;
+
+      // Helper function to build <option> tags
+      const buildOptions = (options, selectedValue) => {
+        if (!Array.isArray(options)) return "";
+        return options.map(opt => `
+          <option value="${opt.value}" ${opt.value === selectedValue ? "selected" : ""}>
+            ${opt.label}
+          </option>
+        `).join("");
+      };
+
+      // 2. Build the HTML content
+      const content = `
+        <form style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="form-group">
+            <label>Dodge</label>
+            <select name="dodge">
+              ${buildOptions(dodgeOptions, currentDodge)}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Block</label>
+            <select name="block">
+              ${buildOptions(blockOptions, currentBlock)}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Other DB modifiers</label>
+            <input type="number" name="other" value="${currentOther}">
+          </div>
+        </form>
+      `;
+
+      // 3. Create and show the Dialog
+      new Dialog({
+        title: "Set Defenses",
+        content: content,
+        buttons: {
+          apply: {
+            label: "Apply Changes",
+            callback: async (html) => {
+              const newDodge = html.find('[name="dodge"]').val();
+              const newBlock = html.find('[name="block"]').val();
+              const newOther = parseInt(html.find('[name="other"]').val()) || 0;
+              
+              if (newDodge === "passive" && newBlock === "passive") {
+                ui.notifications.warn("You cannot use Passive Dodge and Passive Block at the same time.");
+                return; 
+              }
+
+              // --- 4. ROBUST TOKEN DETECTION (The Fix) ---
+              // The API requires a specific token object. We try multiple sources.
+              let targetToken = ui.ARGON?._token; // 1. Try HUD token
+              
+              // If invalid or mismatch, try Actor's active tokens
+              if (!targetToken || targetToken.actor?.id !== this.actor.id) {
+                  if (this.actor.isToken) {
+                      targetToken = this.actor.token?.object; // Synthetic token
+                  } else {
+                      targetToken = this.actor.getActiveTokens()[0]; // First placed token
+                  }
+              }
+
+              // If still nothing, warn the user (prevents the crash)
+              if (!targetToken) {
+                  ui.notifications.warn("[ECH-RMU] No valid token found on the canvas. Please ensure your token is selected.");
+                  console.warn("[ECH-RMU] Defense Update Failed: No valid token found for actor", this.actor.name);
+                  return;
+              }
+
+              // Call APIs with the valid token ---
+              if (newDodge !== currentDodge) {
+                await RMUUtils.rmuTokenActionWrapper(
+                  targetToken, "rmuTokenSetDodgeOption", newDodge
+                );
+              }
+              if (newBlock !== currentBlock) {
+                await RMUUtils.rmuTokenActionWrapper(
+                  targetToken, "rmuTokenSetBlockOption", newBlock
+                );
+              }
+              if (newOther !== currentOther) {
+                await RMUUtils.rmuTokenActionWrapper(
+                  targetToken, "rmuTokenSetOtherDB", newOther
+                );
+              }
+            }
+          },
+          cancel: {
+            label: "Cancel"
+          }
+        },
+        default: "apply"
+      }, {
+        // Apply your new theme classes
+        classes: ["dialog", "enhancedcombathud-rmu", "rmu-defenses-dialog"] 
+      }).render(true);
+    }
+
+    /**
+     * Activates listeners for the panel.
+     * This is called by Argon *after* the element is rendered.
+     */
+    async activateListeners(element) {
+      // 1. IMPORTANT: Call the parent class's listeners
+      // (Even if they fail, it's good practice to run them)
+      await super.activateListeners(element);
+      
+      // 2. Find the existing "Open Character Sheet" button
+      // We use the data-tooltip attribute, which matches your HTML
+      const actorSheetButton = element.querySelector('.player-button[data-tooltip="Open Character Sheet"]');
+      
+      if (!actorSheetButton) {
+        // If this fails, you will see this warning in the F12 console
+        console.warn("[ECH-RMU] Could not find '.player-button[data-tooltip=\"Open Character Sheet\"]' to inject defense button.");
+        return; // Stop if we can't find the button
+      }
+
+      // 3. Get its parent element (the .player-buttons div)
+      const buttonBar = actorSheetButton.parentElement;
+      if (!buttonBar) {
+         console.warn("[ECH-RMU] Could not find parent of the actor sheet button.");
+        return;
+      }
+
+      // 4. Create the new Defenses button (as a <div>)
+      // This will match the structure of your other buttons
+      const defenseButton = document.createElement("div");
+      defenseButton.classList.add("player-button");
+      defenseButton.dataset.tooltip = "Set Defenses";
+      
+      // 5. Set your custom icon path
+      const iconPath = foundry.utils.getRoute("modules/enhancedcombathud-rmu/icons/guardian.svg");
+      defenseButton.innerHTML = `<img src="${iconPath}" width="28px" height="28px" alt="Defenses" style="vertical-align: middle; border: none;">`;
+
+      // 6. Add the click listener
+      defenseButton.addEventListener("click", this._onOpenDefenseDialog.bind(this));
+
+      // 7. Insert the button into the bar
+      // This will place it right before the "Open Actor Sheet" button
+      buttonBar.insertBefore(defenseButton, actorSheetButton);
+    }
+
     async getStatBlocks() {
         const hpVal = Number(this.actor?.system?.health?.hp?.value ?? 0);
         const hpMax = Number(this.actor?.system?.health?.hp?.max ?? 0);

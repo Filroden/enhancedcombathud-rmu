@@ -3,16 +3,6 @@
    All styles live under .enhancedcombathud-rmu to avoid leakage.
 ===================================================================== */
 
-.enhancedcombathud-rmu {
-  --rmu-font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  --rmu-fav: var(--rmu-success);
-  --rmu-header-l1-background-open: var(--rmu-accent-color1-700);
-  --rmu-header-l2-background-open: var(--rmu-accent-color2-700);
-  --rmu-header-l1-background-closed: var(--rmu-accent-color1-900);
-  --rmu-header-l2-background-closed: var(--rmu-accent-color2-900);
-}
-
-
 /* ────────────────────────────────────────────────
    Utility Classes (New Migrated Styles)
 ──────────────────────────────────────────────── */
@@ -49,8 +39,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-family: var(--rmu-font-family);
-  color: var(--rmu-neutral-050);
+  font-family: var(--filroden-font-family);
+  color: var(--filroden-color-text-main);
   text-align: center;
   /* Stronger text shadow for readability over any background */
   text-shadow:
@@ -62,13 +52,13 @@
 
 .enhancedcombathud-rmu .rmu-value-overlay-label,
 .enhancedcombathud-rmu .rmu-value-overlay-number {
-  color: var(--rmu-neutral-050);
+  color: var(--filroden-color-text-main);
   text-shadow:
     0 0 0.1em rgba(0, 0, 0, 0.9),
     0 0 0.23em rgba(0, 0, 0, 0.8),
     0.03em 0.03em 0 rgba(0, 0, 0, 0.9),
     -0.03em -0.03em 0 rgba(0, 0, 0, 0.9);
-  -webkit-text-stroke: 0.03em var(--rmu-neutral-1000);
+  -webkit-text-stroke: 0.03em var(--filroden-color-text-on-accent);
   filter:
     drop-shadow(0 0 1px rgba(0,0,0,0.95))
     drop-shadow(0 0 6px rgba(0,0,0,0.9))
@@ -93,7 +83,7 @@
    AoE "Place Template" state (attacks)
 ──────────────────────────────────────────────── */
 .enhancedcombathud-rmu .action-element.armed {
-  outline: 2px solid var(--rmu-warning);
+  outline: 2px solid var(--filroden-color-warning);
 }
 
 .enhancedcombathud-rmu .rmu-armed-overlay {
@@ -101,7 +91,7 @@
   inset: 0;
   background: rgba(255, 165, 0, 0.30);
   mix-blend-mode: multiply;
-  border-radius: 10px;
+  border-radius: var(filroden-radius-large);
   pointer-events: none;
   z-index: 2;
 }
@@ -112,11 +102,11 @@
   right: 6px;
   padding: 2px 6px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: var(--filroden-font-weight-bold);
   letter-spacing: 0.5px;
   border-radius: 6px;
-  background: var(--rmu-warning);
-  color: black;
+  background: var(--filroden-color-warning);
+  color: var(--filroden-color-text-on-accent);
   text-shadow: none;
   pointer-events: none;
   z-index: 3;
@@ -131,7 +121,7 @@
   right: 6px;
   padding: 0 6px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: var(--filroden-font-weight-bold);
   border-radius: 999px;
   background: var(--ech-fore);
   color: var(--ech-back);
@@ -165,76 +155,6 @@
 }
 
 /* ────────────────────────────────────────────────
-   SKILLS: headers
-──────────────────────────────────────────────── */
-.enhancedcombathud-rmu .action-hud .action-element.rmu-skill-header,
-.enhancedcombathud-rmu .action-hud .action-element-container .action-element.rmu-skill-header {
-  min-width: 0;
-  padding: 1rem 0.2rem;
-  width: 3rem;
-  flex: 0 0 3rem;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  transform: rotate(180deg);
-  display: flex;
-  align-items: center;
-  justify-content: left;
-  background: var(--rmu-header-l2-background-closed);
-  color: var(--rmu-neutral-000);
-  border-color: transparent;
-  border: 1px solid var(--rmu-neutral-050);
-  cursor: pointer;
-}
-
-/* Neutralize Argon’s absolute footer title so our vertical text shows */
-.enhancedcombathud-rmu .rmu-skill-header .action-element-title {
-  position: static !important;
-  bottom: auto !important;
-  left: auto !important;
-  height: auto !important;
-  width: auto !important;
-  padding: 0 !important;
-  background: transparent !important;
-  text-shadow: none !important;
-  white-space: nowrap;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-/* Hover/open states */
-.enhancedcombathud-rmu .rmu-skill-header:hover {
-  opacity: 1;
-  box-shadow: 0 0 8px rgba(0,0,0,0.6);
-  transform: rotate(180deg) scale(1.05);
-}
-
-/* Open state: lighter background, stronger text color, glow */
-.enhancedcombathud-rmu .rmu-skill-header.open {
-  background: var(--rmu-header-l2-background-open) !important;
-  color: var(--rmu-neutral-000) !important;
-  box-shadow: 0 0 10px rgba(255,255,255,0.4);
-}
-
-/* Add gap between buttons */
-.enhancedcombathud-rmu .action-hud .features-container {
-  gap: 1rem 0.3rem;
-}
-
-/* Make L1 headers (e.g., "Base", "Open") darker. */
-.enhancedcombathud-rmu .action-hud .action-element.rmu-spell-type-header {
-  background: var(--rmu-header-l1-background-closed);
-  color: var(--rmu-neutral-000);
-}
-
-/* Make L1 headers glow when active */
-.enhancedcombathud-rmu .action-hud .action-element.rmu-spell-type-header.open {
-  background: var(--rmu-header-l1-background-open) !important;
-  color: var(--rmu-neutral-000) !important;
-  box-shadow: 0 0 10px rgba(255,255,255,0.4);
-}
-
-/* ────────────────────────────────────────────────
    SEARCH BAR
 ──────────────────────────────────────────────── */
 .enhancedcombathud-rmu .rmu-skill-search {
@@ -245,10 +165,10 @@
   min-height: 0 !important;
   margin: 0.25rem 0.25rem 0.5rem;
   padding: 0.35rem 0.5rem !important;
-  border-radius: var(--rmu-border-radius);
-  background: var(--rmu-background);
-  color: var(--rmu-text);
-  border: var(--rmu-border-width) solid var(--rmu-border);
+  border-radius: var(--filroden-radius-medium);
+  background: var(--filroden-color-bg-darkest);
+  color: var(--filroden-color-text-main);
+  border: var(--filroden-border-main);
 }
 
 .enhancedcombathud-rmu .rmu-skill-search__icon {
@@ -262,13 +182,13 @@
   background: transparent;
   border: none;
   outline: none;
-  color: var(--rmu-text);
-  font-family: var(--rmu-font-family);
-  font-size: 0.95rem;
+  color: var(--filroden-color-text-main);
+  font-family: var(--filroden-font-family);
+  font-size: var(--filroden-font-size-m);
 }
 
 .enhancedcombathud-rmu .rmu-skill-search__input::placeholder {
-  color: var(--rmu-placeholder-text);
+  color: var(--filroden-color-text-placeholder);
 }
 
 .enhancedcombathud-rmu .rmu-skill-search__clear {
@@ -279,7 +199,7 @@
   cursor: pointer;
   mask-image: url('../icons/clear-text.svg');
   -webkit-mask-image: url('../icons/clear-text.svg');
-  background-color: var(--rmu-text);
+  background-color: var(--filroden-color-text-main);
   visibility: hidden;
   mask-size: contain;
   mask-repeat: no-repeat;
@@ -292,7 +212,7 @@
 
 .enhancedcombathud-rmu .rmu-skill-search__count {
   justify-self: end;
-  font-size: 0.8rem;
+  font-size: var(--filroden-font-size-s);
   opacity: 0.8;
 }
 
@@ -312,23 +232,23 @@
 }
 
 /* Ensure text input cursor */
-.rmu-skill-search__input {
+.enhancedcombathud-rmu.rmu-skill-search__input {
   cursor: text !important;
 }
 
-.rmu-mdi-magnify {
+.enhancedcombathud-rmu .rmu-mdi-magnify {
   display: inline-block;
   width: 1.5rem;
   height: 1.5rem;
   mask-image: url('../icons/search.svg');
   -webkit-mask-image: url('../icons/search.svg');
-  background-color: var(--rmu-text);
+  background-color: var(--filroden-color-text-muted);
 }
 
 .enhancedcombathud-rmu .rmu-mdi-skip-next-circle {
   mask-image: url('../icons/skip-next-circle.svg');
   -webkit-mask-image: url('../icons/skip-next-circle.svg');
-  background: var(--rmu-neutral-050);
+  background: var(--filroden-color-text-muted);
 }
 
 /* Star toggle in search bar */
@@ -348,11 +268,11 @@
   width: 1.25rem;
   height: 1.25rem;
   cursor: pointer;
-  background-color: var(--rmu-placeholder-text);
+  background-color: var(--filroden-color-text-muted);
   opacity: 0.85;
 }
 .enhancedcombathud-rmu .rmu-skill-search__fav.active {
-  background-color: var(--rmu-fav);
+  background-color: var(--filroden-color-success);
   opacity: 1;
 }
 
@@ -363,7 +283,7 @@
   left: 6px;
   width: 2rem;
   height: 2rem;
-  background-color: var(--rmu-fav);
+  background-color: var(--filroden-color-success);
   z-index: 3;
   pointer-events: none;
 }
@@ -377,7 +297,7 @@
 }
 
 .enhancedcombathud-rmu .ability-menu .collapsible-panel .ability:not(.ability-title):hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: var(--filroden-color-bg-light);
   cursor: pointer;
 }
 
@@ -411,4 +331,164 @@
 .enhancedcombathud-rmu .rmu-equip-toggle .rmu-equip-icon {
   width: 20px;
   height: 20px;
+}
+
+/* ==================================================================
+   --- RMU HUD ACCORDION THEME ---
+================================================================== */
+
+.enhancedcombathud-rmu .action-hud .action-element.rmu-skill-header,
+.enhancedcombathud-rmu .action-hud .action-element-container .action-element.rmu-skill-header {
+  min-width: 0;
+  padding: 1rem 0.2rem;
+  width: 3rem;
+  flex: 0 0 3rem;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  display: flex;
+  align-items: center;
+  justify-content: left;
+  border-color: transparent;
+  border: var(--filroden-border-main);
+  cursor: pointer;
+}
+
+/* Neutralise Argon’s absolute footer title so our vertical text shows */
+.enhancedcombathud-rmu .rmu-skill-header .action-element-title {
+  position: static !important;
+  bottom: auto !important;
+  left: auto !important;
+  height: auto !important;
+  width: auto !important;
+  padding: 0 !important;
+  background: transparent !important;
+  text-shadow: none !important;
+  white-space: nowrap;
+  font-weight: var(--filroden-font-weight-bold);
+  letter-spacing: var(--filroden-letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+/* Add gap between buttons */
+.enhancedcombathud-rmu .action-hud .features-container {
+  gap: 1rem 0.3rem;
+}
+
+/* --- LEVEL 1 HEADERS --- */
+.enhancedcombathud-rmu .rmu-spell-type-header,
+.enhancedcombathud-rmu .rmu-skill-header {
+  background-color: var(--filroden-color-bg-darkest) !important;
+  color: var(--filroden-color-text-main) !important;
+  border: var(--filroden-border-main);
+  font-size: var(--filroden-font-size-l);
+}
+
+/* --- LEVEL 2 HEADERS --- */
+.enhancedcombathud-rmu .rmu-spell-list-header {
+  background-color: var(--filroden-color-bg-medium-solid) !important;
+  color: var(--filroden-color-text-main) !important;
+  font-size: var(--filroden-font-size-l);
+}
+
+/* --- OPEN STATE (Accent Text) --- */
+.enhancedcombathud-rmu .rmu-spell-type-header.open,
+.enhancedcombathud-rmu .rmu-skill-header.open,
+.enhancedcombathud-rmu .rmu-spell-list-header.open {
+  color: var(--filroden-color-text-accent) !important;
+  font-weight: var(--filroden-font-weight-bold);
+}
+
+/* --- HOVER STATE --- */
+.enhancedcombathud-rmu .rmu-spell-type-header:hover,
+.enhancedcombathud-rmu .rmu-skill-header:hover,
+.enhancedcombathud-rmu .rmu-spell-list-header:hover {
+  background-color: var(--filroden-color-bg-hover-solid) !important;
+  cursor: pointer;
+}
+
+/* ==================================================================
+   --- DEFENSE DIALOG THEME (Updated) ---
+   Styles for the .rmu-defenses-dialog to match the Filroden theme
+================================================================== */
+
+.enhancedcombathud-rmu.rmu-defenses-dialog,
+.enhancedcombathud-rmu.rmu-defenses-dialog .window-header,
+.enhancedcombathud-rmu.rmu-defenses-dialog .window-content {
+  background-image: none !important;
+  background-color: var(--filroden-color-bg-darkest) !important;
+  color: var(--filroden-color-text-main) !important;
+  border-radius: var(--filroden-radius-large);
+  font-family: var(--filroden-font-family);
+  padding: var(--filroden-space-s);
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog .window-header {
+  border-bottom: var(--filroden-border-main);
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog .window-title {
+  color: var(--filroden-color-text-main);
+  font-weight: bold;
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog .form-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog label {
+  font-weight: bold;
+  color: var(--filroden-color-text-muted);
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog select,
+.enhancedcombathud-rmu.rmu-defenses-dialog input {
+  background-color: var(--filroden-color-bg-medium-solid) !important; 
+  color: var(--filroden-color-text-main) !important;
+  border: var(--filroden-border-main) !important;
+  border-radius: var(--filroden-radius-small, 3px);
+  height: 2rem;
+  padding: var(--filroden-space-s);
+  font-size: var(--filroden-font-size-s);
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog select option {
+  background-color: var(--filroden-color-bg-darkest);
+  color: var(--filroden-color-text-main);
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog select:focus,
+.enhancedcombathud-rmu.rmu-defenses-dialog input:focus {
+  border-color: var(--filroden-color-text-accent) !important;
+  outline: none;
+  box-shadow: 0 0 5px var(--filroden-color-bg-medium);
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons {
+  gap: var(--filroden-space-s);
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons button {
+  background: var(--filroden-color-bg-light) !important;
+  border: var(--filroden-border-main) !important;
+  border-radius: var(--filroden-radius-medium);
+  color: var(--filroden-color-text-muted) !important;
+  padding: var(--filroden-space-xs) var(--filroden-space-m) !important; 
+  margin-top: var(--filroden-space-s);
+  line-height: 24px !important;
+  transition: background-color 0.1s, border-color 0.1s, color 0.1s;
+  box-shadow: none !important;
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons button:hover {
+  background: var(--filroden-color-bg-hover) !important;
+  color: var(--filroden-color-text-main) !important;
+  border-color: var(--filroden-color-text-muted) !important;
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons button.default {
+  border-color: var(--filroden-color-text-accent) !important;
+  color: var(--filroden-color-text-main) !important;
 }
