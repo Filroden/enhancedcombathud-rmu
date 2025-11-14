@@ -4,9 +4,12 @@ These are the sources and licences for all SVG icons included in the RMU Enhance
 
 The following icons included within this module are from Google's Material Design icons (<https://fonts.google.com/icons>) and are licensed under an Apache Licence (version 2.0) (<https://www.apache.org/licenses/LICENSE-2.0.html>):
 
+* airline_seat_flat.svg
+* asterisk.svg
 * back_hand_open.svg
 * back_hand_closed.svg
 * clear-text.svg
+* guardian.svg
 * refresh.svg
 * search.svg
 * skip-next-circle.svg
