@@ -154,128 +154,6 @@
   z-index: 2;
 }
 
-/* ────────────────────────────────────────────────
-   SEARCH BAR
-──────────────────────────────────────────────── */
-.enhancedcombathud-rmu .rmu-skill-search {
-  display: grid !important;
-  grid-template-columns: 1.25rem 1fr 1.25rem 1.25rem auto;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 0 !important;
-  margin: 0.25rem 0.25rem 0.5rem;
-  padding: 0.35rem 0.5rem !important;
-  border-radius: var(--filroden-radius-medium);
-  background: var(--filroden-color-bg-darkest);
-  color: var(--filroden-color-text-main);
-  border: var(--filroden-border-main);
-}
-
-.enhancedcombathud-rmu .rmu-skill-search__icon {
-  text-align: center;
-  opacity: 0.8;
-  user-select: none;
-}
-
-.enhancedcombathud-rmu .rmu-skill-search__input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: var(--filroden-color-text-main);
-  font-family: var(--filroden-font-family);
-  font-size: var(--filroden-font-size-m);
-}
-
-.enhancedcombathud-rmu .rmu-skill-search__input::placeholder {
-  color: var(--filroden-color-text-placeholder);
-}
-
-.enhancedcombathud-rmu .rmu-skill-search__clear {
-  width: 1.25rem;
-  height: 1.25rem;
-  line-height: 1rem;
-  text-align: center;
-  cursor: pointer;
-  mask-image: url('../icons/clear-text.svg');
-  -webkit-mask-image: url('../icons/clear-text.svg');
-  background-color: var(--filroden-color-text-main);
-  visibility: hidden;
-  mask-size: contain;
-  mask-repeat: no-repeat;
-  mask-position: center;
-}
-
-.enhancedcombathud-rmu .rmu-skill-search__clear:hover {
-  opacity: 0.8;
-}
-
-.enhancedcombathud-rmu .rmu-skill-search__count {
-  justify-self: end;
-  font-size: var(--filroden-font-size-s);
-  opacity: 0.8;
-}
-
-/* Make the search bar occupy a full row inside Argon's flex grid */
-.enhancedcombathud-rmu .rmu-skill-search {
-  flex: 1 1 100%;
-  min-width: 100%;
-}
-
-/* Ensure interactivity inside Argon's pointer-events:none wrapper */
-.rmu-skill-search,
-.rmu-skill-search *,
-.rmu-skill-search__input,
-.rmu-skill-search__clear {
-  pointer-events: auto !important;
-  user-select: auto !important;
-}
-
-/* Ensure text input cursor */
-.enhancedcombathud-rmu.rmu-skill-search__input {
-  cursor: text !important;
-}
-
-.enhancedcombathud-rmu .rmu-mdi-magnify {
-  display: inline-block;
-  width: 1.5rem;
-  height: 1.5rem;
-  mask-image: url('../icons/search.svg');
-  -webkit-mask-image: url('../icons/search.svg');
-  background-color: var(--filroden-color-text-muted);
-}
-
-.enhancedcombathud-rmu .rmu-mdi-skip-next-circle {
-  mask-image: url('../icons/skip-next-circle.svg');
-  -webkit-mask-image: url('../icons/skip-next-circle.svg');
-  background: var(--filroden-color-text-muted);
-}
-
-/* Star toggle in search bar */
-.enhancedcombathud-rmu .rmu-skill-search__fav,
-.enhancedcombathud-rmu .rmu-fav-chip {
-  -webkit-mask-image: url('../icons/star.svg');
-  mask-image: url('../icons/star.svg');
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-}
-
-.enhancedcombathud-rmu .rmu-skill-search__fav {
-  width: 1.25rem;
-  height: 1.25rem;
-  cursor: pointer;
-  background-color: var(--filroden-color-text-muted);
-  opacity: 0.85;
-}
-.enhancedcombathud-rmu .rmu-skill-search__fav.active {
-  background-color: var(--filroden-color-success);
-  opacity: 1;
-}
-
 /* Favorite chip on tiles */
 .enhancedcombathud-rmu .rmu-fav-chip {
   position: absolute;
@@ -491,4 +369,171 @@
 .enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons button.default {
   border-color: var(--filroden-color-text-accent) !important;
   color: var(--filroden-color-text-main) !important;
+}
+
+/* ==================================================================
+   --- 9. Generic Search & Filter Bar ---
+================================================================== */
+
+/* --- The main bar container --- */
+.enhancedcombathud-rmu .rmu-search-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0.25rem 0 0.5rem 0;
+  padding: 0.35rem 0.5rem;
+  box-sizing: border-box;
+  border-radius: var(--filroden-radius-medium);
+  background: var(--filroden-color-bg-darkest);
+  border: var(--filroden-border-main);
+}
+
+/* --- Text input --- */
+.enhancedcombathud-rmu .rmu-search-input {
+  flex: 1;
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--filroden-color-text-main);
+  font-family: var(--filroden-font-family);
+  font-size: var(--filroden-font-size-m);
+  pointer-events: auto; /* Clicks MUST work on the input */
+}
+.enhancedcombathud-rmu .rmu-search-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* --- Container for all filter buttons --- */
+.enhancedcombathud-rmu .rmu-search-filters {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+}
+
+/* --- Shared Button Style (Search, Clear, Filters) --- */
+.enhancedcombathud-rmu .rmu-search-icon,
+.enhancedcombathud-rmu .rmu-search-clear,
+.enhancedcombathud-rmu .rmu-filter-button {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+  pointer-events: auto; /* Clicks MUST work on the buttons */
+}
+
+/* --- Icon Image Styling (using mask-image) --- */
+.enhancedcombathud-rmu .rmu-search-icon img,
+.enhancedcombathud-rmu .rmu-search-clear img,
+.enhancedcombathud-rmu .rmu-filter-button img {
+  width: 100%;
+  height: 100%;
+  border: none;
+  mask-image: var(--icon-url);
+  -webkit-mask-image: var(--icon-url);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  background-color: var(--filroden-color-text-muted);
+}
+
+/* --- Icon Paths --- */
+.enhancedcombathud-rmu .rmu-search-icon img[src*="search.svg"] {
+  --icon-url: url('/modules/enhancedcombathud-rmu/icons/search.svg');
+}
+.enhancedcombathud-rmu .rmu-search-clear img[src*="clear-text.svg"] {
+  --icon-url: url('/modules/enhancedcombathud-rmu/icons/clear-text.svg');
+}
+.enhancedcombathud-rmu .rmu-filter-button img[src*="star.svg"] {
+  --icon-url: url('/modules/enhancedcombathud-rmu/icons/star.svg');
+}
+.enhancedcombathud-rmu .rmu-filter-button img[src*="asterisk.svg"] {
+  --icon-url: url('/modules/enhancedcombathud-rmu/icons/asterisk.svg');
+}
+.enhancedcombathud-rmu .rmu-filter-button img[src*="airline_seat_flat.svg"] {
+  --icon-url: url('/modules/enhancedcombathud-rmu/icons/airline_seat_flat.svg');
+}
+
+/* --- Button States (Hover, Active) --- */
+.enhancedcombathud-rmu .rmu-search-clear:hover,
+.enhancedcombathud-rmu .rmu-filter-button:hover {
+  opacity: 1;
+}
+.enhancedcombathud-rmu .rmu-filter-button:not(.active):hover img {
+  background-color: var(--filroden-color-text-main);
+}
+.enhancedcombathud-rmu .rmu-filter-button.active {
+  opacity: 1;
+  box-shadow: none;
+}
+.enhancedcombathud-rmu .rmu-filter-button.active img,
+.enhancedcombathud-rmu .rmu-filter-button.active:hover img {
+  background-color: var(--filroden-color-success);
+}
+.enhancedcombathud-rmu .rmu-search-icon {
+  opacity: 0.8; 
+}
+
+/* ==================================================================
+   --- 10. Spell & Skill Chips ---
+================================================================== */
+
+/* --- This is the new container for all chips --- */
+.enhancedcombathud-rmu .rmu-chip-container {
+position: absolute;
+  top: 50%;
+  left: var(--filroden-space-m);
+  transform: translateY(-96px); 
+  display: flex;
+  flex-direction: row;
+  gap: var(--filroden-space-xs);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* --- This is the style for an individual chip --- */
+.enhancedcombathud-rmu .rmu-chip {
+  width: 2rem;
+  height: 2rem;
+  padding: var(--filroden-space-xs);
+  border: 1px solid var(--filroden-color-success);
+  border-radius: 999px; /* Fully rounded */
+  background-color: var(--filroden-color-bg-darkest);
+  box-sizing: border-box;
+}
+
+/* --- This is the icon inside the chip --- */
+.enhancedcombathud-rmu .rmu-chip::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  background-color: var(--filroden-color-success);
+  -webkit-mask-image: var(--icon-url);
+  mask-image: var(--icon-url);
+}
+
+/* --- Set individual chip icons --- */
+.enhancedcombathud-rmu .rmu-fav-chip::before {
+  --icon-url: url('/modules/enhancedcombathud-rmu/icons/star.svg');
+}
+.enhancedcombathud-rmu .rmu-instant-chip::before {
+  --icon-url: url('/modules/enhancedcombathud-rmu/icons/asterisk.svg');
+}
+.enhancedcombathud-rmu .rmu-subconscious-chip::before {
+  --icon-url: url('/modules/enhancedcombathud-rmu/icons/airline_seat_flat.svg');
 }

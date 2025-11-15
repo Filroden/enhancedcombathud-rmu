@@ -1,59 +1,64 @@
 /**
  * RMUFeatures/RMUSpells.js
  * Defines the main Spellcasting panel (3-Level Nested Accordion)
+ * for rolling Static Caster Rolls (SCR).
  */
 
 const { ICONS, RMUUtils, RMUData, installListSearch } = window;
 
+// Global state helpers
 const getOpenSpellState = RMUData.getOpenSpellState;
 const setOpenSpellState = RMUData.setOpenSpellState;
 
 /**
- * SHARED VISIBILITY LOGIC
- * This function is now defined once and passed to the headers.
- * This fixes the bug where L2 headers would hide on click.
+ * Applies visibility to the 3-level accordion based on global state.
+ * This is the core logic for the nested accordion.
+ * @param {HTMLElement} panelEl - The panel's DOM element.
  */
 function applyAccordionVisibility(panelEl) {
   if (!panelEl) return;
   const { type: openType, name: openName } = getOpenSpellState();
 
-  // L1 Headers (Spell Types)
+  // L1 Headers (Spell Types, e.g., "Base", "Open")
   panelEl.querySelectorAll(`.rmu-spell-type-header`).forEach(h => {
     const hType = h.dataset.listTypeKey || "";
     const isOpen = (hType === openType);
     h.classList.toggle("open", isOpen);
     h.classList.toggle("closed", !isOpen);
   });
-  
-  // L2 Headers (Spell Lists)
+
+  // L2 Headers (Spell Lists, e.g., "Blood Mastery")
   panelEl.querySelectorAll(`.rmu-spell-list-header`).forEach(h => {
     const hType = h.dataset.listTypeKey || "";
     const hName = h.dataset.listNameKey || "";
-    
+
     const isMyParentOpen = (hType === openType);
     const isMeOpen = (isMyParentOpen && hName === openName);
 
-    // ** FIX: L2 HEADERS ARE ALWAYS VISIBLE **
-    h.style.display = ""; // <-- ALWAYS SHOW
+    // L2 headers are always visible, but dimmed if parent is closed
+    h.style.display = "";
     h.classList.toggle("open", isMeOpen);
     h.classList.toggle("closed", !isMeOpen);
-    
-    // Dim L2 headers whose L1 parent is closed
-    h.style.opacity = isMyParentOpen ? "1" : "0.6"; 
+    h.style.opacity = isMyParentOpen ? "1" : "0.6";
   });
 
-  // L3 Tiles (Spells)
+  // L3 Tiles (Spells, e.g., "Awakening")
   panelEl.querySelectorAll(`.rmu-spell-tile`).forEach(t => {
     const tType = t.dataset.listTypeKey || "";
     const tName = t.dataset.listNameKey || "";
-    
+
     // Show only if my Type and Name both match the open state
-    const visible = (tType === openType && tName === openName) && !t.classList.contains("hidden");
+    // AND the tile is not hidden by the search filter.
+    const isSearchHidden = t.classList.contains("hidden"); // (Handled by search)
+    const visible = (tType === openType && tName === openName) && !isSearchHidden;
     t.style.display = visible ? "" : "none";
   });
 }
 
-
+/**
+ * Defines and registers the main Spells (SCR) panel with Argon.
+ * @param {object} CoreHUD - The Argon CoreHUD object.
+ */
 export function defineSpellsMain(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
   const { ActionPanel } = ARGON.MAIN;
@@ -61,7 +66,10 @@ export function defineSpellsMain(CoreHUD) {
   const { ActionButton, ButtonPanelButton } = ARGON.MAIN.BUTTONS;
   const { UIGuards } = window;
 
-  // ──── L3: Individual Spell Tile (SCR Roll) ──────────────────────────
+  /**
+   * L3: An action button for a single spell, to make an SCR roll.
+   * @augments ActionButton
+   */
   class RMUSpellActionButton extends ActionButton {
     constructor(spell) {
       super();
@@ -71,13 +79,16 @@ export function defineSpellsMain(CoreHUD) {
         this._listTypeKey = spell._rawListInfo.listType;
       }
     }
-    
+
     get label() { return `${this.spell.name} (Lvl ${this.spell.level})`; }
     get icon() { return ICONS.spells; }
     get isInteractive() { return true; }
-    
+
     get classes() {
-      if (this.spell && this.spell.spellAttack) return [...super.classes, "rmu-spell-tile", "hidden"];
+      // Hide spell-attack spells from this panel (they are in the Attacks panel)
+      if (this.spell && this.spell.spellAttack) {
+        return [...super.classes, "rmu-spell-tile", "hidden"];
+      }
       return [...super.classes, "rmu-spell-tile"];
     }
 
@@ -89,19 +100,19 @@ export function defineSpellsMain(CoreHUD) {
       const aoe = s._modifiedAoE?.aoe || s.aoe;
       const range = s._modifiedRange?.range || s.range;
       const details = [
-        { label: "List type",   value: s.listType },
-        { label: "Realm(s)",    value: s.realms },
-        { label: "AoE",         value: aoe },
-        { label: "Duration",    value: duration },
-        { label: "Range",       value: range },
-        { label: "Spell type",  value: s.spellType },
-        { label: "SCR",         value: s.scr },
-        { label: "Level",       value: s.level }
+        { label: "List type", value: s.listType },
+        { label: "Realm(s)", value: s.realms },
+        { label: "AoE", value: aoe },
+        { label: "Duration", value: duration },
+        { label: "Range", value: range },
+        { label: "Spell type", value: s.spellType },
+        { label: "SCR", value: s.scr },
+        { label: "Level", value: s.level }
       ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
 
-      return { 
-        title: s.name, 
-        subtitle: `Lvl ${s.level} - ${s.spellList}`, 
+      return {
+        title: s.name,
+        subtitle: `Lvl ${s.level} - ${s.spellList}`,
         description: s.description,
         details: RMUUtils.formatTooltipDetails(details)
       };
@@ -110,30 +121,69 @@ export function defineSpellsMain(CoreHUD) {
     async _renderInner() {
       await super._renderInner();
       if (!this.element) return;
-      this.element.style.pointerEvents = "auto";
-      this.element.style.cursor = "pointer";
-      
-      RMUUtils.applyValueOverlay(this.element, this.spell.scr ?? "", "SCR");
 
       const s = this.spell;
+
+      // Check for filterable properties
+      const modifiersStr = s.modifiers || "";
+      const isInstant = modifiersStr.includes("*");
+      const spellTypeStr = s.spellType || "";
+      const isSubconscious = spellTypeStr.substring(1).includes("s");
+      const isFavorite = s.favorite === true;
+
+      // Add data-attributes for filtering
+      this.element.dataset.isInstant = isInstant ? "true" : "false";
+      this.element.dataset.isSubconscious = isSubconscious ? "true" : "false";
+      this.element.dataset.favorite = isFavorite ? "true" : "false";
+
+      // Add chips (Fav, Instant, Subconscious)
+      if (isInstant || isSubconscious || isFavorite) {
+        this.element.classList.add("rmu-button-relative");
+        let chipContainer = this.element.querySelector(".rmu-chip-container");
+        if (!chipContainer) {
+          chipContainer = document.createElement("div");
+          chipContainer.className = "rmu-chip-container";
+          this.element.appendChild(chipContainer);
+        } else {
+          chipContainer.innerHTML = ""; // Clear old chips
+        }
+
+        if (isFavorite) {
+          const chip = document.createElement("div");
+          chip.className = "rmu-chip rmu-fav-chip";
+          chip.title = "Favorite";
+          chipContainer.appendChild(chip);
+        }
+        if (isInstant) {
+          const chip = document.createElement("div");
+          chip.className = "rmu-chip rmu-instant-chip";
+          chip.title = "Instantaneous";
+          chipContainer.appendChild(chip);
+        }
+        if (isSubconscious) {
+          const chip = document.createElement("div");
+          chip.className = "rmu-chip rmu-subconscious-chip";
+          chip.title = "Sub-conscious";
+          chipContainer.appendChild(chip);
+        }
+      }
+
+      this.element.style.pointerEvents = "auto";
+      this.element.style.cursor = "pointer";
+
+      // Apply SCR bonus overlay
+      RMUUtils.applyValueOverlay(this.element, this.spell.scr ?? "", "SCR");
+
+      // Add data-attributes for searching and accordion logic
       const listInfo = s._rawListInfo || {};
       const nameNorm = (`${s.name} ${listInfo.listName} ${listInfo.realm} ${listInfo.listType} Lvl ${s.level}`).toLowerCase();
-      
+
       this.element.dataset.listTypeKey = this._listTypeKey;
       this.element.dataset.listNameKey = this._listKey;
       this.element.dataset.nameNorm = nameNorm;
-      this.element.dataset.favorite = s.favorite === true ? "true" : "false"; 
-      this.element.dataset.catKey = this._listKey;
+      this.element.dataset.catKey = this._listKey; // For search header logic
 
-      if (s.favorite === true) {
-        const chip = document.createElement("div");
-        chip.className = "rmu-fav-chip";
-        chip.title = "Favorite";
-        this.element.classList.add("rmu-button-relative");
-        this.element.appendChild(chip);
-      }
-      
-      this.element.style.display = "none";
+      this.element.style.display = "none"; // Start hidden
     }
 
     async _onMouseDown(event) {
@@ -143,6 +193,9 @@ export function defineSpellsMain(CoreHUD) {
     }
     async _onLeftClick(event) { event?.preventDefault?.(); event?.stopPropagation?.(); }
 
+    /**
+     * Rolls the Static Caster Roll (SCR) for this spell.
+     */
     async _roll() {
       await RMUUtils.rmuTokenActionWrapper(
         ui.ARGON?._token,
@@ -152,14 +205,16 @@ export function defineSpellsMain(CoreHUD) {
     }
   }
 
-  // ──── L2: Spell List Name Header (e.g., "Blood Mastery") ──────────────────
+  /**
+   * L2: An accordion header for a Spell List (e.g., "Blood Mastery").
+   * @augments ActionButton
+   */
   class RMUSpellListButton extends ActionButton {
-    constructor(listName, spells, listTypeKey) {
+    constructor(listName, listTypeKey) {
       super();
       this._listName = listName;
-      this._spells = spells;
       this._listTypeKey = listTypeKey;
-      this._panelEl = null; 
+      this._panelEl = null; // Reference to the parent panel's element
     }
 
     get label() { return this._listName; }
@@ -173,14 +228,12 @@ export function defineSpellsMain(CoreHUD) {
       return [...super.classes, "rmu-skill-header", "rmu-spell-list-header", isOpen ? "open" : "closed"];
     }
 
-    _bindPanel(panel) {
-      const tryBind = () => {
-        const el = panel?.element;
-        if (!el) return requestAnimationFrame(tryBind);
-        this._panelEl = el;
-        applyAccordionVisibility(this._panelEl); 
-      };
-      requestAnimationFrame(tryBind);
+    /**
+     * Binds the parent panel's element to this button.
+     * @param {HTMLElement} panelEl - The parent panel's DOM element.
+     */
+    _bindPanel(panelEl) {
+      this._panelEl = panelEl;
     }
 
     async _renderInner() {
@@ -190,8 +243,9 @@ export function defineSpellsMain(CoreHUD) {
         this.element.style.cursor = "pointer";
         this.element.dataset.listTypeKey = this._listTypeKey;
         this.element.dataset.listNameKey = this._listName;
+        // Add data for search filtering
         this.element.dataset.nameNorm = (this.label).toLowerCase();
-        this.element.dataset.catKey = this._listName;
+        this.element.dataset.catKey = this._listName; // For search header logic
         this.element.dataset.favorite = "false";
       }
     }
@@ -203,42 +257,43 @@ export function defineSpellsMain(CoreHUD) {
 
       const { name: openName } = getOpenSpellState();
       const isOpen = openName === this._listName;
-      
+
+      // Toggle this L2 list
       setOpenSpellState(this._listTypeKey, isOpen ? null : this._listName);
-      
+
       applyAccordionVisibility(this._panelEl);
     }
-    async _onLeftClick(e){ e?.preventDefault?.(); e?.stopPropagation?.(); }
+    async _onLeftClick(e) { e?.preventDefault?.(); e?.stopPropagation?.(); }
   }
 
-  // ──── L1: Spell List Type Header (e.g., "Base") ───────────────────────
+  /**
+   * L1: An accordion header for a Spell List Type (e.g., "Base").
+   * @augments ActionButton
+   */
   class RMUSpellListTypeButton extends ActionButton {
     constructor(listType) {
       super();
       this._listType = listType;
-      this._panelEl = null;
+      this._panelEl = null; // Reference to the parent panel's element
     }
-    
+
     get label() { return this._listType; }
     get icon() { return ""; }
     get isInteractive() { return true; }
     get hasTooltip() { return false; }
-    
+
     get classes() {
       const { type: openType } = getOpenSpellState();
       const isOpen = openType === this._listType;
       return [...super.classes, "rmu-skill-header", "rmu-spell-type-header", isOpen ? "open" : "closed"];
     }
-    
-    _bindPanel(panel) {
-      // ** FIX 1: Simplified bind. No longer errors.**
-      const tryBind = () => {
-        const el = panel?.element;
-        if (!el) return requestAnimationFrame(tryBind);
-        this._panelEl = el;
-        applyAccordionVisibility(this._panelEl);
-      };
-      requestAnimationFrame(tryBind);
+
+    /**
+     * Binds the parent panel's element to this button.
+     * @param {HTMLElement} panelEl - The parent panel's DOM element.
+     */
+    _bindPanel(panelEl) {
+      this._panelEl = panelEl;
     }
 
     async _renderInner() {
@@ -247,12 +302,13 @@ export function defineSpellsMain(CoreHUD) {
         this.element.style.pointerEvents = "auto";
         this.element.style.cursor = "pointer";
         this.element.dataset.listTypeKey = this._listType;
+        // Add data for search filtering
         this.element.dataset.nameNorm = (this.label).toLowerCase();
-        this.element.dataset.catKey = this._listType;
+        this.element.dataset.catKey = this._listType; // For search header logic
         this.element.dataset.favorite = "false";
       }
     }
-    
+
     async _onMouseDown(event) {
       if (event?.button !== 0) return;
       event.preventDefault(); event.stopPropagation();
@@ -260,16 +316,20 @@ export function defineSpellsMain(CoreHUD) {
 
       const { type: openType } = getOpenSpellState();
       const isOpen = openType === this._listType;
-      
+
+      // Toggle this L1 list (and close any L2 list)
       setOpenSpellState(isOpen ? null : this._listType, null);
-      
+
       applyAccordionVisibility(this._panelEl);
     }
-    async _onLeftClick(e){ e?.preventDefault?.(); e?.stopPropagation?.(); }
+    async _onLeftClick(e) { e?.preventDefault?.(); e?.stopPropagation?.(); }
   }
 
 
-  // ──── "Spells (SCR)" category button (The main L0 entry point) ───
+  /**
+   * L0: The category button that opens the main Spells (SCR) panel.
+   * @augments ButtonPanelButton
+   */
   class RMUAllSpellsCategoryButton extends ButtonPanelButton {
     constructor() {
       super();
@@ -277,26 +337,28 @@ export function defineSpellsMain(CoreHUD) {
       this._icon = ICONS.spells;
     }
     get label() { return this.title; }
-    get icon()  { return this._icon; }
+    get icon() { return this._icon; }
     get hasContents() { return true; }
     get isInteractive() { return true; }
 
     async _getPanel() {
       // 1. Set the initial state to fully closed.
-      setOpenSpellState(null, null); 
+      setOpenSpellState(null, null);
 
       await RMUData.ensureRMUReady();
       const allSpellsByListType = RMUData.getGroupedSpellsForHUD();
 
+      // Handle empty state
       if (!allSpellsByListType.size) {
         const empty = new (class NoSpellsButton extends ActionButton {
           get label() { return "No spells known"; }
-          get icon()  { return ""; }
+          get icon() { return ""; }
           get classes() { return [...super.classes, "disabled"]; }
         })();
         return new ButtonPanel({ id: "rmu-spells-all", buttons: [empty] });
       }
 
+      // Sort L1 types (Base, Open, Closed, etc.)
       const listOrder = { "Base": 1, "Open": 2, "Closed": 3, "Arcane": 4, "Restricted": 5 };
       const sortedListTypes = Array.from(allSpellsByListType.keys()).sort((a, b) => {
         const rankA = listOrder[a] || 99;
@@ -305,14 +367,22 @@ export function defineSpellsMain(CoreHUD) {
       });
 
       const allButtons = [];
+      const allHeaderInstances = [];
 
+      // Build the 3-level list of buttons (L1, L2, L3)
       for (const listType of sortedListTypes) {
         const listMap = allSpellsByListType.get(listType);
-        allButtons.push(new RMUSpellListTypeButton(listType));
-        const sortedListNames = Array.from(listMap.keys()).sort((a,b) => a.localeCompare(b));
+        const l1Button = new RMUSpellListTypeButton(listType);
+        allButtons.push(l1Button);
+        allHeaderInstances.push(l1Button);
+
+        const sortedListNames = Array.from(listMap.keys()).sort((a, b) => a.localeCompare(b));
         for (const listName of sortedListNames) {
           const spells = listMap.get(listName);
-          allButtons.push(new RMUSpellListButton(listName, spells, listType));
+          const l2Button = new RMUSpellListButton(listName, listType);
+          allButtons.push(l2Button);
+          allHeaderInstances.push(l2Button);
+
           for (const spell of spells) {
             allButtons.push(new RMUSpellActionButton(spell));
           }
@@ -320,34 +390,61 @@ export function defineSpellsMain(CoreHUD) {
       }
 
       const panel = new ButtonPanel({ id: "rmu-spells-all", buttons: allButtons });
-      UIGuards.attachPanelInteractionGuards(panel); 
-      UIGuards.attachPanelInputGuards(panel); 
-      
-      // 2. Install search (this will incorrectly set L2 headers to display: "")
-      installListSearch(panel, ".rmu-spell-tile", ".rmu-spell-type-header, .rmu-spell-list-header", "spell");
+      UIGuards.attachPanelInteractionGuards(panel);
+      // We do NOT attach PanelInputGuards, as it conflicts with search
 
-      // 3. ** Force the panel to render its DOM *now* by accessing .element **
-      const panelEl = panel.element;
-      
-      // 4. Manually bind all headers to the panel element.
-      const allHeaderInstances = allButtons.filter(b => 
-        b instanceof RMUSpellListTypeButton || b instanceof RMUSpellListButton
+      // 2. Install search.
+      const spellFilters = [
+        {
+          id: "fav",
+          dataKey: "favorite",
+          icon: ICONS.star,
+          tooltip: "Show Favorites Only"
+        },
+        {
+          id: "instant",
+          dataKey: "isInstant",
+          icon: ICONS.instant,
+          tooltip: "Show Only Instantaneous Spells"
+        },
+        {
+          id: "subcon",
+          dataKey: "isSubconscious",
+          icon: ICONS.subconscious,
+          tooltip: "Show Only Sub-conscious Spells"
+        }
+      ];
+
+      installListSearch(
+        panel,
+        ".rmu-spell-tile",
+        ".rmu-spell-type-header, .rmu-spell-list-header",
+        "spell",
+        { filters: spellFilters }
       );
-      allHeaderInstances.forEach(h => h._panelEl = panelEl);
-      
+
+      // 3. Force the panel to render its DOM *now*
+      const panelEl = panel.element;
+
+      // 4. Manually bind all headers to the panel element.
+      allHeaderInstances.forEach(h => h._bindPanel(panelEl));
+
       // 5. Run the visibility logic *synchronously*.
       applyAccordionVisibility(panelEl);
-      
+
       return panel;
     }
   }
 
-  // ──── ActionPanel (the entry point) ──────────────────────────
+  /**
+   * The main "Spells" panel entry point for the HUD.
+   * @augments ActionPanel
+   */
   class RMUSpellsActionPanel extends ActionPanel {
     get label() { return "SPELLS"; }
     get maxActions() { return null; }
     get currentActions() { return null; }
-    async _getButtons() { return [ new RMUAllSpellsCategoryButton() ]; }
+    async _getButtons() { return [new RMUAllSpellsCategoryButton()]; }
   }
 
   CoreHUD.defineMainPanels([RMUSpellsActionPanel]);
