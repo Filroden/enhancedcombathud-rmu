@@ -129,15 +129,16 @@ export function defineSpellsMain(CoreHUD) {
       const isInstant = modifiersStr.includes("*");
       const spellTypeStr = s.spellType || "";
       const isSubconscious = spellTypeStr.substring(1).includes("s");
-      const isFavorite = s.favorite === true;
+      // const isFavorite = s.favorite === true; // Re-enable when favourites are implemented in RMU
 
       // Add data-attributes for filtering
       this.element.dataset.isInstant = isInstant ? "true" : "false";
       this.element.dataset.isSubconscious = isSubconscious ? "true" : "false";
-      this.element.dataset.favorite = isFavorite ? "true" : "false";
+      // this.element.dataset.favorite = isFavorite ? "true" : "false"; // Re-enable when favourites are implemented in RMU
 
       // Add chips (Fav, Instant, Subconscious)
-      if (isInstant || isSubconscious || isFavorite) {
+      // --- MODIFIED --- (Removed 'isFavorite' from the check)
+      if (isInstant || isSubconscious) {
         this.element.classList.add("rmu-button-relative");
         let chipContainer = this.element.querySelector(".rmu-chip-container");
         if (!chipContainer) {
@@ -148,12 +149,15 @@ export function defineSpellsMain(CoreHUD) {
           chipContainer.innerHTML = ""; // Clear old chips
         }
 
+        /* --- Re-enable when favourites are implemented in RMU ---
         if (isFavorite) {
           const chip = document.createElement("div");
           chip.className = "rmu-chip rmu-fav-chip";
           chip.title = "Favorite";
           chipContainer.appendChild(chip);
         }
+        */ // --- END COMMENTED OUT ---
+        
         if (isInstant) {
           const chip = document.createElement("div");
           chip.className = "rmu-chip rmu-instant-chip";
@@ -395,12 +399,14 @@ export function defineSpellsMain(CoreHUD) {
 
       // 2. Install search.
       const spellFilters = [
+        /* --- Re-enable when favorrites are implemented in RMU ---
         {
           id: "fav",
           dataKey: "favorite",
           icon: ICONS.star,
           tooltip: "Show Favorites Only"
         },
+        */ // --- END COMMENTED OUT ---
         {
           id: "instant",
           dataKey: "isInstant",

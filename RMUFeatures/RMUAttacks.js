@@ -103,8 +103,8 @@ export function defineAttacksMain(CoreHUD) {
       if (this._isSpellAttack && window.SPELL_ATTACK_ICONS[this.attack.baseName]) {
         return window.SPELL_ATTACK_ICONS[this.attack.baseName];
       }
-      if (this._catKey === 'spellTarget') return ICONS.wand;
-      if (this._catKey === 'spellArea') return ICONS.bolt;
+      if (this._catKey === 'spellTarget') return ICONS.beam;
+      if (this._catKey === 'spellArea') return ICONS.explosion;
       return this.attack?.img || ICONS[this._catKey] || ICONS.melee;
     }
 
