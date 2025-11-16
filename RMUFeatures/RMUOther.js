@@ -426,23 +426,9 @@ export function defineSpecialChecksMain(CoreHUD) {
     get hasTooltip() { return true; }
 
     async getTooltipData() {
-      const sys = this._skill?.system ?? {};
-      const details = [
-        { label: "Total ranks", value: sys._totalRanks },
-        { label: "Rank bonus", value: sys._rankBonus },
-        { label: "Culture ranks", value: sys.cultureRanks },
-        { label: "Stat", value: sys.stat },
-        { label: "Stat bonus", value: sys._statBonus },
-        { label: "Prof bonus", value: sys._professionalBonus },
-        { label: "Knack", value: sys._knack },
-        { label: "Total bonus", value: sys._bonus }
-      ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
-
-      return {
-        title: this.label,
-        subtitle: sys.name ?? "Endurance Check",
-        details: RMUUtils.formatTooltipDetails(details)
-      };
+      const title = this.label;
+      const subtitle = this._skill?.system?.name ?? "Endurance Check";
+      return RMUUtils.buildSkillTooltip(this._skill, title, subtitle);
     }
 
     async _renderInner() {
@@ -475,23 +461,9 @@ export function defineSpecialChecksMain(CoreHUD) {
     get hasTooltip() { return true; }
 
     async getTooltipData() {
-      const sys = this._skill?.system ?? {};
-      const details = [
-        { label: "Total ranks", value: sys._totalRanks },
-        { label: "Rank bonus", value: sys._rankBonus },
-        { label: "Culture ranks", value: sys.cultureRanks },
-        { label: "Stat", value: sys.stat },
-        { label: "Stat bonus", value: sys._statBonus },
-        { label: "Prof bonus", value: sys._professionalBonus },
-        { label: "Knack", value: sys._knack },
-        { label: "Total bonus", value: sys._bonus }
-      ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
-
-      return {
-        title: this.label,
-        subtitle: sys.name ?? "Concentration Check",
-        details: RMUUtils.formatTooltipDetails(details)
-      };
+      const title = this.label;
+      const subtitle = this._skill?.system?.name ?? "Concentration Check";
+      return RMUUtils.buildSkillTooltip(this._skill, title, subtitle);
     }
 
     async _renderInner() {

@@ -36,7 +36,9 @@ const ICONS = {
   natural: MOD_ICON("fist.svg"),
   shield: MOD_ICON("vibrating-shield.svg"),
   skills: MOD_ICON("skills.svg"),
+  skills_muted: MOD_ICON("skills-muted.svg"),
   spells: MOD_ICON("spell-book.svg"),
+  spells_muted: MOD_ICON("spell-book-muted.svg"),
   combat: MOD_ICON("skip-next-circle.svg"),
   rest: MOD_ICON("rest.svg"),
   special: MOD_ICON("hazard-sign.svg"),
@@ -198,6 +200,66 @@ const RMUUtils = {
       ui.notifications?.error?.(`${apiFunctionName} failed: ${err?.message ?? err}`);
       return false;
     }
+  },
+
+  /**
+   * Builds a standardized tooltip data object for a skill.
+   * @param {object} skill - The raw skill object.
+   * @param {string} title - The main title for the tooltip.
+   * @param {string} subtitle - The subtitle for the tooltip.
+   * @returns {object} The tooltip data object.
+   */
+  buildSkillTooltip: function(skill, title, subtitle) {
+    const sys = skill?.system ?? {};
+    const details = [
+      { label: "Total ranks", value: sys._totalRanks },
+      { label: "Rank bonus", value: sys._rankBonus },
+      { label: "Culture ranks", value: sys.cultureRanks },
+      { label: "Stat", value: sys.stat },
+      { label: "Stat bonus", value: sys._statBonus },
+      { label: "Prof bonus", value: sys._professionalBonus },
+      { label: "Knack", value: sys._knack },
+      { label: "Total bonus", value: sys._bonus }
+    ].filter(x => x.value !== undefined && x.value !== null && x.value !== "");
+
+    return {
+      title: title,
+      subtitle: subtitle,
+      details: RMUUtils.formatTooltipDetails(details)
+    };
+  },
+
+  /**
+   * Creates and manages the chip container on an action button.
+   * @param {HTMLElement} element - The button's DOM element.
+   * @param {Array<object>} chips - An array of chip objects to add.
+   * E.g., [{ id: "fav", title: "Favorite", icon: ICONS.star, class: "rmu-fav-chip" }]
+   * @returns {HTMLElement|null} The chip container element, or null.
+   */
+  buildChipContainer: function(element, chips = []) {
+    if (!element || !chips || chips.length === 0) {
+      element.querySelector(".rmu-chip-container")?.remove();
+      return null;
+    }
+
+    element.classList.add("rmu-button-relative");
+    let chipContainer = element.querySelector(".rmu-chip-container");
+    if (!chipContainer) {
+      chipContainer = document.createElement("div");
+      chipContainer.className = "rmu-chip-container";
+      element.appendChild(chipContainer);
+    } else {
+      chipContainer.innerHTML = ""; // Clear old chips
+    }
+
+    for (const chipData of chips) {
+      const chip = document.createElement("div");
+      // Use a generic class and a specific class
+      chip.className = `rmu-chip ${chipData.class}`;
+      chip.title = chipData.title;
+      chipContainer.appendChild(chip);
+    }
+    return chipContainer;
   }
 };
 

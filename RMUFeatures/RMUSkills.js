@@ -135,7 +135,7 @@ export function defineSkillsMain(CoreHUD) {
       const e = this.entry;
       return e?.spec ? `${e.name} (${e.spec})` : e?.name ?? "Skill";
     }
-    get icon() { return ""; }
+    get icon() { return ICONS.skills_muted; }
     get isInteractive() { return true; }
     get disabled() { return !!this.entry?.disabledBySystem; }
     get classes() {
@@ -208,21 +208,14 @@ export function defineSkillsMain(CoreHUD) {
       this.element.dataset.favorite = isFav ? "true" : "false";
 
       // Add "Favorite" chip
+      const chips = [];
       if (isFav) {
-        this.element.classList.add("rmu-button-relative");
-        let chipContainer = this.element.querySelector(".rmu-chip-container");
-        if (!chipContainer) {
-          chipContainer = document.createElement("div");
-          chipContainer.className = "rmu-chip-container";
-          this.element.appendChild(chipContainer);
-        } else {
-          chipContainer.innerHTML = ""; // Clear old chips
-        }
-        const chip = document.createElement("div");
-        chip.className = "rmu-chip rmu-fav-chip";
-        chip.title = "Favorite";
-        chipContainer.appendChild(chip);
+        chips.push({
+          class: "rmu-fav-chip",
+          title: "Favorite"
+        });
       }
+      RMUUtils.buildChipContainer(this.element, chips);
 
       if (this._startHidden) this.element.style.display = "none";
     }

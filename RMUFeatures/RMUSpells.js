@@ -81,7 +81,7 @@ export function defineSpellsMain(CoreHUD) {
     }
 
     get label() { return `${this.spell.name} (Lvl ${this.spell.level})`; }
-    get icon() { return ICONS.spells; }
+    get icon() { return ICONS.spells_muted; }
     get isInteractive() { return true; }
 
     get classes() {
@@ -137,40 +137,20 @@ export function defineSpellsMain(CoreHUD) {
       // this.element.dataset.favorite = isFavorite ? "true" : "false"; // Re-enable when favourites are implemented in RMU
 
       // Add chips (Fav, Instant, Subconscious)
+      const chips = [];
       // --- MODIFIED --- (Removed 'isFavorite' from the check)
-      if (isInstant || isSubconscious) {
-        this.element.classList.add("rmu-button-relative");
-        let chipContainer = this.element.querySelector(".rmu-chip-container");
-        if (!chipContainer) {
-          chipContainer = document.createElement("div");
-          chipContainer.className = "rmu-chip-container";
-          this.element.appendChild(chipContainer);
-        } else {
-          chipContainer.innerHTML = ""; // Clear old chips
-        }
-
-        /* --- Re-enable when favourites are implemented in RMU ---
-        if (isFavorite) {
-          const chip = document.createElement("div");
-          chip.className = "rmu-chip rmu-fav-chip";
-          chip.title = "Favorite";
-          chipContainer.appendChild(chip);
-        }
-        */ // --- END COMMENTED OUT ---
-        
-        if (isInstant) {
-          const chip = document.createElement("div");
-          chip.className = "rmu-chip rmu-instant-chip";
-          chip.title = "Instantaneous";
-          chipContainer.appendChild(chip);
-        }
-        if (isSubconscious) {
-          const chip = document.createElement("div");
-          chip.className = "rmu-chip rmu-subconscious-chip";
-          chip.title = "Sub-conscious";
-          chipContainer.appendChild(chip);
-        }
+      /* --- Re-enable when favourites are implemented in RMU ---
+      if (isFavorite) {
+        chips.push({ class: "rmu-fav-chip", title: "Favorite" });
       }
+      */
+      if (isInstant) {
+        chips.push({ class: "rmu-instant-chip", title: "Instantaneous" });
+      }
+      if (isSubconscious) {
+        chips.push({ class: "rmu-subconscious-chip", title: "Sub-conscious" });
+      }
+      RMUUtils.buildChipContainer(this.element, chips);
 
       this.element.style.pointerEvents = "auto";
       this.element.style.cursor = "pointer";

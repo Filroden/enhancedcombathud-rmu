@@ -58,7 +58,6 @@
     0 0 0.23em rgba(0, 0, 0, 0.8),
     0.03em 0.03em 0 rgba(0, 0, 0, 0.9),
     -0.03em -0.03em 0 rgba(0, 0, 0, 0.9);
-  -webkit-text-stroke: 0.03em var(--filroden-color-text-on-accent);
   filter:
     drop-shadow(0 0 1px rgba(0,0,0,0.95))
     drop-shadow(0 0 6px rgba(0,0,0,0.9))
