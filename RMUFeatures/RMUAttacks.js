@@ -4,7 +4,8 @@
  * and two Spell Attack categories (Target and Area).
  */
 
-const { ICONS, RMUUtils, RMUData } = window;
+import { ICONS, RMUUtils, SPELL_ATTACK_ICONS, UIGuards } from '../RMUCore.js';
+import { RMUData } from '../RMUData.js';
 
 /**
  * Stores the armed state (for template placement) of attacks.
@@ -32,7 +33,6 @@ export function defineAttacksMain(CoreHUD) {
   const { ActionPanel } = ARGON.MAIN;
   const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
   const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
-  const { UIGuards } = window;
 
   /**
    * Defines the categories for the Attacks panel.
@@ -100,8 +100,8 @@ export function defineAttacksMain(CoreHUD) {
     }
 
     get icon() {
-      if (this._isSpellAttack && window.SPELL_ATTACK_ICONS[this.attack.baseName]) {
-        return window.SPELL_ATTACK_ICONS[this.attack.baseName];
+      if (this._isSpellAttack && SPELL_ATTACK_ICONS[this.attack.baseName]) {
+          return SPELL_ATTACK_ICONS[this.attack.baseName];
       }
       if (this._catKey === 'spellTarget') return ICONS.beam;
       if (this._catKey === 'spellArea') return ICONS.explosion;
@@ -174,10 +174,11 @@ export function defineAttacksMain(CoreHUD) {
         return;
       }
 
+      const apiFunctionName = "rmuTokenToggleEquippedState";
+
       try {
         // Call the new system API via the wrapper
-        const apiFunctionName = "rmuTokenToggleEquippedState";
-        await window.RMUUtils.rmuTokenActionWrapper(
+        await RMUUtils.rmuTokenActionWrapper(
           token,
           apiFunctionName,
           this.attack.itemId // Pass the itemId

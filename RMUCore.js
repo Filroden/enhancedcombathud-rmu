@@ -7,6 +7,8 @@
  * to the window object.
  */
 
+import { RMUData } from './RMUData.js';
+
 // -----------------------------------------------------------------------------
 // I. Constants & Icon Definitions
 // -----------------------------------------------------------------------------
@@ -296,7 +298,7 @@ const UIGuards = {
 };
 
 // -----------------------------------------------------------------------------
-// III. General Search Feature (Reusable)
+// IV. General Search Feature (Reusable)
 // -----------------------------------------------------------------------------
 
 /**
@@ -530,15 +532,16 @@ function defineSupportedActorTypes(CoreHUD) {
 }
 
 // -----------------------------------------------------------------------------
-// VI. Attach to Window & Export
+// VI. Export
 // -----------------------------------------------------------------------------
 
-// Attach all utilities to the window object for other modules to use
-window.ICONS = ICONS;
-window.SPELL_ATTACK_ICONS = SPELL_ATTACK_ICONS;
-window.RMUUtils = RMUUtils;
-window.UIGuards = UIGuards;
-window.installListSearch = installListSearch;
-window.formatBonus = formatBonus;
-
-export { RMUUtils, UIGuards, installListSearch, defineTooltip, defineSupportedActorTypes };
+export {
+  ICONS,
+  SPELL_ATTACK_ICONS,
+  RMUUtils,
+  UIGuards,
+  installListSearch,
+  formatBonus,
+  defineTooltip,
+  defineSupportedActorTypes
+};

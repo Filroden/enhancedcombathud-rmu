@@ -4,7 +4,8 @@
  * for rolling Static Caster Rolls (SCR).
  */
 
-const { ICONS, RMUUtils, RMUData, installListSearch } = window;
+import { ICONS, RMUUtils, installListSearch, UIGuards } from '../RMUCore.js';
+import { RMUData } from '../RMUData.js';
 
 // Global state helpers
 const getOpenSpellState = RMUData.getOpenSpellState;
@@ -64,7 +65,6 @@ export function defineSpellsMain(CoreHUD) {
   const { ActionPanel } = ARGON.MAIN;
   const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
   const { ActionButton, ButtonPanelButton } = ARGON.MAIN.BUTTONS;
-  const { UIGuards } = window;
 
   /**
    * L3: An action button for a single spell, to make an SCR roll.

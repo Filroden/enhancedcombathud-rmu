@@ -3,7 +3,8 @@
  * Defines the main Skills panel, using an accordion and the shared search filter.
  */
 
-const { ICONS, RMUUtils, RMUData, installListSearch } = window;
+import { ICONS, RMUUtils, installListSearch, UIGuards } from '../RMUCore.js';
+import { RMUData } from '../RMUData.js';
 
 /**
  * Normalizes a category string into a key.
@@ -27,7 +28,6 @@ export function defineSkillsMain(CoreHUD) {
   const { ActionPanel } = ARGON.MAIN;
   const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
   const { ActionButton, ButtonPanelButton } = ARGON.MAIN.BUTTONS;
-  const { UIGuards } = window;
 
   /**
    * An accordion header button for a skill category (e.g., "Awareness").

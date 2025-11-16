@@ -10,7 +10,8 @@
  * - Drawer (Macros)
  */
 
-const { ICONS, RMUUtils, RMUData, formatBonus } = window;
+import { ICONS, RMUUtils, formatBonus, UIGuards } from '../RMUCore.js';
+import { RMUData } from '../RMUData.js';
 
 // -----------------------------------------------------------------------------
 // I. Portrait/Movement/Utility Panels
@@ -301,12 +302,10 @@ export function defineWeaponSets(CoreHUD) {
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineResistancesMain(CoreHUD) {
-  const { ICONS, RMUUtils, RMUData } = window;
   const ARGON = CoreHUD.ARGON;
   const { ActionPanel } = ARGON.MAIN;
   const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
   const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
-  const { UIGuards } = window;
 
   /**
    * An action button for a single Resistance Roll (e.g., "Essence").
@@ -400,12 +399,10 @@ export function defineResistancesMain(CoreHUD) {
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineSpecialChecksMain(CoreHUD) {
-  const { ICONS, RMUUtils, RMUData } = window;
   const ARGON = CoreHUD.ARGON;
   const { ActionPanel, BUTTONS } = ARGON.MAIN;
   const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
   const { ActionButton, ButtonPanelButton } = BUTTONS;
-  const { UIGuards } = window;
 
   /**
    * Helper to roll a skill with a specific "Special Maneuver" option.
@@ -554,7 +551,6 @@ export function defineSpecialChecksMain(CoreHUD) {
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineRestMain(CoreHUD) {
-  const { ICONS, RMUUtils } = window;
   const ARGON = CoreHUD.ARGON;
   const { ActionPanel } = ARGON.MAIN;
   const { ActionButton } = ARGON.MAIN.BUTTONS;
@@ -594,7 +590,6 @@ export function defineRestMain(CoreHUD) {
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineCombatMain(CoreHUD) {
-  const { ICONS } = window;
   const ARGON = CoreHUD.ARGON;
   const { ActionPanel } = ARGON.MAIN;
   const { ActionButton } = ARGON.MAIN.BUTTONS;

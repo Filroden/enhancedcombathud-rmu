@@ -414,7 +414,4 @@ RMUData.getDirectedSpellAttacks = function() {
   return attacks;
 };
 
-// Attach to the window object for global access
-window.RMUData = RMUData;
-
 export { RMUData };
