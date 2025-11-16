@@ -1,6 +1,6 @@
 # Argon Combat HUD extension for Rolemaster Unified (RMU)
 
-An implementation of the [Argon - Combat HUD](https://foundryvtt.com/packages/enhancedcombathud) (by [TheRipper93](https://theripper93.com/) and [Mouse0270](https://github.com/mouse0270)) for the [Rolemaster Unified (RMU)](https://foundryvtt.com/packages/rmu) system. The Argon Combat HUD (CORE) module is required for this module to work.
+An implementation of the [Argon - Combat HUD](https://foundryvtt.com/packages/enhancedcombathud) (by [TheRipper93](https://theripper93.com/) and [Mouse0270](https://github.com/mouse0270)) for the Rolemaster Unified (RMU) system. The Argon Combat HUD (CORE) module is required for this module to work.
 
 ---
 
