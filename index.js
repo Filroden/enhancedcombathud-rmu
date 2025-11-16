@@ -1,48 +1,57 @@
 /**
  * Enhanced Combat HUD — RMU extension
  *
- * Purpose: Central module definition and initialization for the Rolemaster Unified (RMU) system extension
- * of the Argon Combat HUD. This file handles environment setup and coordinates feature loading.
+ * Central module definition and initialization for the Rolemaster Unified (RMU)
+ * system extension of the Argon Combat HUD. This file handles environment
+ * setup and coordinates feature loading.
  */
 
-// Import modular logic (must be loaded in Foundry's setup)
-import { RMUUtils, UIGuards, installListSearch, defineTooltip, defineSupportedActorTypes } from './RMUCore.js';
-import { RMUData } from './RMUData.js';
+// Import modular logic
+import { UIGuards, defineTooltip, defineSupportedActorTypes } from './RMUCore.js';
+import './RMUData.js'; // Imports RMUData for its side effects (attaching to window)
 import { defineAttacksMain } from './RMUFeatures/RMUAttacks.js';
 import { defineSkillsMain } from './RMUFeatures/RMUSkills.js';
 import { defineSpellsMain } from './RMUFeatures/RMUSpells.js';
-import { defineResistancesMain, defineSpecialChecksMain, defineRestMain, defineCombatMain, definePortraitPanel, defineMovementHud, defineWeaponSets, defineDrawerPanel } from './RMUFeatures/RMUOther.js';
+import {
+  defineResistancesMain,
+  defineSpecialChecksMain,
+  defineRestMain,
+  defineCombatMain,
+  definePortraitPanel,
+  defineMovementHud,
+  defineWeaponSets,
+  defineDrawerPanel
+} from './RMUFeatures/RMUOther.js';
 
+/**
+ * Initializes the RMU-specific configuration for the Argon HUD.
+ * This function is called by the 'argonInit' hook.
+ * @param {object} CoreHUD - The Argon CoreHUD object.
+ */
 function initConfig(CoreHUD) {
   if (game.system.id !== "rmu") return;
-
-  // Global Utilities and Data Proxy (accessible by all feature files)
-  // These are set by RMUCore.js and RMUData.js when they load
-  // window.RMUUtils = RMUUtils;
-  // window.RMUData = RMUData;
-  // window.installListSearch = installListSearch;
 
   // A. UI Basics
   defineTooltip(CoreHUD);
   defineSupportedActorTypes(CoreHUD);
 
-  // B. Portrait/Movement (from RMUOther.js)
+  // B. Portrait/Movement
   definePortraitPanel(CoreHUD);
   defineMovementHud(CoreHUD);
-  defineWeaponSets(CoreHUD); 
+  defineWeaponSets(CoreHUD);
 
-  // C. Main Panels (Attack, Spell, Skill logic split into feature files)
+  // C. Main Panels (Attacks, Spells, Skills)
   defineAttacksMain(CoreHUD);
   defineSpellsMain(CoreHUD);
   defineSkillsMain(CoreHUD);
-  
-  // D. Main Panels (Smaller Panels from RMUOther.js)
+
+  // D. Main Panels (Resistances, Special, Rest, Combat)
   defineResistancesMain(CoreHUD);
   defineSpecialChecksMain(CoreHUD);
   defineRestMain(CoreHUD);
   defineCombatMain(CoreHUD);
 
-  // E. Drawer (from RMUOther.js)
+  // E. Drawer (Macros)
   defineDrawerPanel(CoreHUD);
 }
 
@@ -50,19 +59,20 @@ function initConfig(CoreHUD) {
 // III. Foundry Hooks
 // -----------------------------------------------------------------------------
 
-Hooks.once("init",  () => console.info(`[ECH-RMU] Initializing RMU extension`));
+Hooks.once("init", () => console.info(`[ECH-RMU] Initializing RMU extension`));
+
 Hooks.once("setup", () => {
   console.info(`[ECH-RMU] Setting up RMU extension hooks`);
-  // Install the aggressive, global guard once.
-  // This relies on UIGuards being loaded from RMUCore.js
+  // Install the aggressive, global guard to prevent keydown conflicts.
   UIGuards.installGlobalHudInputGuard();
 });
 
-// ** CRITICAL FIX: Changed 'registerSystemComponents' to 'initConfig' **
+// Register the main configuration function with Argon
 Hooks.on("argonInit", (CoreHUD) => initConfig(CoreHUD));
 
 Hooks.once("ready", () => {
   console.info(`[ECH-RMU] RMU extension is ready`);
+  // Add a system-specific class to the body for CSS scoping
   const body = document.body;
   if (!body.classList.contains("enhancedcombathud-rmu")) {
     body.classList.add("enhancedcombathud-rmu");

@@ -2,7 +2,8 @@
 
 | Version   | Changes |
 | :--- | :--- |
-| **0.5.3** | * Added a defence panel to set dodge, block (when available) and other DB modifiers.<br>* Re-themed elements of the module to follow my other modules rather than system colours. |
+| **0.5.4** | * New: Added filters to the spell panel for "instant" and "sub-conscious" spells.<br>* New: Added icons to all individual skill buttons for consistency.<br>* Fixed: Resolved a bug where clearing the search filter (or un-toggling the last filter) would incorrectly show all items instead of closing the accordion in the spell and skill panels.<br>* Internal: Made under-the-covers code improvements for stability and maintainability. |
+| **0.5.3** | * Added a defence dialogue to set dodge, block (when available) and other DB modifiers.<br>* Re-themed elements of the module to follow my other modules rather than system colours. |
 | **0.5.2** | * Added toggle buttons to weapons/shields to allow them to be quickly equipped or unequipped from within the HUD. |
 | **0.5.1** | * Added macro drawer above portrait.<br>* Hidden weapon swap bar. |
 | **0.5.0** | * Refactored and modularised the codebase.<br>* Added Spell SCR (Spell panel) and Spell Attack rolls (attack panel). Spell Mastery rolls were already available in the Skills panel.<br>* Added additional styling for dual level accordion panels for SCR rolls.<br>* Added description to the skill tooltip. |
