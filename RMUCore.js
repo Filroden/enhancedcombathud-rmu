@@ -307,12 +307,12 @@ const UIGuards = {
  * @param {string} logPrefix - Logging prefix (e.g., "skill", "spell").
  * @param {object} [options={}] - Configuration options.
  * @param {Array<object>} [options.filters=[]] - Array of filter definitions.
- * Each object: { id: string, dataKey: string, icon: string, tooltip: string }
+ * @param {function} [options.onClear=null] - Callback(panelEl) to run when filters are cleared.
  * @global
  */
 function installListSearch(panel, tileSelector, headerSelector, logPrefix, options = {}) {
   // 1. Get options
-  const { filters = [] } = options;
+  const { filters = [], onClear = null } = options;
   const panelId = panel.id;
   if (!panelId) {
     console.error("[ECH-RMU] installListSearch failed: Panel has no 'id' property.", panel);
@@ -336,8 +336,25 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
     const activeFilters = filters.filter(f => {
       return bar.querySelector(`#rmu-filter-${panelId}-${f.id}`)?.classList.contains("active");
     });
+    
+    // Check if this is a "clear" event (no text, no active filters)
+    const isFiltered = (terms.length > 0 || activeFilters.length > 0);
 
-    // Check Tile Visibility
+    if (!isFiltered) {
+      // This is a "clear" event.
+      if (typeof onClear === "function") {
+        // Run the custom accordion-closing logic
+        onClear(panel.element);
+      } else {
+        // Fallback for panels without an accordion
+        tiles.forEach(tile => tile.style.display = "");
+        showHeaders(tiles, headers);
+        if (summaryEl) summaryEl.style.display = "none";
+      }
+      return; // Stop here
+    }
+
+    // Check Tile Visibility (This logic now only runs if isFiltered is true)
     const visibleTiles = [];
     tiles.forEach(tile => {
       const name = tile.dataset.nameNorm || "";
@@ -357,15 +374,9 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
     if (summaryEl) {
       const total = tiles.length;
       const visible = visibleTiles.length;
-      const isFiltered = (terms.length > 0 || activeFilters.length > 0);
-
-      if (isFiltered) {
-        summaryEl.textContent = `Showing ${visible} of ${total}`;
-        summaryEl.style.display = "";
-      } else {
-        summaryEl.textContent = "";
-        summaryEl.style.display = "none";
-      }
+      
+      summaryEl.textContent = `Showing ${visible} of ${total}`;
+      summaryEl.style.display = "";
     }
   };
 
@@ -464,7 +475,7 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
       filterContainer.querySelectorAll(".rmu-filter-button").forEach(b => {
         b.classList.remove("active");
       });
-      filter(""); // Re-run filter
+      filter(""); // Re-run filter (will be caught by the new logic in filter())
     });
 
     // H. Create Summary Text Element

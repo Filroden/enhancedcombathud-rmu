@@ -294,7 +294,6 @@ export function defineSkillsMain(CoreHUD) {
 
       const panel = new ButtonPanel({ id: "rmu-skills", buttons });
       UIGuards.attachPanelInteractionGuards(panel);
-      // We do NOT attach PanelInputGuards, as it conflicts with search
 
       // Install the search/filter bar
       const skillFilters = [
@@ -311,7 +310,27 @@ export function defineSkillsMain(CoreHUD) {
         ".rmu-skill-tile",
         ".rmu-skill-header",
         "skill",
-        { filters: skillFilters }
+        { 
+          filters: skillFilters,
+          onClear: (panelEl) => {
+            if (!panelEl) return;
+            // 1. Set the state to closed
+            setOpenSkillsCategory(null);
+            
+            // 2. Manually hide all tiles and close all headers
+            panelEl.querySelectorAll(".rmu-skill-tile").forEach(t => {
+              t.style.display = "none";
+            });
+            panelEl.querySelectorAll(".rmu-skill-header").forEach(h => {
+              h.classList.remove("open");
+              h.classList.add("closed");
+            });
+            
+            // 3. Hide the summary text
+            const summaryEl = panelEl.querySelector(".rmu-search-summary");
+            if (summaryEl) summaryEl.style.display = "none";
+          }
+        }
       );
 
       // Bind all headers to the panel

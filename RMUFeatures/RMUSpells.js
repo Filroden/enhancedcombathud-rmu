@@ -186,7 +186,6 @@ export function defineSpellsMain(CoreHUD) {
       this.element.dataset.listNameKey = this._listKey;
       this.element.dataset.nameNorm = nameNorm;
       this.element.dataset.catKey = this._listKey; // For search header logic
-
       this.element.style.display = "none"; // Start hidden
     }
 
@@ -395,7 +394,6 @@ export function defineSpellsMain(CoreHUD) {
 
       const panel = new ButtonPanel({ id: "rmu-spells-all", buttons: allButtons });
       UIGuards.attachPanelInteractionGuards(panel);
-      // We do NOT attach PanelInputGuards, as it conflicts with search
 
       // 2. Install search.
       const spellFilters = [
@@ -426,7 +424,21 @@ export function defineSpellsMain(CoreHUD) {
         ".rmu-spell-tile",
         ".rmu-spell-type-header, .rmu-spell-list-header",
         "spell",
-        { filters: spellFilters }
+        { 
+          filters: spellFilters,
+          onClear: (panelEl) => {
+            if (!panelEl) return;
+            // 1. Set the state to closed
+            setOpenSpellState(null, null);
+            
+            // 2. Run the accordion logic, which will hide all tiles
+            applyAccordionVisibility(panelEl);
+            
+            // 3. Hide the summary text
+            const summaryEl = panelEl.querySelector(".rmu-search-summary");
+            if (summaryEl) summaryEl.style.display = "none";
+          }
+        }
       );
 
       // 3. Force the panel to render its DOM *now*
