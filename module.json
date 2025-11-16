@@ -16,12 +16,6 @@
     ],
     "scripts": [],
     "esmodules": [
-        "RMUCore.js",
-        "RMUData.js",
-        "RMUFeatures/RMUAttacks.js",
-        "RMUFeatures/RMUSkills.js",
-        "RMUFeatures/RMUSpells.js",
-        "RMUFeatures/RMUOther.js",
         "index.js"
     ],
     "styles": [
@@ -35,7 +29,7 @@
                 "id": "enhancedcombathud",
                 "type": "module",
                 "compatibility": {
-                    "minimum": "3.0.4"
+                    "minimum": "4.0.7"
                 }
             }
         ],
@@ -44,15 +38,19 @@
                 "id": "rmu",
                 "type": "system",
                 "compatibility": {
-                    "minimum": "0.27.11"
+                    "minimum": "0.33.11"
                 }
             }
         ]
     },
     "compatibility": {
         "minimum": "13",
-        "verified": "13.350"
+        "verified": "13.351"
     },
-    "manifest": "https://github.com/Filroden/fvtt/releases/download/rmu-hud-latest/module.json",
-    "download": " https://github.com/Filroden/fvtt/releases/download/rmu-hud-latest/rmu-hud.zip"
+    "url": "https://github.com/Filroden/enhancedcombathud-rmu",
+    "bugs": "https://github.com/Filroden/enhancedcombathud-rmu/issues",
+    "readme": "https://github.com/Filroden/enhancedcombathud-rmu/blob/main/README.md",
+    "license": "https://mit-license.org/",
+    "manifest": "https://github.com/Filroden/enhancedcombathud-rmu/releases/latest/download/module.json",
+    "download": " https://github.com/Filroden/enhancedcombathud-rmu/releases/download/v0.5.4/enhancedcombathud-rmu.zip"
 }
