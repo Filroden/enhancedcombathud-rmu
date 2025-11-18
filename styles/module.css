@@ -253,34 +253,26 @@
 }
 
 /* --- LEVEL 1 HEADERS --- */
-.enhancedcombathud-rmu .rmu-spell-type-header,
-.enhancedcombathud-rmu .rmu-skill-header {
-  background-color: var(--filroden-color-bg-darkest) !important;
+.enhancedcombathud-rmu .rmu-spell-type-header {
+  background-color: var(--filroden-color-text-accent) !important;
   color: var(--filroden-color-text-main) !important;
   border: var(--filroden-border-main);
   font-size: var(--filroden-font-size-l);
 }
 
 /* --- LEVEL 2 HEADERS --- */
-.enhancedcombathud-rmu .rmu-spell-list-header {
+.enhancedcombathud-rmu .rmu-spell-list-header,
+.enhancedcombathud-rmu .rmu-skill-header:not(.rmu-spell-type-header) {
   background-color: var(--filroden-color-bg-medium-solid) !important;
   color: var(--filroden-color-text-main) !important;
+  border: var(--filroden-border-main);
   font-size: var(--filroden-font-size-l);
-}
-
-/* --- OPEN STATE (Accent Text) --- */
-.enhancedcombathud-rmu .rmu-spell-type-header.open,
-.enhancedcombathud-rmu .rmu-skill-header.open,
-.enhancedcombathud-rmu .rmu-spell-list-header.open {
-  color: var(--filroden-color-text-accent) !important;
-  font-weight: var(--filroden-font-weight-bold);
 }
 
 /* --- HOVER STATE --- */
 .enhancedcombathud-rmu .rmu-spell-type-header:hover,
 .enhancedcombathud-rmu .rmu-skill-header:hover,
 .enhancedcombathud-rmu .rmu-spell-list-header:hover {
-  background-color: var(--filroden-color-bg-hover-solid) !important;
   cursor: pointer;
 }
 
