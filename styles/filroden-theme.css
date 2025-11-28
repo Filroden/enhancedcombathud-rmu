@@ -12,46 +12,46 @@
      Defines the core background and UI colours for all components.
   =================================== */
   
-  /** The darkest background, typically for main windows and content areas. */
-  --filroden-color-bg-darkest: #191813;
+   /** The darkest background, typically for main windows and content areas. */
+  --filroden-color-bg-darkest: hsl(48, 15%, 10%);
   
   /** A medium-dark background, often used for inputs or secondary panels. */
-  --filroden-color-bg-medium: rgba(0, 0, 0, 0.3);
-  --filroden-color-bg-medium-solid: #12110d;
+  --filroden-color-bg-medium: hsla(0, 0%, 0%, 0.3);
+  --filroden-color-bg-medium-solid: hsl(48, 15%, 15%);
   
   /** A light background, used for subtle UI elements or list items. */
-  --filroden-color-bg-light: rgba(255, 255, 255, 0.1);
-  --filroden-color-bg-light-solid: #302f2b;
-  
+  --filroden-color-bg-light: hsla(0, 0%, 100%, 0.1);
+  --filroden-color-bg-light-solid: hsl(48, 15%, 20%);
+
   /** The background colour for interactive elements on hover. */
-  --filroden-color-bg-hover: rgba(255, 255, 255, 0.2);
-  --filroden-color-bg-hover-solid: #474642;
+  --filroden-color-bg-hover: hsla(0, 0%, 100%, 0.2);
+  --filroden-color-bg-hover-solid: hsl(48, 15%, 30%);
   
   /** The primary colour for all body and UI text. */
-  --filroden-color-text-main: rgba(255, 255, 255, 0.85);
-  --filroden-color-text-main-solid: #dddcdc;
+  --filroden-color-text-main: hsla(0, 0%, 100%, 0.85);
+  --filroden-color-text-main-solid: hsl(48, 15%, 85%);
   
   /** A slightly faded text colour for notes, hints, or disabled elements. */
-  --filroden-color-text-muted: rgba(255, 255, 255, 0.75);
-  --filroden-color-text-muted-solid: #c6c5c4;
+  --filroden-color-text-muted: hsla(0, 0%, 100%, 0.75);
+  --filroden-color-text-muted-solid: hsl(48, 15%, 75%);
   
   /** Very faint text for placeholders, empty states, or watermark-style labels. */
-  --filroden-color-text-placeholder: rgba(255, 255, 255, 0.5);
-  --filroden-color-text-placeholder-solid: #8c8b89;
+  --filroden-color-text-placeholder: hsla(0, 0%, 100%, 0.5);
+  --filroden-color-text-placeholder-solid: hsl(48, 15%, 50%);
 
   /** The main "gold" accent colour, used for buttons, links, and highlights. */
-  --filroden-color-text-accent: #a99335;
+  --filroden-color-text-accent: hsl(48, 50%, 50%);
   
   /** A brighter version of the accent colour, used for hover states. */
-  --filroden-color-text-accent-hover: #cbb047;
+  --filroden-color-text-accent-hover: hsl(48, 50%, 60%);
   
   /** The colour of text placed on top of an accent-coloured background. */
-  --filroden-color-text-on-accent: #191813;
+  --filroden-color-text-on-accent: hsl(48, 15%, 10%);
 
   /** Colours to show success, warnings or failures/warnings. */
-  --filroden-color-success: #50be62;
-  --filroden-color-warning: #fb8c00;
-  --filroden-color-danger: #f44336;
+  --filroden-color-success: hsl(130, 50%, 50%);
+  --filroden-color-warning: hsl(33, 100%, 50%);
+  --filroden-color-danger: hsl(4, 90%, 60%);
 
   /* ===================================
      --- 2. Borders & Radii ---
@@ -59,7 +59,7 @@
   =================================== */
   
   /** The standard colour for all borders and rules. */
-  --filroden-color-border: rgba(255, 255, 255, 0.2);
+  --filroden-color-border: hsla(0, 0%, 100%, 0.2);
   
   /** A standard 1px solid border. */
   --filroden-border-main: 1px solid var(--filroden-color-border);
@@ -135,11 +135,16 @@
   =================================== */
   
   /** A subtle shadow for pop-out menus or elevated elements. */
-  --filroden-shadow-popout: 0 4px 10px rgba(0, 0, 0, 0.5);
+  --filroden-shadow-popout: 0 4px 10px hsla(0, 0%, 0%, 0.5);
   
   /** A larger shadow for main application windows. */
-  --filroden-shadow-window: 0 0 10px rgba(0, 0, 0, 0.7);
+  --filroden-shadow-window: 0 0 10px hsla(0, 0%, 0%, 0.7);
   
+  /** A smaller shadow for cards. */
+  --filroden-shadow-card:  inset 0 1px 2px hsla(0, 0%, 100%, 0.19), /* top highlight */ 
+                           0 1px 2px hsla(0, 0%, 0%, 0.19), /* dark shadow */ 
+                           0 2px 4px hsla(0, 0%, 0%, 0.08); /* soft shadow */
+
   /** The accent-coloured glow for focused inputs or buttons. */
   --filroden-shadow-focus: 0 0 5px var(--filroden-color-text-accent);
 }

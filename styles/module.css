@@ -40,7 +40,7 @@
   align-items: center;
   justify-content: center;
   font-family: var(--filroden-font-family);
-  color: var(--filroden-color-text-main);
+  color: var(--filroden-color-text-main-solid);
   text-align: center;
   /* Stronger text shadow for readability over any background */
   text-shadow:
@@ -52,7 +52,7 @@
 
 .enhancedcombathud-rmu .rmu-value-overlay-label,
 .enhancedcombathud-rmu .rmu-value-overlay-number {
-  color: var(--filroden-color-text-main);
+  color: var(--filroden-color-text-main-solid);
   text-shadow:
     0 0 0.1em rgba(0, 0, 0, 0.9),
     0 0 0.23em rgba(0, 0, 0, 0.8),
@@ -88,7 +88,8 @@
 .enhancedcombathud-rmu .rmu-armed-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(255, 165, 0, 0.30);
+  background-color: var(--filroden-color-warning);
+  opacity: 0.3; 
   mix-blend-mode: multiply;
   border-radius: var(filroden-radius-large);
   pointer-events: none;
@@ -174,7 +175,7 @@
 }
 
 .enhancedcombathud-rmu .ability-menu .collapsible-panel .ability:not(.ability-title):hover {
-  background-color: var(--filroden-color-bg-light);
+  background-color: var(--filroden-color-bg-light-solid);
   cursor: pointer;
 }
 
@@ -193,7 +194,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--filroden-color-bg-darkest);
   border: none; /* No border needed for icon */
   cursor: pointer;
   pointer-events: auto;
@@ -201,7 +202,8 @@
 }
 
 .enhancedcombathud-rmu .rmu-equip-toggle:hover {
-  background: rgba(0, 0, 0, 0.8);
+  /* Slightly lighter background on hover to indicate interactivity */
+  background: var(--filroden-color-bg-medium-solid);
   transform: scale(1.1);
 }
 
@@ -255,7 +257,7 @@
 /* --- LEVEL 1 HEADERS --- */
 .enhancedcombathud-rmu .rmu-spell-type-header {
   background-color: var(--filroden-color-text-accent) !important;
-  color: var(--filroden-color-text-main) !important;
+  color: var(--filroden-color-text-on-accent) !important;
   border: var(--filroden-border-main);
   font-size: var(--filroden-font-size-l);
 }
@@ -264,7 +266,7 @@
 .enhancedcombathud-rmu .rmu-spell-list-header,
 .enhancedcombathud-rmu .rmu-skill-header:not(.rmu-spell-type-header) {
   background-color: var(--filroden-color-bg-medium-solid) !important;
-  color: var(--filroden-color-text-main) !important;
+  color: var(--filroden-color-text-main-solid) !important;
   border: var(--filroden-border-main);
   font-size: var(--filroden-font-size-l);
 }
@@ -286,7 +288,7 @@
 .enhancedcombathud-rmu.rmu-defenses-dialog .window-content {
   background-image: none !important;
   background-color: var(--filroden-color-bg-darkest) !important;
-  color: var(--filroden-color-text-main) !important;
+  color: var(--filroden-color-text-main-solid) !important;
   border-radius: var(--filroden-radius-large);
   font-family: var(--filroden-font-family);
   padding: var(--filroden-space-s);
@@ -297,7 +299,7 @@
 }
 
 .enhancedcombathud-rmu.rmu-defenses-dialog .window-title {
-  color: var(--filroden-color-text-main);
+  color: var(--filroden-color-text-main-solid);
   font-weight: bold;
 }
 
@@ -309,13 +311,13 @@
 
 .enhancedcombathud-rmu.rmu-defenses-dialog label {
   font-weight: bold;
-  color: var(--filroden-color-text-muted);
+  color: var(--filroden-color-text-muted-solid);
 }
 
 .enhancedcombathud-rmu.rmu-defenses-dialog select,
 .enhancedcombathud-rmu.rmu-defenses-dialog input {
   background-color: var(--filroden-color-bg-medium-solid) !important; 
-  color: var(--filroden-color-text-main) !important;
+  color: var(--filroden-color-text-main-solid) !important;
   border: var(--filroden-border-main) !important;
   border-radius: var(--filroden-radius-small, 3px);
   height: 2rem;
@@ -325,14 +327,14 @@
 
 .enhancedcombathud-rmu.rmu-defenses-dialog select option {
   background-color: var(--filroden-color-bg-darkest);
-  color: var(--filroden-color-text-main);
+  color: var(--filroden-color-text-main-solid);
 }
 
 .enhancedcombathud-rmu.rmu-defenses-dialog select:focus,
 .enhancedcombathud-rmu.rmu-defenses-dialog input:focus {
   border-color: var(--filroden-color-text-accent) !important;
   outline: none;
-  box-shadow: 0 0 5px var(--filroden-color-bg-medium);
+  box-shadow: 0 0 5px var(--filroden-color-bg-medium-solid);
 }
 
 .enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons {
@@ -340,10 +342,10 @@
 }
 
 .enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons button {
-  background: var(--filroden-color-bg-light) !important;
+  background: var(--filroden-color-bg-light-solid) !important;
   border: var(--filroden-border-main) !important;
   border-radius: var(--filroden-radius-medium);
-  color: var(--filroden-color-text-muted) !important;
+  color: var(--filroden-color-text-muted-solid) !important;
   padding: var(--filroden-space-xs) var(--filroden-space-m) !important; 
   margin-top: var(--filroden-space-s);
   line-height: 24px !important;
@@ -352,14 +354,14 @@
 }
 
 .enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons button:hover {
-  background: var(--filroden-color-bg-hover) !important;
-  color: var(--filroden-color-text-main) !important;
-  border-color: var(--filroden-color-text-muted) !important;
+  background: var(--filroden-color-bg-hover-solid) !important;
+  color: var(--filroden-color-text-main-solid) !important;
+  border-color: var(--filroden-color-text-muted-solid) !important;
 }
 
 .enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons button.default {
   border-color: var(--filroden-color-text-accent) !important;
-  color: var(--filroden-color-text-main) !important;
+  color: var(--filroden-color-text-main-solid) !important;
 }
 
 /* ==================================================================
@@ -388,7 +390,7 @@
   background: transparent;
   border: none;
   outline: none;
-  color: var(--filroden-color-text-main);
+  color: var(--filroden-color-text-main-solid);
   font-family: var(--filroden-font-family);
   font-size: var(--filroden-font-size-m);
   pointer-events: auto; /* Clicks MUST work on the input */
@@ -433,7 +435,7 @@
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;
-  background-color: var(--filroden-color-text-muted);
+  background-color: var(--filroden-color-text-muted-solid);
 }
 
 /* --- Icon Paths --- */
@@ -459,7 +461,7 @@
   opacity: 1;
 }
 .enhancedcombathud-rmu .rmu-filter-button:not(.active):hover img {
-  background-color: var(--filroden-color-text-main);
+  background-color: var(--filroden-color-text-main-solid);
 }
 .enhancedcombathud-rmu .rmu-filter-button.active {
   opacity: 1;
