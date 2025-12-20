@@ -80,17 +80,6 @@ Hooks.once("ready", () => {
   }
 });
 
-/**
- * Force the HUD to re-render when the actor sheet is updated.
- */
-Hooks.on("updateActor", (actor, changes) => {
-  if (ui.ARGON && ui.ARGON.rendered && actor.id === ui.ARGON._token?.actor?.id) {
-    if (changes.system) {
-      ui.ARGON.render();
-    }
-  }
-});
-
 Hooks.once("shutdown", () => {
   document.body.classList.remove("enhancedcombathud-rmu");
 });
