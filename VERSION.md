@@ -2,11 +2,12 @@
 
 | Version   | Changes |
 | :--- | :--- |
-| **0.5.5** | * Fix: updated theme colours to use HSL values. |
-| **0.5.4** | * New: Added filters to the spell panel for "instant" and "sub-conscious" spells.<br>* New: Added icons to all individual skill buttons for consistency.<br>* Fixed: Resolved a bug where clearing the search filter (or un-toggling the last filter) would incorrectly show all items instead of closing the accordion in the spell and skill panels.<br>* Internal: Made under-the-covers code improvements for stability and maintainability. |
-| **0.5.3** | * Added a defence dialogue to set dodge, block (when available) and other DB modifiers.<br>* Re-themed elements of the module to follow my other modules rather than system colours. |
+| **0.5.6** | * Fixed issue with weapons with multiple attack variants (e.g., 1H or 2H) would use only the first variant for all attacks.<br>* Fixed issue where clearing a search in the skill search bar (text or favourite filer) would not restore visibility of the skills panel.<br>* Updated UI theme to latest version.|
+| **0.5.5** | * Updated theme colours to use HSL values.|
+| **0.5.4** | * Added filters to the spell panel for "instant" and "sub-conscious" spells.<br>* Added icons to all individual skill buttons for consistency.<br>* Resolved a bug where clearing the search filter (or un-toggling the last filter) would incorrectly show all items instead of closing the accordion in the spell and skill panels.<br>* Made under-the-covers code improvements for stability and maintainability.|
+| **0.5.3** | * Added a defence dialogue to set dodge, block (when available) and other DB modifiers.<br>* Re-themed elements of the module to follow my other modules rather than system colours.|
 | **0.5.2** | * Added toggle buttons to weapons/shields to allow them to be quickly equipped or unequipped from within the HUD. |
-| **0.5.1** | * Added macro drawer above portrait.<br>* Hidden weapon swap bar. |
+| **0.5.1** | * Added macro drawer above portrait.<br>* Hidden weapon swap bar.|
 | **0.5.0** | * Refactored and modularised the codebase.<br>* Added Spell SCR (Spell panel) and Spell Attack rolls (attack panel). Spell Mastery rolls were already available in the Skills panel.<br>* Added additional styling for dual level accordion panels for SCR rolls.<br>* Added description to the skill tooltip. |
 | **0.4.4** | * Added leading + to positive bonus values.<br>* Added tooltips to Endurance buttons. |
 | **0.4.3** | * Minor CSS change to consolidate styles. |
