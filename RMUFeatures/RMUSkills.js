@@ -15,6 +15,31 @@ function catKeyOf(s) {
   return String(s ?? "").normalize("NFKC").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/**
+ * MASTER VISIBILITY FUNCTION:
+ * Updates the visibility of all skill headers and tiles based on the accordion state.
+ * Resets search-hidden headers.
+ */
+function applySkillsAccordionVisibility(panelEl) {
+  if (!panelEl) return;
+  const openKey = getOpenSkillsCategory();
+
+  // 1. Restore and update Headers
+  panelEl.querySelectorAll(".rmu-skill-header").forEach(header => {
+    const key = header.dataset.catKey || "";
+    header.style.display = "";
+    header.classList.toggle("open", key === openKey);
+    header.classList.toggle("closed", key !== openKey);
+  });
+
+  // 2. Update Skill Tiles
+  panelEl.querySelectorAll(".rmu-skill-tile").forEach(tile => {
+    const key = tile.dataset.catKey || "";
+    // Only show tiles if their category is currently open
+    tile.style.display = (openKey && key === openKey) ? "" : "none";
+  });
+}
+
 // Global state helpers retrieved from RMUData
 const getOpenSkillsCategory = () => RMUData.getOpenSkillsCategory();
 const setOpenSkillsCategory = (catOrNull) => RMUData.setOpenSkillsCategory(catOrNull);
@@ -102,16 +127,29 @@ export function defineSkillsMain(CoreHUD) {
       }
     }
 
-    async _onMouseDown(event) {
-      if (event?.button !== 0) return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
+    async _onClick() {
+      const currentOpen = getOpenSkillsCategory();
+      const myKey = this.categoryKey; // normalised key
 
-      const openKey = getOpenSkillsCategory();
-      const isOpen = openKey === this._catKey;
-      setOpenSkillsCategory(isOpen ? null : this._catKey); // Toggle
-      this._applyVisibility();
+      // Toggle: if clicking the open one, close it; otherwise open this one.
+      const newKey = (currentOpen === myKey) ? null : myKey;
+      setOpenSkillsCategory(newKey);
+
+      // Trigger the visibility update on the parent panel
+      const panelEl = this.element.closest(".argon-action-panel");
+      applySkillsAccordionVisibility(panelEl);
+    }
+
+    async _onMouseDown() {
+      const currentOpen = getOpenSkillsCategory();
+      const myKey = this._catKey;
+
+      // Toggle: if clicking the open one, close it; otherwise open this one.
+      const newKey = (currentOpen === myKey) ? null : myKey;
+      setOpenSkillsCategory(newKey);
+
+      // Refresh the UI
+      applySkillsAccordionVisibility(this._panelEl);
     }
 
     async _onLeftClick(e) { e?.preventDefault?.(); e?.stopPropagation?.(); }
@@ -307,19 +345,9 @@ export function defineSkillsMain(CoreHUD) {
           filters: skillFilters,
           onClear: (panelEl) => {
             if (!panelEl) return;
-            // 1. Set the state to closed
-            setOpenSkillsCategory(null);
             
-            // 2. Manually hide all tiles and close all headers
-            panelEl.querySelectorAll(".rmu-skill-tile").forEach(t => {
-              t.style.display = "none";
-            });
-            panelEl.querySelectorAll(".rmu-skill-header").forEach(h => {
-              h.classList.remove("open");
-              h.classList.add("closed");
-            });
-            
-            // 3. Hide the summary text
+            applySkillsAccordionVisibility(panelEl);
+      
             const summaryEl = panelEl.querySelector(".rmu-search-summary");
             if (summaryEl) summaryEl.style.display = "none";
           }
