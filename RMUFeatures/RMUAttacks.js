@@ -96,6 +96,7 @@ export function defineAttacksMain(CoreHUD) {
 
     get label() {
       const name = this.attack?.attackName ?? this.attack?.name ?? "Attack";
+      
       return this._armed ? `Place: ${name}` : name;
     }
 
