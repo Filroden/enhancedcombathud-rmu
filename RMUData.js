@@ -144,17 +144,22 @@ RMUData.ensureRMUReady = async function() {
 };
 
 /**
- * Generates a stable key for an attack object.
- * @param {object} att - The attack object.
- * @returns {string} A unique key.
+ * Generates a unique key for an attack object.
+ * Uses a "Full Fingerprint" to ensure that if the system rebuilding the attack list
+ * causes indexes (attackId) to shift, we can still recover the correct variant.
  */
 RMUData.attackKey = function(att) {
-  return att?.itemId ?? att?.id ?? att?._id ?? [
-    (att?.attackName ?? att?.name ?? "attack"),
-    (att?.chart?.name ?? ""),
-    (att?.size ?? ""),
-    (att?.attackId ?? "")
-  ].join("::");
+  // 1. Identifying IDs
+  const itemId = att?.itemId ?? att?._id ?? att?.id;
+  const attackId = att?.attackId;
+  
+  // 2. The Functional Fingerprint (What makes this usage unique?)
+  const handed = att?.handed;           // 1H vs 2H
+  const chart = att?.chart?.name;       // e.g., "Spear" vs "Fighting Stick"
+  const spec = att?.specialization;     // e.g., "Pole Arm" vs "Greater Hafted"
+  const isRanged = att?.isRanged;       // Melee vs Thrown logic
+  
+  return `${itemId}::${attackId}::${handed}::${chart}::${spec}::${isRanged}`;
 };
 
 /**
