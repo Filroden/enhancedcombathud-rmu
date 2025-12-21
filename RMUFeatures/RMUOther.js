@@ -228,42 +228,135 @@ export function definePortraitPanel(CoreHUD) {
  */
 export function defineMovementHud(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
-  const Base = ARGON?.MOVEMENT?.MovementHud || ARGON?.MovementHud || ARGON?.HUD?.MovementHud;
+  const Base = ARGON?.HUD?.MovementHud || ARGON?.MovementHud;
 
-  if (!Base) { console.warn("[ECH-RMU] MovementHud base not found; skipping."); return; }
+  if (!Base) return;
 
-  /**
-   * Custom RMU Movement Panel
-   * @augments Base
-   */
   class RMUMovementHud extends Base {
+    // --- I. RMU Data Helpers ---
     get _mv() { return this.actor?.system?._movementBlock ?? {}; }
     get _modeKey() { return this._mv._selected; }
     get _modeTbl() { return this._mv._table?.[this._modeKey] ?? null; }
     get _rates() { return Array.isArray(this._modeTbl?.paceRates) ? this._modeTbl.paceRates : []; }
     _pace(name) { return this._rates.find(r => r?.pace?.value === name) ?? null; }
-    get baseMovement() {
-      const walk = this._pace("Walk");
-      return Number(walk?.perRound ?? 0); // feet / round
-    }
-    get movementMax() {
-      const feetPerRound = this.baseMovement;
-      const gridDist = Number(canvas.scene?.grid?.distance ?? 5);
-      const squares = feetPerRound / (gridDist || 5);
-      return Math.max(1, Math.round(squares));
-    }
-    get baseLabel() { return "Move"; }
-    get currentSpeed() { return this.baseMovement; }
-    get maxSpeed() { return this.baseMovement; }
-    get speed() { return this.currentSpeed; }
-    get value() { return this.currentSpeed; }
 
-    async getData(...args) {
-      const data = await super.getData?.(...args) ?? {};
-      data.current = this.currentSpeed;
-      data.max = this.maxSpeed;
-      data.base = this.baseMovement;
-      return data;
+    // --- II. Tactical Math & Overrides ---
+
+    get visible() { return true; }
+
+    /** Fixed at 10 boxes to act as a 125% BMR ruler. */
+    get movementMax() { return 10; }
+
+    /** Returns the BMR for a single phase. */
+    get _phaseBMR() {
+      const walk = this._pace("Walk");
+      const bmr = Number(walk?.perRound ?? 0);
+      const phases = game.combat?.flags?.rmu?.actionPhase?.phasesPerRound ?? 4;
+      return bmr / phases;
+    }
+
+    /** Override to track distance in raw feet, not grid squares. */
+    onTokenUpdate(updates, context) {
+      if (updates.x === undefined && updates.y === undefined) return;
+      const start = new PIXI.Point(this.token.x, this.token.y);
+      const end = new PIXI.Point(updates.x ?? this.token.x, updates.y ?? this.token.y);
+      
+      // Remove the core division by canvas.dimensions.distance
+      const distance = Math.round(canvas.grid.measurePath([start, end], { gridSpaces: true }).distance);
+      
+      if (context?.isUndo) this.movementUsed -= distance;
+      else this.movementUsed += distance;
+      
+      this.updateMovement();
+    }
+
+    /** Main logic for boxes, colors, and the Tactical Info Box. */
+    updateMovement() {
+      const isCombat = !!game.combat?.started;
+      if (!isCombat) this.movementUsed = 0;
+
+      // 1. Ensure custom elements exist
+      if (!this.element.querySelector(".rmu-tactical-info")) {
+        const textEl = this.element.querySelector(".movement-text");
+        if (textEl) textEl.style.display = "none"; 
+
+        const info = document.createElement("div");
+        info.className = "rmu-tactical-info";
+        this.element.appendChild(info);
+
+        const sidebar = document.createElement("div");
+        sidebar.className = "rmu-sidebar";
+        // 10 slots to align with 10 boxes (Top to Bottom)
+        sidebar.innerHTML = `
+            <span>D</span>
+            <span></span>
+            <span>S</span>
+            <span></span>
+            <span>R</span>
+            <span></span>
+            <span>J</span>
+            <span></span>
+            <span>W</span>
+            <span>C</span> `;
+        this.element.prepend(sidebar);
+      }
+
+      const infoBox = this.element.querySelector(".rmu-tactical-info");
+      const sidebar = this.element.querySelector(".rmu-sidebar");
+      const barsContainer = this.element.querySelector(".movement-spaces");
+
+      const visibility = isCombat ? "visible" : "hidden";
+      infoBox.style.visibility = visibility;
+      sidebar.style.visibility = visibility;
+      barsContainer.style.visibility = visibility;
+
+      if (!isCombat) return;
+
+      // 2. Determine Pace and Penalties
+      const phaseBMR = Math.max(1, this._phaseBMR); // Avoid div by zero
+      const used = this.movementUsed;
+      const ratio = used / phaseBMR;
+
+      let pace = "Stationary", pen = "0", ap = "0";
+      if (used > 0)      { pace = "Creep";  pen = "0";    ap = "0"; }
+      if (ratio > 0.125) { pace = "Walk";   pen = "-25";  ap = "1"; }
+      if (ratio > 0.25)  { pace = "Jog";    pen = "-50";  ap = "2"; }
+      if (ratio > 0.5)   { pace = "Run";    pen = "-75";  ap = "3"; }
+      if (ratio > 0.75)  { pace = "Sprint"; pen = "-100"; ap = "4"; }
+      if (ratio > 1.0)   { pace = "Dash";   pen = "-125"; ap = "5"; }
+
+      const isExceeded = ratio > 1.25;
+
+      // 3. Update Info Box Text
+      infoBox.classList.toggle("rmu-limit-exceeded", isExceeded);
+      infoBox.innerHTML = `
+        <div class="rmu-info-line">BMR/Phase: ${Math.round(phaseBMR)}ft</div>
+        <div class="rmu-info-line">Used: <strong>${used}ft</strong></div>
+        <div class="rmu-info-pace"><strong>${pace}</strong></div>
+        <div class="rmu-info-penalties">${pen} OB / ${ap} AP</div>
+        ${isExceeded ? '<div class="rmu-info-warn">DASH LIMIT EXCEEDED</div>' : ''}
+      `;
+
+      // 4. Build the 10-box Ruler with Segmented Colors
+      // Each index corresponds to the penalty color for that specific foot-range
+      const boxColors = [
+        "rmu-blue", "rmu-green",        // Box 1 (Creep), Box 2 (Walk)
+        "rmu-yellow", "rmu-yellow",     // Boxes 3-4 (Jog)
+        "rmu-orange", "rmu-orange",     // Boxes 5-6 (Run)
+        "rmu-red", "rmu-red",           // Boxes 7-8 (Sprint)
+        "rmu-dark-red", "rmu-dark-red"  // Boxes 9-10 (Dash)
+      ];
+
+      const fillCount = Math.min(10, Math.ceil(ratio * 8)); // 8 boxes = 100% BMR
+      
+      let newHtml = "";
+      for (let i = 0; i < 10; i++) {
+        const isActive = i < fillCount;
+        const colorClass = isActive ? boxColors[i] : "";
+        // Note: CSS flex-direction column-reverse will put index 0 at the bottom
+        newHtml += `<div class="movement-space ${colorClass}"></div>`;
+      }
+      barsContainer.innerHTML = newHtml;
     }
   }
   CoreHUD.defineMovementHud(RMUMovementHud);

@@ -2,6 +2,7 @@
 
 | Version   | Changes |
 | :--- | :--- |
+| **0.6.0** | **MOVEMENT HUD UPDATE** ...|
 | **0.5.6** | * Fixed issue with weapons with multiple attack variants (e.g., 1H or 2H) would use only the first variant for all attacks.<br>* Fixed issue where clearing a search in the skill search bar (text or favourite filer) would not restore visibility of the skills panel.<br>* Updated UI theme to latest version.|
 | **0.5.5** | * Updated theme colours to use HSL values.|
 | **0.5.4** | * Added filters to the spell panel for "instant" and "sub-conscious" spells.<br>* Added icons to all individual skill buttons for consistency.<br>* Resolved a bug where clearing the search filter (or un-toggling the last filter) would incorrectly show all items instead of closing the accordion in the spell and skill panels.<br>* Made under-the-covers code improvements for stability and maintainability.|

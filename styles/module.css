@@ -530,3 +530,109 @@ position: absolute;
 .enhancedcombathud-rmu .rmu-subconscious-chip::before {
   --icon-url: url('/modules/enhancedcombathud-rmu/icons/airline_seat_flat.svg');
 }
+
+/* ==================================================================
+   --- Movement HUD ---
+================================================================== */
+
+/* Custom RMU Movement colors */
+.enhancedcombathud-rmu .movement-space.rmu-blue    { background-color: #0088ff !important; }
+.enhancedcombathud-rmu .movement-space.rmu-green    { background-color: var(--filroden-color-success) !important; }
+.enhancedcombathud-rmu .movement-space.rmu-yellow   { background-color: #fffb00 !important; }
+.enhancedcombathud-rmu .movement-space.rmu-orange   { background-color: var(--filroden-color-warning) !important; }
+.enhancedcombathud-rmu .movement-space.rmu-red      { background-color: var(--filroden-color-danger) !important; }
+.enhancedcombathud-rmu .movement-space.rmu-dark-red { background-color: #8b0000 !important; }
+
+/* Vertical Layout Adjustments */
+.enhancedcombathud-rmu .movement-hud {
+    display: flex;
+    flex-direction: row !important;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 8px;
+    padding: 4px;
+    overflow: visible !important;
+    width: 110px;
+}
+
+.enhancedcombathud-rmu .movement-spaces {
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    flex-wrap: nowrap !important;
+    gap: 2px !important;
+    width: 50px !important;
+    height: 350px !important;
+    max-height: 350px !important;
+    padding: 2px;
+    border-radius: var(--filroden-radius-small);
+}
+
+.enhancedcombathud-rmu .movement-space {
+    flex: 1 0 0;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    border-radius: 1px;
+}
+
+.enhancedcombathud-rmu .rmu-sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    height: 350px !important;
+    width: 20px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--filroden-color-text-muted-solid);
+    text-align: right;
+    padding: 4px 0;
+    margin-bottom: 0.5rem;
+}
+
+.enhancedcombathud-rmu .rmu-tactical-info {
+    position: absolute;
+    right: 100%;
+    bottom: 15%;
+    margin-right: 8px;
+    width: 200px;
+    background: var(--filroden-color-bg-darkest);
+    border: 1px solid var(--filroden-color-border);
+    padding: 8px;
+    border-radius: var(--filroden-radius-medium);
+    font-family: var(--filroden-font-family);
+    box-shadow: var(--filroden-shadow-popout);
+    z-index: 100;
+    pointer-events: none;
+}
+
+.enhancedcombathud-rmu .rmu-info-line {
+    font-size: 1.1rem;
+    color: var(--filroden-color-text-muted-solid);
+    margin-bottom: 2px;
+}
+
+.enhancedcombathud-rmu .rmu-info-pace {
+    font-size: 1.3rem;
+    color: var(--filroden-color-text-accent);
+    border-top: 1px solid var(--filroden-color-border);
+    margin-top: 4px;
+    padding-top: 4px;
+}
+
+.enhancedcombathud-rmu .rmu-info-penalties {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--filroden-color-text-main-solid);
+}
+
+.enhancedcombathud-rmu .rmu-info-warn {
+    color: var(--filroden-color-danger);
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-top: 2px;
+}
+
+.enhancedcombathud-rmu .rmu-tactical-info.rmu-limit-exceeded {
+    border-color: var(--filroden-color-danger);
+    box-shadow: 0 0 5px var(--filroden-color-danger);
+}
