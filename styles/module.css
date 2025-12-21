@@ -560,7 +560,7 @@ position: absolute;
     flex-direction: column-reverse !important;
     flex-wrap: nowrap !important;
     gap: 2px !important;
-    width: 50px !important;
+    width: 40px !important;
     height: 350px !important;
     max-height: 350px !important;
     padding: 2px;
@@ -580,7 +580,7 @@ position: absolute;
     flex-direction: column !important;
     justify-content: space-between !important;
     height: 350px !important;
-    width: 20px;
+    width: 50px;
     font-size: 1.1rem;
     font-weight: bold;
     color: var(--filroden-color-text-muted-solid);
@@ -608,7 +608,7 @@ position: absolute;
 .enhancedcombathud-rmu .rmu-info-line {
     font-size: 1.1rem;
     color: var(--filroden-color-text-muted-solid);
-    margin-bottom: 2px;
+    margin: 4px 0;
 }
 
 .enhancedcombathud-rmu .rmu-info-pace {

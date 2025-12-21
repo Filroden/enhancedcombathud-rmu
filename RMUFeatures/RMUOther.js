@@ -247,38 +247,46 @@ export function defineMovementHud(CoreHUD) {
     /** Fixed at 10 boxes to act as a 125% BMR ruler. */
     get movementMax() { return 10; }
 
-    /** Returns the BMR for a single phase. */
-    get _phaseBMR() {
-      const walk = this._pace("Walk");
-      const bmr = Number(walk?.perRound ?? 0);
-      const phases = game.combat?.flags?.rmu?.actionPhase?.phasesPerRound ?? 4;
-      return bmr / phases;
+    /** Returns the BMR. */
+    get _roundBMR() {
+        const walk = this._pace("Walk");
+        return Number(walk?.perRound ?? 0); // e.g., 30ft
     }
 
-    /** Override to track distance in raw feet, not grid squares. */
+    /** * Fetches the total distance moved this round directly from Foundry's history.
+     */
+    get movementUsed() {
+        if (!game.combat?.started || !this.token) return 0;
+
+        const doc = this.token.document;
+        const history = Array.isArray(doc._movementHistory) ? doc._movementHistory : [];
+        
+        // If no history exists, we are at 0 movement
+        if (history.length === 0) return 0;
+
+        // MEASUREMENT SAFETY: 
+        // If the combat round has advanced but history remains, 
+        // check if the history entries belong to the current round.
+        // If system doesn't timestamp history, rely on the canvas utility.
+        const segments = history.map(h => ({ x: h.x, y: h.y }));
+        const measurement = canvas.grid.measurePath(segments);
+
+        return measurement.distance;
+    }
+
     onTokenUpdate(updates, context) {
-      if (updates.x === undefined && updates.y === undefined) return;
-      const start = new PIXI.Point(this.token.x, this.token.y);
-      const end = new PIXI.Point(updates.x ?? this.token.x, updates.y ?? this.token.y);
-      
-      // Remove the core division by canvas.dimensions.distance
-      const distance = Math.round(canvas.grid.measurePath([start, end], { gridSpaces: true }).distance);
-      
-      if (context?.isUndo) this.movementUsed -= distance;
-      else this.movementUsed += distance;
-      
-      this.updateMovement();
+        if (updates.x === undefined && updates.y === undefined) return;
+        this.updateMovement();
     }
 
     /** Main logic for boxes, colors, and the Tactical Info Box. */
     updateMovement() {
-      const isCombat = !!game.combat?.started;
-      if (!isCombat) this.movementUsed = 0;
-
-      // 1. Ensure custom elements exist
-      if (!this.element.querySelector(".rmu-tactical-info")) {
+        const isCombat = !!game.combat?.started;
+      
+    // 1. Ensure custom elements exist
+    if (!this.element.querySelector(".rmu-tactical-info")) {
         const textEl = this.element.querySelector(".movement-text");
-        if (textEl) textEl.style.display = "none"; 
+        if (textEl) textEl.style.display = "none";
 
         const info = document.createElement("div");
         info.className = "rmu-tactical-info";
@@ -286,80 +294,87 @@ export function defineMovementHud(CoreHUD) {
 
         const sidebar = document.createElement("div");
         sidebar.className = "rmu-sidebar";
-        // 10 slots to align with 10 boxes (Top to Bottom)
         sidebar.innerHTML = `
-            <span>D</span>
-            <span></span>
-            <span>S</span>
-            <span></span>
-            <span>R</span>
-            <span></span>
-            <span>J</span>
-            <span></span>
-            <span>W</span>
-            <span>C</span> `;
+            <span>Dash</span><span></span>
+            <span>Sprint</span><span></span>
+            <span>Run</span><span></span>
+            <span>Jog</span><span></span>
+            <span>Walk</span><span>Creep</span>`;
         this.element.prepend(sidebar);
-      }
+    }
 
-      const infoBox = this.element.querySelector(".rmu-tactical-info");
-      const sidebar = this.element.querySelector(".rmu-sidebar");
-      const barsContainer = this.element.querySelector(".movement-spaces");
+    const infoBox = this.element.querySelector(".rmu-tactical-info");
+    const sidebar = this.element.querySelector(".rmu-sidebar");
+    const barsContainer = this.element.querySelector(".movement-spaces");
 
-      const visibility = isCombat ? "visible" : "hidden";
-      infoBox.style.visibility = visibility;
-      sidebar.style.visibility = visibility;
-      barsContainer.style.visibility = visibility;
+    const visibilityState = isCombat ? "visible" : "hidden";
+    if (infoBox) infoBox.style.visibility = visibilityState;
+    if (sidebar) sidebar.style.visibility = visibilityState;
+    if (barsContainer) barsContainer.style.visibility = visibilityState;
 
-      if (!isCombat) return;
+    if (!isCombat) return;
 
-      // 2. Determine Pace and Penalties
-      const phaseBMR = Math.max(1, this._phaseBMR); // Avoid div by zero
-      const used = this.movementUsed;
-      const ratio = used / phaseBMR;
+    // 2. Logic: Round-Based Cumulative Movement
+    const bmr = Math.max(0.01, this._roundBMR); // The 1.0x Round BMR (e.g., 30ft)
+    const used = this.movementUsed; // Cumulative distance from Foundry history
+    const roundRatio = used / bmr; // How much of the round's Walk BMR has been used
 
-      let pace = "Stationary", pen = "0", ap = "0";
-      if (used > 0)      { pace = "Creep";  pen = "0";    ap = "0"; }
-      if (ratio > 0.125) { pace = "Walk";   pen = "-25";  ap = "1"; }
-      if (ratio > 0.25)  { pace = "Jog";    pen = "-50";  ap = "2"; }
-      if (ratio > 0.5)   { pace = "Run";    pen = "-75";  ap = "3"; }
-      if (ratio > 0.75)  { pace = "Sprint"; pen = "-100"; ap = "4"; }
-      if (ratio > 1.0)   { pace = "Dash";   pen = "-125"; ap = "5"; }
+    // Determine Pace based on RMU Round Multipliers
+    let pace = "Stationary", pen = "0", ap = "0";
+    if (used > 0)          { pace = "Creep";  pen = "0";    ap = "0"; }
+    if (roundRatio > 0.5)  { pace = "Walk";   pen = "-25";  ap = "1"; }
+    if (roundRatio > 1.0)  { pace = "Jog";    pen = "-50";  ap = "2"; }
+    if (roundRatio > 2.0)  { pace = "Run";    pen = "-75";  ap = "3"; }
+    if (roundRatio > 3.0)  { pace = "Sprint"; pen = "-100"; ap = "4"; }
+    if (roundRatio > 4.0)  { pace = "Dash";   pen = "-125"; ap = "5"; }
 
-      const isExceeded = ratio > 1.25;
+    const isExceeded = roundRatio > 5.0; // Beyond Dash
 
-      // 3. Update Info Box Text
-      infoBox.classList.toggle("rmu-limit-exceeded", isExceeded);
-      infoBox.innerHTML = `
-        <div class="rmu-info-line">BMR/Phase: ${Math.round(phaseBMR)}ft</div>
-        <div class="rmu-info-line">Used: <strong>${used}ft</strong></div>
+    // 3. Update Info Box Text
+    infoBox.classList.toggle("rmu-limit-exceeded", isExceeded);
+    infoBox.innerHTML = `
+        <div class="rmu-info-line">Round BMR: ${bmr.toFixed(2)}ft</div>
+        <div class="rmu-info-line">Total Moved: <strong>${used.toFixed(2)}ft</strong></div>
         <div class="rmu-info-pace"><strong>${pace}</strong></div>
         <div class="rmu-info-penalties">${pen} OB / ${ap} AP</div>
-        ${isExceeded ? '<div class="rmu-info-warn">DASH LIMIT EXCEEDED</div>' : ''}
-      `;
+        ${isExceeded ? '<div class="rmu-info-warn">ROUND LIMIT EXCEEDED</div>' : ''}
+    `;
 
-      // 4. Build the 10-box Ruler with Segmented Colors
-      // Each index corresponds to the penalty color for that specific foot-range
-      const boxColors = [
-        "rmu-blue", "rmu-green",        // Box 1 (Creep), Box 2 (Walk)
-        "rmu-yellow", "rmu-yellow",     // Boxes 3-4 (Jog)
-        "rmu-orange", "rmu-orange",     // Boxes 5-6 (Run)
-        "rmu-red", "rmu-red",           // Boxes 7-8 (Sprint)
-        "rmu-dark-red", "rmu-dark-red"  // Boxes 9-10 (Dash)
-      ];
+    // 4. Update the 10-box Ruler
+    // Scale the 10 boxes to represent the range from 0 to Dash (5x BMR)
+    // Each box = 0.5x BMR (1/10th of Dash)
+    const fillCount = Math.min(10, Math.ceil(roundRatio * 2)); 
 
-      const fillCount = Math.min(10, Math.ceil(ratio * 8)); // 8 boxes = 100% BMR
-      
-      let newHtml = "";
-      for (let i = 0; i < 10; i++) {
+    const boxColors = [
+        "rmu-blue", "rmu-green",      // 0.5x (Creep), 1.0x (Walk)
+        "rmu-yellow", "rmu-yellow",   // 1.5x, 2.0x (Jog)
+        "rmu-orange", "rmu-orange",   // 2.5x, 3.0x (Run)
+        "rmu-red", "rmu-red",         // 3.5x, 4.0x (Sprint)
+        "rmu-dark-red", "rmu-dark-red" // 4.5x, 5.0x (Dash)
+    ];
+
+    let newHtml = "";
+    for (let i = 0; i < 10; i++) {
         const isActive = i < fillCount;
         const colorClass = isActive ? boxColors[i] : "";
-        // Note: CSS flex-direction column-reverse will put index 0 at the bottom
         newHtml += `<div class="movement-space ${colorClass}"></div>`;
-      }
-      barsContainer.innerHTML = newHtml;
     }
-  }
-  CoreHUD.defineMovementHud(RMUMovementHud);
+    barsContainer.innerHTML = newHtml;
+    }
+
+    set movementUsed(value) { /* no-op in RMU */ }
+
+    _onNewRound(combat) {
+        setTimeout(() => {
+            this.updateMovement();
+        }, 50);
+    }
+
+    _onCombatEnd(combat) { this.updateMovement(); }
+
+    }
+
+    CoreHUD.defineMovementHud(RMUMovementHud);
 }
 
 /**
@@ -668,7 +683,6 @@ export function defineCombatMain(CoreHUD) {
     get icon() { return ICONS.combat; }
     get isInteractive() { return true; }
     get hasTooltip() { return true; }
-    /** Only visible if it's this token's turn in active combat. */
     get visible() {
       const tokenId = ui.ARGON?._token?.id;
       const c = game.combat;
@@ -676,23 +690,23 @@ export function defineCombatMain(CoreHUD) {
       const activeId = c.combatant?.tokenId ?? c.current?.tokenId ?? null;
       return activeId === tokenId;
     }
-    async getTooltipData() { return { title: "End Turn", subtitle: "Advance to next combatant", details: [{ label: "Action", value: "Ends this token’s turn." }] }; }
-    async _renderInner() { await super._renderInner(); if (this.element) { this.element.style.pointerEvents = "auto"; this.element.style.cursor = "pointer"; } }
-    async _onMouseDown(ev) { if (ev?.button !== 0) return; ev.preventDefault(); ev.stopPropagation(); await this._endTurn(); }
-    async _onLeftClick(ev) { ev?.preventDefault?.(); ev?.stopPropagation?.(); }
-    async _endTurn() {
-      const c = game.combat;
-      const tokenId = ui.ARGON?._token?.id;
-      const activeId = c?.combatant?.tokenId ?? c?.current?.tokenId ?? null;
-      if (!c?.started || !tokenId || activeId !== tokenId) { ui.notifications?.warn?.("It is not this token’s turn."); return; }
-      try {
-        if (typeof c.nextTurn === "function") await c.nextTurn();
-        else if (typeof c.advanceTurn === "function") await c.advanceTurn();
-        else ui.notifications?.error?.("Combat API does not support advancing turns.");
-      } catch (e) {
-        console.error("[ECH-RMU] End Turn failed:", e);
-        ui.notifications?.error?.(`End Turn failed: ${e?.message ?? e}`);
-      }
+    
+    // Argon Buttons prefer _onLeftClick for interaction
+    async _onLeftClick(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const c = game.combat;
+        if (!c?.started) return;
+
+        try {
+            // Support both standard Foundry and common module combat extensions
+            if (typeof c.nextTurn === "function") await c.nextTurn();
+            else if (typeof c.advanceTurn === "function") await c.advanceTurn();
+            else ui.notifications?.error?.("Combat API does not support advancing turns.");
+        } catch (e) {
+            console.error("[ECH-RMU] End Turn failed:", e);
+        }
     }
   }
 
