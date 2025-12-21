@@ -545,12 +545,13 @@ position: absolute;
 
 /* Vertical Layout Adjustments */
 .enhancedcombathud-rmu .movement-hud {
+    --rmu-movement-hud-height: 325px;
     display: flex;
     flex-direction: row !important;
     align-items: flex-end;
     justify-content: center;
-    gap: 8px;
-    padding: 4px;
+    gap: var(--filroden-space-xs);
+    padding: var(--filroden-space-xs);
     overflow: visible !important;
     width: 110px;
 }
@@ -559,12 +560,14 @@ position: absolute;
     display: flex !important;
     flex-direction: column-reverse !important;
     flex-wrap: nowrap !important;
-    gap: 2px !important;
-    width: 40px !important;
-    height: 350px !important;
-    max-height: 350px !important;
-    padding: 2px;
+    gap: var(--filroden-space-xxs) !important;
+    width: 35px !important;
+    height: var(--rmu-movement-hud-height) !important;
+    max-height: var(--rmu-movement-hud-height) !important;
+    padding: var(--filroden-space-xxs);
     border-radius: var(--filroden-radius-small);
+    border: 1px solid rgba(0,0,0,0.2);
+    background: rgba(0,0,0,0.1);
 }
 
 .enhancedcombathud-rmu .movement-space {
@@ -575,64 +578,96 @@ position: absolute;
     border-radius: 1px;
 }
 
+/* Ghost Marker for Max Phase History */
+.enhancedcombathud-rmu .movement-space.rmu-ghost-max {
+    position: relative; /* Needed for pseudo-element positioning */
+    overflow: visible;  /* Allow the marker to sit clearly */
+}
+
+/* Creates a bright white line at the top of the box */
+.enhancedcombathud-rmu .movement-space.rmu-ghost-max::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #ffffff;
+    box-shadow: 0 0 4px #000000;
+    z-index: 10;
+}
+
 .enhancedcombathud-rmu .rmu-sidebar {
     display: flex !important;
     flex-direction: column !important;
     justify-content: space-between !important;
-    height: 350px !important;
-    width: 50px;
-    font-size: 1.1rem;
+    height: var(--rmu-movement-hud-height) !important;
+    width: 20px;
+    font-size: var(--filroden-font-size-l);
     font-weight: bold;
     color: var(--filroden-color-text-muted-solid);
-    text-align: right;
-    padding: 4px 0;
-    margin-bottom: 0.5rem;
+    text-align: center;
+    padding: var(--filroden-space-xs) 0;
+    margin-bottom: var(--filroden-space-s);
+}
+
+.enhancedcombathud-rmu .rmu-track-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    align-items: center;
+    gap: var(--filroden-space-xxs);
+}
+
+.enhancedcombathud-rmu .rmu-track-label {
+    font-size: var(--filroden-font-size-s);
+    font-weight: bold;
+    color: var(--filroden-color-text-muted-solid);
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: var(--filroden-space-s);
+    height: 12px;
+    line-height: 12px;
 }
 
 .enhancedcombathud-rmu .rmu-tactical-info {
     position: absolute;
     right: 100%;
     bottom: 15%;
-    margin-right: 8px;
+    margin-right: var(--filroden-space-s);
     width: 200px;
     background: var(--filroden-color-bg-darkest);
     border: 1px solid var(--filroden-color-border);
-    padding: 8px;
+    padding: var(--filroden-space-s);
     border-radius: var(--filroden-radius-medium);
     font-family: var(--filroden-font-family);
+    font-size: var(--filroden-font-size-m);
+    color: var(--filroden-color-text-muted-solid);
+    text-align: start;
     box-shadow: var(--filroden-shadow-popout);
     z-index: 100;
     pointer-events: none;
 }
 
-.enhancedcombathud-rmu .rmu-info-line {
-    font-size: 1.1rem;
-    color: var(--filroden-color-text-muted-solid);
-    margin: 4px 0;
-}
-
-.enhancedcombathud-rmu .rmu-info-pace {
-    font-size: 1.3rem;
+.enhancedcombathud-rmu .rmu-info-header {
     color: var(--filroden-color-text-accent);
-    border-top: 1px solid var(--filroden-color-border);
-    margin-top: 4px;
-    padding-top: 4px;
+    font-weight: bold;
+    padding-top: var(--filroden-space-xs);
+    text-transform: uppercase;
 }
 
-.enhancedcombathud-rmu .rmu-info-penalties {
-    font-size: 1.1rem;
-    font-weight: bold;
-    color: var(--filroden-color-text-main-solid);
+.enhancedcombathud-rmu .rmu-info-section {
+    margin: var(--filroden-space-xs) 0;
+    border-top: 1px solid var(--filroden-color-text-accent);
+    padding-top: var(--filroden-space-xs);
+}
+
+.enhancedcombathud-rmu .rmu-info-line {
+    margin: var(--filroden-space-xs) 0;
 }
 
 .enhancedcombathud-rmu .rmu-info-warn {
-    color: var(--filroden-color-danger);
+    color: var(--filroden-color-warning);
     font-weight: bold;
-    font-size: 0.9rem;
-    margin-top: 2px;
-}
-
-.enhancedcombathud-rmu .rmu-tactical-info.rmu-limit-exceeded {
-    border-color: var(--filroden-color-danger);
-    box-shadow: 0 0 5px var(--filroden-color-danger);
+    margin-top: var(--filroden-space-xs);
 }
