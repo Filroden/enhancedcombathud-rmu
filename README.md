@@ -29,17 +29,20 @@ An implementation of the [Argon - Combat HUD](https://foundryvtt.com/packages/en
 This module adjusts various Argon features for the Rolemaster Unified system:
 
 * **Portrait:** A customised portrait panel showing HP, Power Points, and Defensive Bonus, with buttons to open the character sheet, set defences (dodge, block and other DB modifier), and to roll initiative.
-* **Movement HUD:** Integrates with the RMU movement system.
+* **Movement HUD:** Integrates with the RMU movement system showing the current movement in the phase and how much you can move before spending the next AP (dedicated movement) or incuring the next penalty (acting while moving).
+
+    <img src="images/movement_hud.png" width=200px>
+
 * **Attacks:** Categorised attack buttons for Melee, Ranged, Natural (including innate magic), Shield, and Spell attacks. Weapons can be equipped and unequipped within the panel.
 * **Other panels:** Dedicated panels for:
-    * Spell Casting Rolls (SCR)
-    * Skill Manueuvre Rolls (including Spell Mastery)
-    * Resistance Rolls
-    * Endurance Checks (Physical/Mental)
+  * Spell Casting Rolls (SCR)
+  * Skill Manueuvre Rolls (including Spell Mastery)
+  * Resistance Rolls
+  * Endurance Checks (Physical/Mental)
 * **Search:** A search tool for spells and skills. Just start typing and it will show any spells or skills matching your text and the number found on the right of the search bar. Click the clear icon in the search bar to reset the filter. There are also toggleable filters for specific spell or skill properties such as filtering for spells that can be cast instantaneously or sub-consciously.
 * **Utilities:**
-    * A "Rest" button to open the RMU rest dialog.
-    * A combat panel to end the current combatant's turn.
+  * A "Rest" button to open the RMU rest dialog.
+  * A combat panel to end the current combatant's turn.
 * **Tooltips:** Each action button has a rich tooltip showing the same data available in the character sheet.
 
 ---
@@ -51,6 +54,5 @@ This module adjusts various Argon features for the Rolemaster Unified system:
 ## Roadmap
 
 * Items (waiting on a system dependency)
-* Movement improvements to account for phased combat, show smaller units (1'), add additional colour breaks to allow for walk, jog, run, sprint and dash
 
 **If you have suggestions, questions, or requests for additional features, please [let me know](https://github.com/Filroden/enhancedcombathud-rmu/issues).**

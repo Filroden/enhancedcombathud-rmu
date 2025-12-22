@@ -535,6 +535,11 @@ position: absolute;
    --- Movement HUD ---
 ================================================================== */
 
+/* Permanently hide Argon's core movement text */
+.enhancedcombathud-rmu .movement-text {
+    display: none !important;
+}
+
 /* Custom RMU Movement colors */
 .enhancedcombathud-rmu .movement-space.rmu-blue    { background-color: #0088ff !important; }
 .enhancedcombathud-rmu .movement-space.rmu-green    { background-color: var(--filroden-color-success) !important; }
@@ -602,11 +607,11 @@ position: absolute;
     flex-direction: column !important;
     justify-content: space-between !important;
     height: var(--rmu-movement-hud-height) !important;
-    width: 20px;
+    width: 50px;
     font-size: var(--filroden-font-size-l);
     font-weight: bold;
     color: var(--filroden-color-text-muted-solid);
-    text-align: center;
+    text-align: right;
     padding: var(--filroden-space-xs) 0;
     margin-bottom: var(--filroden-space-s);
 }
@@ -635,7 +640,7 @@ position: absolute;
     right: 100%;
     bottom: 15%;
     margin-right: var(--filroden-space-s);
-    width: 200px;
+    width: 250px;
     background: var(--filroden-color-bg-darkest);
     border: 1px solid var(--filroden-color-border);
     padding: var(--filroden-space-s);
@@ -650,7 +655,16 @@ position: absolute;
 }
 
 .enhancedcombathud-rmu .rmu-info-header {
+    color: var(--filroden-color-text-main-solid);
+    font-size: var(--filroden-font-size-l);
+    font-weight: bold;
+    padding-top: var(--filroden-space-xs);
+    text-transform: uppercase;
+}
+
+.enhancedcombathud-rmu .rmu-section-header {
     color: var(--filroden-color-text-accent);
+    font-size: var(--filroden-font-size-s);
     font-weight: bold;
     padding-top: var(--filroden-space-xs);
     text-transform: uppercase;
@@ -663,7 +677,14 @@ position: absolute;
 }
 
 .enhancedcombathud-rmu .rmu-info-line {
-    margin: var(--filroden-space-xs) 0;
+    margin: var(--filroden-space-xs) 0 0 var(--filroden-space-l);
+}
+
+.enhancedcombathud-rmu .rmu-info-sub {
+    font-size: var(--filroden-font-size-s);
+    font-weight: bold;
+    text-transform: uppercase;
+    margin: var(--filroden-space-xs) 0 0 var(--filroden-space-l);
 }
 
 .enhancedcombathud-rmu .rmu-info-warn {

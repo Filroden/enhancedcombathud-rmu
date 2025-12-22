@@ -232,71 +232,141 @@ export function defineMovementHud(CoreHUD) {
 
   if (!Base) return;
 
-  // --- GLOBAL HOOK: Strict Ownership Management for Phase History ---
+  // ===========================================================================
+  // 1. GLOBAL HELPERS
+  // ===========================================================================
+
+  function getPaceStats(dist, phaseBMR) {
+      const ratio = phaseBMR > 0 ? dist / phaseBMR : 0;
+      let penalty = 0, pace = "Stationary";
+      if (dist > 0)          { pace = "Creep";  penalty = 0; }
+      if (ratio > 0.5)   { pace = "Walk";   penalty = -25; }
+      if (ratio > 1.0)   { pace = "Jog";    penalty = -50; }
+      if (ratio > 2.0)   { pace = "Run";    penalty = -75; }
+      if (ratio > 3.0)   { pace = "Sprint"; penalty = -100; }
+      if (ratio > 4.0)   { pace = "Dash";   penalty = -125; }
+      return { penalty, pace, ratio };
+  }
+
+  function getAPCost(dist, roundBMR) {
+      if (dist <= 0) return 0;
+      if ((dist / roundBMR) <= 0.5) return 0; 
+      return Math.ceil(dist / roundBMR);
+  }
+
+  // Helper: Commit Phase Data (High Water Mark + AP Accumulator)
+  async function commitTurnData(token, combat) {
+      const doc = token.document || token;
+      
+      const startDist = doc.getFlag("enhancedcombathud-rmu", "phaseStartDist") ?? 0;
+      const history = doc._movementHistory ?? [];
+      const segments = history.map(h => ({ x: h.x, y: h.y }));
+      const currentTotal = history.length ? canvas.grid.measurePath(segments).distance : 0;
+      
+      const phaseDist = Math.max(0, Number((currentTotal - startDist).toFixed(2)));
+
+      // Update High Water Mark
+      let currentMax = doc.getFlag("enhancedcombathud-rmu", "maxCompletedPhases") ?? 0;
+      if (phaseDist > currentMax) {
+          await doc.setFlag("enhancedcombathud-rmu", "maxCompletedPhases", phaseDist);
+      }
+
+      // Accumulate AP Cost
+      const roundBMR = doc.actor?.system?.movement?.baseRate || 30; 
+      const phaseCost = getAPCost(phaseDist, roundBMR);
+      
+      if (phaseCost > 0) {
+          const currentAccum = doc.getFlag("enhancedcombathud-rmu", "roundAPSpent") || 0;
+          await doc.setFlag("enhancedcombathud-rmu", "roundAPSpent", currentAccum + phaseCost);
+      }
+  }
+
+  // Helper: Cleanup flags
+  async function wipeFlags(tokens, fullWipe = false) {
+      if (!canvas.scene || !tokens.length) return;
+      const updates = tokens.map(t => {
+          const flags = {
+              "-=phaseStartDist": null,
+              "-=maxCompletedPhases": null
+          };
+          if (fullWipe) {
+              flags["-=roundAPSpent"] = null;
+          }
+          return { _id: t.id, "flags.enhancedcombathud-rmu": flags };
+      });
+      await canvas.scene.updateEmbeddedDocuments("Token", updates);
+  }
+
+  // ===========================================================================
+  // 2. HOOKS
+  // ===========================================================================
+
   Hooks.on("updateCombat", async (combat, updates) => {
     if (!combat.started) return;
 
-    // 1. ENDING TURN LOGIC (Save High Water Mark)
-    // We check if *I* am the one who just finished a turn.
+    if ("round" in updates) {
+        const prevId = combat.previous.combatantId;
+        if (prevId) {
+            const prevComb = combat.combatants.get(prevId);
+            if (prevComb?.token?.object?.isOwner) {
+                await commitTurnData(prevComb.token.object, combat);
+            }
+        }
+        const tokens = combat.combatants.map(c => c.token?.object).filter(t => t && t.isOwner);
+        await wipeFlags(tokens, true); 
+        return; 
+    }
+
     const prevId = combat.previous.combatantId;
     if (prevId) {
-        const prevCombatant = combat.combatants.get(prevId);
-        // Only run this if I OWN the previous combatant
-        if (prevCombatant?.tokenId && prevCombatant.isOwner) {
-            const token = canvas.tokens.get(prevCombatant.tokenId);
-            if (token) {
-                // Calculate distance moved in that just-finished phase
-                const history = token.document._movementHistory ?? [];
-                const segments = history.map(h => ({ x: h.x, y: h.y }));
-                const currentTotal = history.length ? canvas.grid.measurePath(segments).distance : 0;
-                
-                const startDist = token.document.getFlag("enhancedcombathud-rmu", "phaseStartDist") ?? 0;
-                const distTraveled = Math.max(0, currentTotal - startDist);
-                
-                // Compare against existing max for the round
-                const currentMax = token.document.getFlag("enhancedcombathud-rmu", "maxCompletedPhases") ?? 0;
-                
-                if (distTraveled > currentMax) {
-                    await token.document.setFlag("enhancedcombathud-rmu", "maxCompletedPhases", distTraveled);
-                }
-            }
+        const prevComb = combat.combatants.get(prevId);
+        if (prevComb?.token?.object?.isOwner) {
+            await commitTurnData(prevComb.token.object, combat);
         }
     }
 
-    // 2. STARTING TURN LOGIC (Set Phase Baseline)
-    // We check if *I* am the one starting a turn.
-    const currentId = combat.current.combatantId;
-    const currentCombatant = combat.combatants.get(currentId);
-    if (currentCombatant?.tokenId && currentCombatant.isOwner) {
-        const token = canvas.tokens.get(currentCombatant.tokenId);
-        if (token) {
+    const currId = combat.current.combatantId;
+    if (currId) {
+        const currComb = combat.combatants.get(currId);
+        if (currComb?.token?.object?.isOwner) {
+            const token = currComb.token.object;
             const history = token.document._movementHistory ?? [];
             const segments = history.map(h => ({ x: h.x, y: h.y }));
             const total = history.length ? canvas.grid.measurePath(segments).distance : 0;
             
-            // Snapshot my total distance as the "Floor" for this new phase
             await token.document.setFlag("enhancedcombathud-rmu", "phaseStartDist", total);
         }
     }
   });
 
+  Hooks.on("combatStart", async (combat) => {
+      const tokens = combat.combatants.map(c => c.token).filter(t => t && t.isOwner);
+      await wipeFlags(tokens, true);
+  });
+
+  Hooks.on("deleteCombat", async (combat) => {
+      const docs = combat.combatants.map(c => c.token).filter(t => t && t.isOwner);
+      await wipeFlags(docs, true);
+  });
+
+  // ===========================================================================
+  // 3. HUD CLASS
+  // ===========================================================================
   class RMUMovementHud extends Base {
-    // --- Data Helpers ---
     get _mv() { return this.actor?.system?._movementBlock ?? {}; }
     get _modeKey() { return this._mv._selected; }
     get _modeTbl() { return this._mv._table?.[this._modeKey] ?? null; }
     get _rates() { return Array.isArray(this._modeTbl?.paceRates) ? this._modeTbl.paceRates : []; }
     _pace(name) { return this._rates.find(r => r?.pace?.value === name) ?? null; }
-
+    
     get visible() { return true; }
     get movementMax() { return 10; }
 
-    /** Round BMR (e.g. 30ft) */
-    get _roundBMR() {
-      const walk = this._pace("Walk");
-      return Number(walk?.perRound ?? 0); 
+    get _roundBMR() { 
+        const walk = this._pace("Walk"); 
+        return Number(walk?.perRound ?? 0); 
     }
-
+    
     get totalRoundMovement() {
       if (!game.combat?.started || !this.token) return 0;
       const doc = this.token.document;
@@ -306,16 +376,18 @@ export function defineMovementHud(CoreHUD) {
       return canvas.grid.measurePath(segments).distance;
     }
 
-    /** Distance moved in current active phase */
     get phaseMovement() {
         const total = this.totalRoundMovement;
         const startDist = this.token.document.getFlag("enhancedcombathud-rmu", "phaseStartDist") ?? 0;
-        return Math.max(0, total - startDist);
+        return Math.max(0, Number((total - startDist).toFixed(2)));
     }
 
-    /** Max distance moved in any COMPLETED phase this round */
     get maxHistoryMovement() {
         return this.token.document.getFlag("enhancedcombathud-rmu", "maxCompletedPhases") ?? 0;
+    }
+
+    get committedRoundAP() {
+        return this.token.document.getFlag("enhancedcombathud-rmu", "roundAPSpent") || 0;
     }
 
     onTokenUpdate(updates, context) {
@@ -323,26 +395,14 @@ export function defineMovementHud(CoreHUD) {
       this.updateMovement();
     }
 
-    /** Helper to generate HTML for a 10-box bar */
     _buildBarHtml(ratio, maxMarkerIndex = -1) {
-        // Standard RMU Scale: Walk (1.0 ratio) = 2 boxes.
         const boxesFilled = Math.min(10, Math.ceil(ratio * 2));
-
-        const boxColors = [
-            "rmu-blue", "rmu-green",        // 0.5x, 1.0x (Walk)
-            "rmu-yellow", "rmu-yellow",     // 1.5x, 2.0x (Jog)
-            "rmu-orange", "rmu-orange",     // 2.5x, 3.0x (Run)
-            "rmu-red", "rmu-red",           // 3.5x, 4.0x (Sprint)
-            "rmu-dark-red", "rmu-dark-red"  // 4.5x, 5.0x (Dash)
-        ];
-
+        const boxColors = ["rmu-blue", "rmu-green", "rmu-yellow", "rmu-yellow", "rmu-orange", "rmu-orange", "rmu-red", "rmu-red", "rmu-dark-red", "rmu-dark-red"];
         let html = "";
         for (let i = 0; i < 10; i++) {
             const isActive = i < boxesFilled;
             const colorClass = isActive ? boxColors[i] : "";
-            // Apply ghost marker ONLY if this box matches the max history index
             const ghostClass = (i === maxMarkerIndex) ? "rmu-ghost-max" : "";
-            
             html += `<div class="movement-space ${colorClass} ${ghostClass}"></div>`;
         }
         return html;
@@ -350,137 +410,112 @@ export function defineMovementHud(CoreHUD) {
 
     async updateMovement() {
       const isCombat = !!game.combat?.started;
+      const token = this.token;
       
-      // 1. UI Setup
+      // UI Setup
       if (!this.element.querySelector(".rmu-tactical-info")) {
-        const textEl = this.element.querySelector(".movement-text");
-        if (textEl) textEl.style.display = "none";
-
-        const info = document.createElement("div");
-        info.className = "rmu-tactical-info";
-        this.element.appendChild(info);
-
-        const sidebar = document.createElement("div");
-        sidebar.className = "rmu-sidebar";
-        sidebar.innerHTML = `
-            <span>D</span><span></span>
-            <span>S</span><span></span>
-            <span>R</span><span></span>
-            <span>J</span><span></span>
-            <span>W</span><span>C</span>`;
-        this.element.prepend(sidebar);
-
-        const track1 = document.createElement("div");
-        track1.className = "rmu-track-container";
-        track1.innerHTML = `<div class="rmu-track-label">RND</div><div class="movement-spaces round-track"></div>`;
+        const info = document.createElement("div"); info.className = "rmu-tactical-info"; this.element.appendChild(info);
         
-        const track2 = document.createElement("div");
-        track2.className = "rmu-track-container";
-        track2.innerHTML = `<div class="rmu-track-label">PHS</div><div class="movement-spaces phase-track"></div>`;
+        // SIDEBAR: Full labels restored
+        const sidebar = document.createElement("div"); sidebar.className = "rmu-sidebar";
+        sidebar.innerHTML = `
+            <span>Dash</span><span></span>
+            <span>Sprint</span><span></span>
+            <span>Run</span><span></span>
+            <span>Jog</span><span></span>
+            <span>Walk</span><span>Creep</span>
+        `;
+        this.element.prepend(sidebar);
+        
+        // SINGLE TRACK: PHASE
+        const trackContainer = document.createElement("div"); trackContainer.className = "rmu-track-container";
+        trackContainer.innerHTML = `<div class="rmu-track-label">PHASE</div><div class="movement-spaces phase-track"></div>`;
         
         const existingSpaces = this.element.querySelector(".movement-spaces");
-        if (existingSpaces && !existingSpaces.classList.contains("round-track")) {
-            existingSpaces.replaceWith(track1);
-            track1.after(track2);
-        } else if (!this.element.querySelector(".round-track")) {
-             this.element.appendChild(track1);
-             this.element.appendChild(track2);
-        }
+        if (existingSpaces && !existingSpaces.classList.contains("phase-track")) { existingSpaces.replaceWith(trackContainer); }
+        else if (!this.element.querySelector(".phase-track")) { this.element.appendChild(trackContainer); }
       }
 
-      // --- DEFINITIONS (Declared once here) ---
       const infoBox = this.element.querySelector(".rmu-tactical-info");
       const sidebar = this.element.querySelector(".rmu-sidebar");
-      const roundBar = this.element.querySelector(".round-track");
       const phaseBar = this.element.querySelector(".phase-track");
 
       const visibilityState = isCombat ? "visible" : "hidden";
       if (infoBox) infoBox.style.visibility = visibilityState;
       if (sidebar) sidebar.style.visibility = visibilityState;
-      if (roundBar) roundBar.parentElement.style.visibility = visibilityState;
       if (phaseBar) phaseBar.parentElement.style.visibility = visibilityState;
 
-      if (!isCombat) return;
+      if (!isCombat || !token) return;
 
-      // --- 2. DATA CALCULATIONS ---
-      
-      // A. Baselines
+      // --- CALCULATIONS ---
       const roundBMR = Math.max(0.01, this._roundBMR); 
       const phases = game.combat?.flags?.rmu?.actionPhase?.phasesPerRound ?? 4;
       const phaseBMR = roundBMR / phases; 
       
-      // B. Distances
-      const totalDist = this.totalRoundMovement; // For Middle Section
-      const phaseDist = this.phaseMovement;       // For Phase Bar
-      const maxHistoryDist = this.maxHistoryMovement; // For Bottom Section
+      const phaseDist = this.phaseMovement;
+      const maxHistoryDist = this.maxHistoryMovement;
       const effectivePhaseDist = Math.max(phaseDist, maxHistoryDist);
 
-      // C. Ratios
-      const roundRatio = totalDist / roundBMR; // 1.0 = Walk (1x BMR)
-      const penaltyRatio = effectivePhaseDist / phaseBMR; // 1.0 = Walk (1x Phase BMR)
-
-      // --- 3. MIDDLE SECTION: DEDICATED MOVEMENT (AP COST) ---
-      let apCost = 0;
-      if (totalDist > 0) apCost = Math.ceil(roundRatio);
-      if (apCost === 0 && totalDist > 0) apCost = 1; 
-      if (totalDist > 0 && apCost < 1) apCost = 1;
-
-      // Warning: Exceeding Dash (5x BMR)
-      const isDashExceeded = roundRatio > 5.0;
+      // AP Math
+      const currentPhaseCost = getAPCost(phaseDist, roundBMR);
+      const totalRoundAP = this.committedRoundAP + currentPhaseCost;
       
-      // Next AP Calculation
-      const currentAPTier = Math.floor(totalDist / roundBMR);
-      const nextAPDist = (currentAPTier + 1) * roundBMR;
-      const distToNextAP = nextAPDist - totalDist;
+      // Next AP Trigger
+      let distToNextAP = 0;
+      if (currentPhaseCost === 0) {
+          distToNextAP = Math.max(0, (roundBMR * 0.5) - phaseDist);
+      } else {
+          distToNextAP = Math.max(0, (currentPhaseCost * roundBMR) - phaseDist);
+      }
 
-      // --- 4. BOTTOM SECTION: ACTING WHILE MOVING (PENALTIES) ---
-      let paceName = "Stationary";
-      let penalty = 0;
+      // Phase Intensity Stats
+      const penaltyStats = getPaceStats(effectivePhaseDist, phaseBMR);
+      const isActionInvalid = penaltyStats.ratio > 3.0;
+
+      // Next Penalty Logic
+      const thresholds = [0.5, 1.0, 2.0, 3.0, 4.0];
+      const currentRatio = effectivePhaseDist / phaseBMR;
+      const nextRatioLimit = thresholds.find(t => t > currentRatio);
       
-      if (effectivePhaseDist > 0) { paceName = "Creep"; penalty = 0; }
-      if (penaltyRatio > 0.5) { paceName = "Walk";  penalty = -25; }
-      if (penaltyRatio > 1.0) { paceName = "Jog";   penalty = -50; }
-      if (penaltyRatio > 2.0) { paceName = "Run";   penalty = -75; }
-      if (penaltyRatio > 3.0) { paceName = "Sprint"; penalty = -100; }
-      if (penaltyRatio > 4.0) { paceName = "Dash";   penalty = -125; }
+      let nextPenaltyHtml = "";
+      if (nextRatioLimit !== undefined) {
+          const limitDist = nextRatioLimit * phaseBMR;
+          const distToNextPace = Math.max(0, limitDist - phaseDist);
+          nextPenaltyHtml = `<div class="rmu-info-sub">Next Penalty in: ${distToNextPace.toFixed(2)} ft</div>`;
+      }
 
-      // Warning: Exceeding Run Pace? (Cannot act if > Run)
-      const isActionInvalid = penaltyRatio > 3.0;
-
-      // --- 5. RENDER HTML ---
-      
+      // --- RENDER HTML ---
       infoBox.innerHTML = `
-        <div class="rmu-info-header" style="font-size: var(--filroden-font-size-l);">BASE BMR: <span>${roundBMR.toFixed(2)} ft</span></div>
-
-        <div class="rmu-info-section">
-            <div class="rmu-info-header">Dedicated Move</div>
-            <div class="rmu-info-line">Round Total: <strong>${totalDist.toFixed(2)} ft</strong></div>
-            <div class="rmu-info-line">Current Cost: <strong>${apCost} AP</strong></div>
-            ${!isDashExceeded ? `<div class="rmu-info-sub">Next AP in: ${distToNextAP.toFixed(2)} ft</div>` : ""}
-            ${isDashExceeded ? `<div class="rmu-info-warn" >MAX ROUND LIMIT</div>` : ""}
+        <div class="rmu-info-header">
+            BASE BMR: <span>${roundBMR.toFixed(2)} ft</span>
+            <div class="rmu-info-sub">
+                Current movement: <strong>${phaseDist.toFixed(2)} ft</strong>
+            </div>
         </div>
 
         <div class="rmu-info-section">
-            <div class="rmu-info-header">Acting While Moving</div>
+            <div class="rmu-section-header">Dedicated Movement</div>
+            <div class="rmu-info-line">Current Cost: <strong>${currentPhaseCost} AP</strong></div>
+            <div class="rmu-info-line">Round Spent: <strong>${totalRoundAP} AP</strong></div>
+            <div class="rmu-info-sub">Next AP in: ${distToNextAP.toFixed(2)} ft</div>
+        </div>
+
+        <div class="rmu-info-section">
+            <div class="rmu-section-header">Acting While Moving</div>
             <div class="rmu-info-line">Phase Max: <strong>${effectivePhaseDist.toFixed(2)} ft</strong></div>
-            <div class="rmu-info-line">Effective Pace: <strong>${paceName}</strong></div>
-            <div class="rmu-info-line">Penalty: <strong style="color:var(--filroden-color-danger);">${penalty} OB</strong></div>
+            <div class="rmu-info-line">Effective Pace: <strong>${penaltyStats.pace}</strong></div>
+            <div class="rmu-info-line">Penalty: <strong style="color:var(--filroden-color-danger);">${penaltyStats.penalty}</strong></div>
+            ${nextPenaltyHtml}
             ${isActionInvalid ? `<div class="rmu-info-warn">TOO FAST TO ACT</div>` : ""}
         </div>
       `;
 
-      // --- 6. RENDER BARS ---
-      // We reuse the variables declared at the top.
-      if (roundBar) roundBar.innerHTML = this._buildBarHtml(roundRatio);
-
+      // --- RENDER BAR ---
       if (phaseBar) {
-        // Ghost Marker Index
         const maxRatio = maxHistoryDist / phaseBMR;
         const markerIndex = Math.min(9, Math.ceil(maxRatio * 2) - 1);
-        
-        // Phase Bar Ratio
-        const phaseRatio = phaseDist / phaseBMR;
-        phaseBar.innerHTML = this._buildBarHtml(phaseRatio, markerIndex);
+        const currentPhaseRatio = phaseDist / phaseBMR;
+        phaseBar.innerHTML = this._buildBarHtml(currentPhaseRatio, markerIndex);
       }
     }
 
@@ -488,16 +523,12 @@ export function defineMovementHud(CoreHUD) {
     get movementUsed() { return this.totalRoundMovement; }
 
     _onNewRound(combat) {
-        // Reset flags for the new round
-        this.token.document.setFlag("enhancedcombathud-rmu", "phaseStartDist", 0);
-        this.token.document.setFlag("enhancedcombathud-rmu", "maxCompletedPhases", 0);
+        if (!this.token) return;
         setTimeout(() => this.updateMovement(), 50);
     }
 
     async _onCombatEnd(combat) {
-        await this.token.document.unsetFlag("enhancedcombathud-rmu", "phaseStartDist");
-        await this.token.document.unsetFlag("enhancedcombathud-rmu", "maxCompletedPhases");
-        
+        if (!this.token) return;
         this.updateMovement(); 
     }
   }
