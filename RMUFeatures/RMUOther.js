@@ -1,25 +1,29 @@
 /**
  * RMUFeatures/RMUOther.js
  *
- * Defines smaller, stable panels:
- * - Portrait, Movement, WeaponSets
+ * Defines utility panels for the Enhanced Combat HUD (Rolemaster Unified):
+ * - Portrait (Defenses configuration)
+ * - Movement (Phase-based tracking with AP cost calculation)
+ * - WeaponSets (Hidden stub for compatibility)
  * - Resistance Rolls
- * - Special Checks (Endurance)
- * - Rest
- * - Combat (End Turn)
- * - Drawer (Macros)
+ * - Special Checks (Endurance/Concentration)
+ * - Rest & Combat Turn Management
+ * - Macro Drawer
+ *
+ * @module RMUOther
  */
 
-import { ICONS, RMUUtils, formatBonus, UIGuards } from '../RMUCore.js';
+import { ICONS, RMUUtils, UIGuards } from '../RMUCore.js';
 import { RMUData } from '../RMUData.js';
 
 // -----------------------------------------------------------------------------
-// I. Portrait/Movement/Utility Panels
+// Portrait & Defenses
 // -----------------------------------------------------------------------------
 
 /**
  * Defines the custom RMU Portrait panel.
- * @param {object} CoreHUD - The Argon CoreHUD object.
+ * Adds a button to configure Dodge/Block/Parry defenses directly from the HUD.
+ * * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function definePortraitPanel(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
@@ -31,10 +35,13 @@ export function definePortraitPanel(CoreHUD) {
   }
 
   /**
-   * Custom RMU Portrait Panel
+   * Custom RMU Portrait Panel.
+   * Overrides standard display to show Level/Profession and injects the Defense dialog trigger.
    * @augments Base
    */
   class RMUPortraitPanel extends Base {
+    
+    /** @override */
     get description() {
       const a = this.actor;
       if (!a) return "";
@@ -42,15 +49,21 @@ export function definePortraitPanel(CoreHUD) {
       const prof = a.system?.profession ?? a.system?.details?.profession;
       return [level != null ? `Lvl ${level}` : null, prof].filter(Boolean).join(" · ");
     }
+
+    /** @override */
     get isDead() { return this.isDying; }
+
+    /** @override */
     get isDying() {
       const hp = this.actor?.system?.health?.hp;
       return Number(hp?.value ?? 0) <= 0;
     }
 
     /**
-     * Opens the Defenses Dialog when the new button is clicked.
+     * Renders and handles the Defense Configuration Dialog.
+     * Reads current defense options (Passive vs Active) and updates the actor via API.
      * @param {Event} event - The click event.
+     * @private
      */
     async _onOpenDefenseDialog(event) {
       event.preventDefault();
@@ -69,7 +82,6 @@ export function definePortraitPanel(CoreHUD) {
       const currentBlock = defenseState?.block;
       const currentOther = defenseState?.other ?? 0;
 
-      /** Helper function to build <option> tags */
       const buildOptions = (options, selectedValue) => {
         if (!Array.isArray(options)) return "";
         return options.map(opt => `
@@ -116,13 +128,13 @@ export function definePortraitPanel(CoreHUD) {
                 return;
               }
 
-              // Robustly find the correct token for the API
+              // Locate the specific token instance for the action wrapper
               let targetToken = ui.ARGON?._token;
               if (!targetToken || targetToken.actor?.id !== this.actor.id) {
                 if (this.actor.isToken) {
-                  targetToken = this.actor.token?.object; // Synthetic
+                  targetToken = this.actor.token?.object; 
                 } else {
-                  targetToken = this.actor.getActiveTokens()[0]; // First placed
+                  targetToken = this.actor.getActiveTokens()[0]; 
                 }
               }
 
@@ -131,27 +143,18 @@ export function definePortraitPanel(CoreHUD) {
                 return;
               }
 
-              // Call APIs with the valid token
               if (newDodge !== currentDodge) {
-                await RMUUtils.rmuTokenActionWrapper(
-                  targetToken, "rmuTokenSetDodgeOption", newDodge
-                );
+                await RMUUtils.rmuTokenActionWrapper(targetToken, "rmuTokenSetDodgeOption", newDodge);
               }
               if (newBlock !== currentBlock) {
-                await RMUUtils.rmuTokenActionWrapper(
-                  targetToken, "rmuTokenSetBlockOption", newBlock
-                );
+                await RMUUtils.rmuTokenActionWrapper(targetToken, "rmuTokenSetBlockOption", newBlock);
               }
               if (newOther !== currentOther) {
-                await RMUUtils.rmuTokenActionWrapper(
-                  targetToken, "rmuTokenSetOtherDB", newOther
-                );
+                await RMUUtils.rmuTokenActionWrapper(targetToken, "rmuTokenSetOtherDB", newOther);
               }
             }
           },
-          cancel: {
-            label: "Cancel"
-          }
+          cancel: { label: "Cancel" }
         },
         default: "apply"
       }, {
@@ -160,47 +163,37 @@ export function definePortraitPanel(CoreHUD) {
     }
 
     /**
-     * Activates listeners for the panel.
-     * This is where we inject the "Set Defenses" button.
+     * Injects the custom "Set Defenses" button into the Argon player panel.
      * @param {HTMLElement} element - The panel's DOM element.
      */
     async activateListeners(element) {
       await super.activateListeners(element);
 
-      // Find the existing "Open Character Sheet" button
       const actorSheetButton = element.querySelector('.player-button[data-tooltip="Open Character Sheet"]');
-      if (!actorSheetButton) {
-        console.warn("[ECH-RMU] Could not find actor sheet button to inject defense button.");
-        return;
-      }
+      if (!actorSheetButton) return;
 
       const buttonBar = actorSheetButton.parentElement;
-      if (!buttonBar) {
-        console.warn("[ECH-RMU] Could not find parent of actor sheet button.");
-        return;
-      }
+      if (!buttonBar) return;
 
-      // Create the new Defenses button
       const defenseButton = document.createElement("div");
       defenseButton.classList.add("player-button");
       defenseButton.dataset.tooltip = "Set Defenses";
 
       const iconPath = foundry.utils.getRoute("modules/enhancedcombathud-rmu/icons/guardian.svg");
       defenseButton.innerHTML = `<img src="${iconPath}" width="28px" height="28px" alt="Defenses" style="vertical-align: middle; border: none;">`;
-
-      // Add the click listener
       defenseButton.addEventListener("click", this._onOpenDefenseDialog.bind(this));
 
-      // Insert the button before the character sheet button
       buttonBar.insertBefore(defenseButton, actorSheetButton);
     }
 
+    /** @override */
     async getStatBlocks() {
       const hpVal = Number(this.actor?.system?.health?.hp?.value ?? 0);
       const hpMax = Number(this.actor?.system?.health?.hp?.max ?? 0);
       const ppVal = Number(this.actor?.system?.health?.power?.value ?? 0);
       const ppMax = Number(this.actor?.system?.health?.power?.max ?? 0);
       const dbTot = Number(this.actor?.system?._dbBlock?.totalDB ?? 0);
+      
       return [
         [
           { text: `${hpVal}`, color: hpVal <= 0 ? "var(--ech-danger)" : "var(--ech-success)" },
@@ -222,9 +215,15 @@ export function definePortraitPanel(CoreHUD) {
   CoreHUD.definePortraitPanel(RMUPortraitPanel);
 }
 
+// -----------------------------------------------------------------------------
+// Movement HUD
+// -----------------------------------------------------------------------------
+
 /**
  * Defines the custom RMU Movement panel.
- * @param {object} CoreHUD - The Argon CoreHUD object.
+ * Implements a "Snapshot" based tracking system to handle RMU's phase-based movement logic
+ * while maintaining compatibility with Foundry's native undo functionality.
+ * * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineMovementHud(CoreHUD) {
   const ARGON = CoreHUD.ARGON;
@@ -232,10 +231,14 @@ export function defineMovementHud(CoreHUD) {
 
   if (!Base) return;
 
-  // ===========================================================================
-  // 1. GLOBAL HELPERS
-  // ===========================================================================
+  // --- Logic Helpers ---
 
+  /**
+   * Calculates pace category and penalty based on distance moved relative to Phase BMR.
+   * @param {number} dist - Distance moved (ft).
+   * @param {number} phaseBMR - Base Movement Rate allocated for this phase.
+   * @returns {object} { penalty: number, pace: string, ratio: number }
+   */
   function getPaceStats(dist, phaseBMR) {
       const ratio = phaseBMR > 0 ? dist / phaseBMR : 0;
       let penalty = 0, pace = "Stationary";
@@ -248,13 +251,30 @@ export function defineMovementHud(CoreHUD) {
       return { penalty, pace, ratio };
   }
 
-  function getAPCost(dist, roundBMR) {
+  /**
+   * Calculates Action Point cost for a given distance based on Phase BMR.
+   * - Movement <= 50% of Phase BMR is Free (0 AP).
+   * - Otherwise, cost is 1 AP per Phase BMR increment.
+   * @param {number} dist - Distance moved.
+   * @param {number} roundBMR - Full round Base Movement Rate.
+   * @param {number} phases - Number of phases in the round (default 4).
+   * @returns {number} AP Cost (Integer).
+   */
+  function getAPCost(dist, roundBMR, phases = 4) {
       if (dist <= 0) return 0;
-      if ((dist / roundBMR) <= 0.5) return 0; 
-      return Math.ceil(dist / roundBMR);
+      const phaseBMR = roundBMR / phases;
+      if ((dist / phaseBMR) <= 0.5) return 0; 
+      return Math.ceil(dist / phaseBMR);
   }
 
-  // Helper: Commit Phase Data (High Water Mark + AP Accumulator)
+  /**
+   * Commits the current phase's movement data to flags at the end of a turn.
+   * Updates:
+   * 1. High Water Mark (`maxCompletedPhases`): The furthest distance moved in any single phase this round.
+   * 2. AP Accumulator (`roundAPSpent`): Sum of AP costs incurred in previous phases.
+   * * @param {Token} token - The token object.
+   * @param {Combat} combat - The active combat document.
+   */
   async function commitTurnData(token, combat) {
       const doc = token.document || token;
       
@@ -273,7 +293,11 @@ export function defineMovementHud(CoreHUD) {
 
       // Accumulate AP Cost
       const roundBMR = doc.actor?.system?.movement?.baseRate || 30; 
-      const phaseCost = getAPCost(phaseDist, roundBMR);
+      // Fetch phases from combat flags, default to 4
+      const phases = combat.flags?.rmu?.actionPhase?.phasesPerRound ?? 4;
+      
+      // Pass phases to getAPCost
+      const phaseCost = getAPCost(phaseDist, roundBMR, phases);
       
       if (phaseCost > 0) {
           const currentAccum = doc.getFlag("enhancedcombathud-rmu", "roundAPSpent") || 0;
@@ -281,30 +305,34 @@ export function defineMovementHud(CoreHUD) {
       }
   }
 
-  // Helper: Cleanup flags
+  /**
+   * Clears movement tracking flags.
+   * @param {Token[]} tokens - Array of token objects.
+   * @param {boolean} fullWipe - If true (Round Change/Combat End), clears Round-level accumulators.
+   */
   async function wipeFlags(tokens, fullWipe = false) {
       if (!canvas.scene || !tokens.length) return;
       const updates = tokens.map(t => {
           const flags = {
-              "-=phaseStartDist": null,
-              "-=maxCompletedPhases": null
+              "-=phaseStartDist": null,     // Clear Phase Snapshot
+              "-=maxCompletedPhases": null  // Clear Phase High Water Mark (will reset on round change)
           };
           if (fullWipe) {
-              flags["-=roundAPSpent"] = null;
+              flags["-=roundAPSpent"] = null; // Clear AP Accumulator only on round change
           }
           return { _id: t.id, "flags.enhancedcombathud-rmu": flags };
       });
       await canvas.scene.updateEmbeddedDocuments("Token", updates);
   }
 
-  // ===========================================================================
-  // 2. HOOKS
-  // ===========================================================================
+  // --- Hooks ---
 
   Hooks.on("updateCombat", async (combat, updates) => {
     if (!combat.started) return;
 
+    // 1. ROUND CHANGE (Reset All)
     if ("round" in updates) {
+        // Commit data for the actor who just finished the last turn of the round
         const prevId = combat.previous.combatantId;
         if (prevId) {
             const prevComb = combat.combatants.get(prevId);
@@ -312,13 +340,17 @@ export function defineMovementHud(CoreHUD) {
                 await commitTurnData(prevComb.token.object, combat);
             }
         }
+        
+        // Wipe all flags (including AP accumulators) for all owned tokens
         const tokens = combat.combatants.map(c => c.token?.object).filter(t => t && t.isOwner);
         await wipeFlags(tokens, true); 
         return; 
     }
 
+    // 2. TURN CHANGE (Phase Transition)
     const prevId = combat.previous.combatantId;
     if (prevId) {
+        // Commit data for the actor ending their turn
         const prevComb = combat.combatants.get(prevId);
         if (prevComb?.token?.object?.isOwner) {
             await commitTurnData(prevComb.token.object, combat);
@@ -327,6 +359,8 @@ export function defineMovementHud(CoreHUD) {
 
     const currId = combat.current.combatantId;
     if (currId) {
+        // Snapshot the starting distance for the new actor
+        // This creates the "Floor" for the new phase's movement calculation
         const currComb = combat.combatants.get(currId);
         if (currComb?.token?.object?.isOwner) {
             const token = currComb.token.object;
@@ -349,9 +383,13 @@ export function defineMovementHud(CoreHUD) {
       await wipeFlags(docs, true);
   });
 
-  // ===========================================================================
-  // 3. HUD CLASS
-  // ===========================================================================
+  // --- HUD Class ---
+
+  /**
+   * Custom RMU Movement HUD.
+   * Replaces standard movement bar with a Phase/Pace intensity tracker and AP cost text readout.
+   * @augments Base
+   */
   class RMUMovementHud extends Base {
     get _mv() { return this.actor?.system?._movementBlock ?? {}; }
     get _modeKey() { return this._mv._selected; }
@@ -367,6 +405,7 @@ export function defineMovementHud(CoreHUD) {
         return Number(walk?.perRound ?? 0); 
     }
     
+    /** Gets the total distance moved according to the Foundry Ruler (entire history). */
     get totalRoundMovement() {
       if (!game.combat?.started || !this.token) return 0;
       const doc = this.token.document;
@@ -376,6 +415,9 @@ export function defineMovementHud(CoreHUD) {
       return canvas.grid.measurePath(segments).distance;
     }
 
+    /** * Calculates distance moved in the CURRENT phase only.
+     * Formula: Total Ruler Distance - Snapshot taken at phase start.
+     */
     get phaseMovement() {
         const total = this.totalRoundMovement;
         const startDist = this.token.document.getFlag("enhancedcombathud-rmu", "phaseStartDist") ?? 0;
@@ -390,8 +432,14 @@ export function defineMovementHud(CoreHUD) {
         return this.token.document.getFlag("enhancedcombathud-rmu", "roundAPSpent") || 0;
     }
 
+    /**
+     * Listen for updates to the token document.
+     * Triggers a HUD repaint if position changes OR if RMU tracking flags change.
+     */
     onTokenUpdate(updates, context) {
-      if (updates.x === undefined && updates.y === undefined) return;
+      const isMovement = updates.x !== undefined || updates.y !== undefined;
+      const isFlagUpdate = updates.flags?.["enhancedcombathud-rmu"] !== undefined;
+      if (!isMovement && !isFlagUpdate) return;
       this.updateMovement();
     }
 
@@ -412,11 +460,10 @@ export function defineMovementHud(CoreHUD) {
       const isCombat = !!game.combat?.started;
       const token = this.token;
       
-      // UI Setup
+      // Inject Custom DOM Elements (Sidebar & Single Track)
       if (!this.element.querySelector(".rmu-tactical-info")) {
         const info = document.createElement("div"); info.className = "rmu-tactical-info"; this.element.appendChild(info);
         
-        // SIDEBAR: Full labels restored
         const sidebar = document.createElement("div"); sidebar.className = "rmu-sidebar";
         sidebar.innerHTML = `
             <span>Dash</span><span></span>
@@ -427,7 +474,6 @@ export function defineMovementHud(CoreHUD) {
         `;
         this.element.prepend(sidebar);
         
-        // SINGLE TRACK: PHASE
         const trackContainer = document.createElement("div"); trackContainer.className = "rmu-track-container";
         trackContainer.innerHTML = `<div class="rmu-track-label">PHASE</div><div class="movement-spaces phase-track"></div>`;
         
@@ -447,7 +493,7 @@ export function defineMovementHud(CoreHUD) {
 
       if (!isCombat || !token) return;
 
-      // --- CALCULATIONS ---
+      // Data Prep
       const roundBMR = Math.max(0.01, this._roundBMR); 
       const phases = game.combat?.flags?.rmu?.actionPhase?.phasesPerRound ?? 4;
       const phaseBMR = roundBMR / phases; 
@@ -456,23 +502,26 @@ export function defineMovementHud(CoreHUD) {
       const maxHistoryDist = this.maxHistoryMovement;
       const effectivePhaseDist = Math.max(phaseDist, maxHistoryDist);
 
-      // AP Math
-      const currentPhaseCost = getAPCost(phaseDist, roundBMR);
+      // 1. AP Cost Calculations
+      // Pass 'phases' to the calculator
+      const currentPhaseCost = getAPCost(phaseDist, roundBMR, phases);
       const totalRoundAP = this.committedRoundAP + currentPhaseCost;
       
-      // Next AP Trigger
+      // Calculate distance remaining until the Next AP point is spent
       let distToNextAP = 0;
       if (currentPhaseCost === 0) {
-          distToNextAP = Math.max(0, (roundBMR * 0.5) - phaseDist);
+          // Threshold is 0.5 * PhaseBMR (Free)
+          distToNextAP = Math.max(0, (phaseBMR * 0.5) - phaseDist);
       } else {
-          distToNextAP = Math.max(0, (currentPhaseCost * roundBMR) - phaseDist);
+          // Threshold is CurrentCost * PhaseBMR
+          distToNextAP = Math.max(0, (currentPhaseCost * phaseBMR) - phaseDist);
       }
 
-      // Phase Intensity Stats
+      // 2. Pace/Penalty Calculations
       const penaltyStats = getPaceStats(effectivePhaseDist, phaseBMR);
       const isActionInvalid = penaltyStats.ratio > 3.0;
 
-      // Next Penalty Logic
+      // Calculate distance remaining until the Next Pace Bracket (Penalty Increase)
       const thresholds = [0.5, 1.0, 2.0, 3.0, 4.0];
       const currentRatio = effectivePhaseDist / phaseBMR;
       const nextRatioLimit = thresholds.find(t => t > currentRatio);
@@ -480,11 +529,12 @@ export function defineMovementHud(CoreHUD) {
       let nextPenaltyHtml = "";
       if (nextRatioLimit !== undefined) {
           const limitDist = nextRatioLimit * phaseBMR;
+          // Distance measured from current position relative to the absolute limit
           const distToNextPace = Math.max(0, limitDist - phaseDist);
           nextPenaltyHtml = `<div class="rmu-info-sub">Next Penalty in: ${distToNextPace.toFixed(2)} ft</div>`;
       }
 
-      // --- RENDER HTML ---
+      // 3. Render Text Info
       infoBox.innerHTML = `
         <div class="rmu-info-header">
             BASE BMR: <span>${roundBMR.toFixed(2)} ft</span>
@@ -510,7 +560,7 @@ export function defineMovementHud(CoreHUD) {
         </div>
       `;
 
-      // --- RENDER BAR ---
+      // 4. Render Phase Bar (Intensity)
       if (phaseBar) {
         const maxRatio = maxHistoryDist / phaseBMR;
         const markerIndex = Math.min(9, Math.ceil(maxRatio * 2) - 1);
@@ -536,9 +586,13 @@ export function defineMovementHud(CoreHUD) {
   CoreHUD.defineMovementHud(RMUMovementHud);
 }
 
+// -----------------------------------------------------------------------------
+// Weapon Sets (Hidden Stub)
+// -----------------------------------------------------------------------------
+
 /**
- * Defines a (hidden) Weapon Sets panel to satisfy Argon's requirements
- * while not being used in RMU.
+ * Defines a (hidden) Weapon Sets panel to satisfy Argon's requirements.
+ * RMU does not use Argon's weapon set logic.
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineWeaponSets(CoreHUD) {
@@ -546,26 +600,21 @@ export function defineWeaponSets(CoreHUD) {
     const Base = ARGON?.WEAPONS?.WeaponSets || ARGON?.WeaponSets || ARGON?.HUD?.WeaponSets;
     if (!Base) { console.warn("[ECH-RMU] WeaponSets base not found; skipping."); return; }
 
-    /**
-     * Hidden RMU Weapon Sets Panel
-     * @augments Base
-     */
     class RMUWeaponSets extends Base {
         get sets() { return []; }
-        _onSetChange(_id) { /* no-op in RMU */ }
-        get visible() { return false; } // Always hidden
+        _onSetChange(_id) { }
+        get visible() { return false; } 
     }
-
     CoreHUD.defineWeaponSets(RMUWeaponSets);
 }
 
-
 // -----------------------------------------------------------------------------
-// II. Resistance Rolls Panel
+// Resistance Rolls
 // -----------------------------------------------------------------------------
 
 /**
  * Defines the main Resistance Rolls panel.
+ * Dynamically generates buttons based on the actor's configured resistances.
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineResistancesMain(CoreHUD) {
@@ -574,10 +623,6 @@ export function defineResistancesMain(CoreHUD) {
   const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
   const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
 
-  /**
-   * An action button for a single Resistance Roll (e.g., "Essence").
-   * @augments ActionButton
-   */
   class RMUResistanceActionButton extends ActionButton {
     constructor(resist) { super(); this.resist = resist; }
     get label() { return this.resist?.name || "Resistance"; }
@@ -618,10 +663,6 @@ export function defineResistancesMain(CoreHUD) {
     async _roll() { await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenResistanceRollAction", this.resist?.name); }
   }
 
-  /**
-   * The category button that opens the Resistance Rolls panel.
-   * @augments ButtonPanelButton
-   */
   class RMUResistanceCategoryButton extends ButtonPanelButton {
     constructor() { super(); this.title = "RESISTANCE ROLLS"; this._icon = ICONS.panel; }
     get label() { return this.title; }
@@ -643,10 +684,6 @@ export function defineResistancesMain(CoreHUD) {
     }
   }
 
-  /**
-   * The main "Resistances" panel for the HUD.
-   * @augments ActionPanel
-   */
   class RMUResistanceActionPanel extends ActionPanel {
     get label() { return "RESISTANCES"; }
     get maxActions() { return null; }
@@ -658,11 +695,11 @@ export function defineResistancesMain(CoreHUD) {
 }
 
 // -----------------------------------------------------------------------------
-// III. Special Checks Panel
+// Special Checks (Endurance/Concentration)
 // -----------------------------------------------------------------------------
 
 /**
- * Defines the main Special Checks (Endurance/Concentration) panel.
+ * Defines the main Special Checks panel.
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineSpecialChecksMain(CoreHUD) {
@@ -671,20 +708,10 @@ export function defineSpecialChecksMain(CoreHUD) {
   const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
   const { ActionButton, ButtonPanelButton } = BUTTONS;
 
-  /**
-   * Helper to roll a skill with a specific "Special Maneuver" option.
-   * @param {Token} token - The token.
-   * @param {object} skillObj - The raw skill object.
-   * @param {string} optionText - The special maneuver text (e.g., "Endurance").
-   */
   async function rollSkillWithOption(token, skillObj, optionText) {
     await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenSkillAction", skillObj, { specialManeuver: optionText });
   }
 
-  /**
-   * Action button for the Physical (Endurance) check.
-   * @augments ActionButton
-   */
   class RMUSpecialCheck_Endurance extends ActionButton {
     constructor() { super(); this._skill = null; }
     get label() { return "PHYSICAL"; }
@@ -716,10 +743,6 @@ export function defineSpecialChecksMain(CoreHUD) {
     async _onLeftClick(e) { e?.preventDefault?.(); e?.stopPropagation?.(); }
   }
 
-  /**
-   * Action button for the Mental (Concentration) check.
-   * @augments ActionButton
-   */
   class RMUSpecialCheck_Concentration extends ActionButton {
     constructor() { super(); this._skill = null; }
     get label() { return "MENTAL"; }
@@ -751,10 +774,6 @@ export function defineSpecialChecksMain(CoreHUD) {
     async _onLeftClick(e) { e?.preventDefault?.(); e?.stopPropagation?.(); }
   }
 
-  /**
-   * The category button that opens the Special Checks panel.
-   * @augments ButtonPanelButton
-   */
   class RMUSpecialChecksCategoryButton extends ButtonPanelButton {
     get label() { return "ENDURANCE"; }
     get icon() { return ICONS.special; }
@@ -768,10 +787,6 @@ export function defineSpecialChecksMain(CoreHUD) {
     }
   }
 
-  /**
-   * The main "Endurance" panel for the HUD.
-   * @augments ActionPanel
-   */
   class RMUSpecialChecksActionPanel extends ActionPanel {
     get label() { return "ENDURANCE"; }
     get maxActions() { return null; }
@@ -782,7 +797,7 @@ export function defineSpecialChecksMain(CoreHUD) {
 }
 
 // -----------------------------------------------------------------------------
-// IV. Rest, Combat, and Drawer Panels
+// Rest & Combat Actions
 // -----------------------------------------------------------------------------
 
 /**
@@ -794,14 +809,10 @@ export function defineRestMain(CoreHUD) {
   const { ActionPanel } = ARGON.MAIN;
   const { ActionButton } = ARGON.MAIN.BUTTONS;
 
-  /**
-   * Action button to open the Rest dialog.
-   * @augments ActionButton
-   */
   class RMURestActionButton extends ActionButton {
     get label() { return "REST"; }
     get icon() { return ICONS.rest; }
-    get visible() { return !game.combat?.started; } // Hide in combat
+    get visible() { return !game.combat?.started; } 
     get isInteractive() { return true; }
     get hasTooltip() { return true; }
     async getTooltipData() { return { title: "Rest", subtitle: "Recover resources", details: [{ label: "Info", value: "Open the rest dialog." }] }; }
@@ -811,10 +822,6 @@ export function defineRestMain(CoreHUD) {
     async _run() { await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenRestAction"); }
   }
 
-  /**
-   * The main "Rest" panel for the HUD.
-   * @augments ActionPanel
-   */
   class RMURestActionPanel extends ActionPanel {
     get label() { return "REST"; }
     get maxActions() { return null; }
@@ -833,10 +840,6 @@ export function defineCombatMain(CoreHUD) {
   const { ActionPanel } = ARGON.MAIN;
   const { ActionButton } = ARGON.MAIN.BUTTONS;
 
-  /**
-   * Action button to end the current combatant's turn.
-   * @augments ActionButton
-   */
   class RMUEndTurnActionButton extends ActionButton {
     get label() { return "End Turn"; }
     get icon() { return ICONS.combat; }
@@ -850,7 +853,6 @@ export function defineCombatMain(CoreHUD) {
       return activeId === tokenId;
     }
     
-    // Argon Buttons prefer _onLeftClick for interaction
     async _onLeftClick(event) {
         event.preventDefault();
         event.stopPropagation();
@@ -859,7 +861,6 @@ export function defineCombatMain(CoreHUD) {
         if (!c?.started) return;
 
         try {
-            // Support both standard Foundry and common module combat extensions
             if (typeof c.nextTurn === "function") await c.nextTurn();
             else if (typeof c.advanceTurn === "function") await c.advanceTurn();
             else ui.notifications?.error?.("Combat API does not support advancing turns.");
@@ -869,13 +870,8 @@ export function defineCombatMain(CoreHUD) {
     }
   }
 
-  /**
-   * The main "Combat" panel for the HUD.
-   * @augments ActionPanel
-   */
   class RMUCombatActionPanel extends ActionPanel {
     get label() { return "COMBAT"; }
-    /** Only visible if it's this token's turn in active combat. */
     get visible() {
       const c = game.combat;
       const tokenId = ui.ARGON?._token?.id;
@@ -891,8 +887,12 @@ export function defineCombatMain(CoreHUD) {
   CoreHUD.defineMainPanels([RMUCombatActionPanel]);
 }
 
+// -----------------------------------------------------------------------------
+// Macro Drawer
+// -----------------------------------------------------------------------------
+
 /**
- * Defines the custom Drawer panel (for macros).
+ * Defines the custom Drawer panel which mirrors the Foundry Hotbar macros.
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineDrawerPanel(CoreHUD) {
@@ -905,10 +905,6 @@ export function defineDrawerPanel(CoreHUD) {
     return;
   }
 
-  /**
-   * A single button in the drawer, representing one macro.
-   * @augments BaseDrawerButton
-   */
   class RMUMacroDrawerButton extends BaseDrawerButton {
     constructor(macro) {
       const buttonParts = [
@@ -920,13 +916,13 @@ export function defineDrawerPanel(CoreHUD) {
           }
         }
       ];
-      super(buttonParts); // Pass to base constructor
+      super(buttonParts); 
       this.macro = macro;
     }
 
     async getData() {
       const data = await super.getData();
-      const part = data.buttons[0]; // Get the first (and only) button part
+      const part = data.buttons[0]; 
       if (part) {
         part.label = this.macro.name;
       }
@@ -934,7 +930,7 @@ export function defineDrawerPanel(CoreHUD) {
     }
 
     setGrid(gridCols) {
-      this.element.style.gridTemplateColumns = "1fr"; // Force single column
+      this.element.style.gridTemplateColumns = "1fr"; 
     }
 
     setAlign(align) {
@@ -943,17 +939,13 @@ export function defineDrawerPanel(CoreHUD) {
     }
   }
 
-  /**
-   * The custom RMU Drawer, which displays hotbar macros.
-   * @augments BaseDrawer
-   */
   class RMUDrawer extends BaseDrawer {
     get title() { return "Macros"; }
 
     get categories() {
       const hotbarMacros = Object.values(game.user.hotbar)
         .map(id => game.macros.get(id))
-        .filter(macro => macro); // Filter out empty slots
+        .filter(macro => macro); 
 
       let macroButtons;
       if (!hotbarMacros.length) {
@@ -965,7 +957,7 @@ export function defineDrawerPanel(CoreHUD) {
 
       return [
         {
-          gridCols: "1fr", // Each button is a full row
+          gridCols: "1fr", 
           captions: [{ label: "Hotbar Macros", align: "left" }],
           align: ["left"],
           buttons: macroButtons
