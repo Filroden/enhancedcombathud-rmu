@@ -180,6 +180,7 @@ export function defineSpellsMain(CoreHUD) {
      * Rolls the Static Caster Roll (SCR) for this spell.
      */
     async _roll() {
+      await RMUUtils.markActionTaken(ui.ARGON?._token);
       await RMUUtils.rmuTokenActionWrapper(
         ui.ARGON?._token,
         "rmuTokenSCRAction",

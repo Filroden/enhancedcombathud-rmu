@@ -319,6 +319,7 @@ export function defineAttacksMain(CoreHUD) {
         ui.notifications?.warn?.("Select at least one target before attacking.");
         return;
       }
+      await RMUUtils.markActionTaken(token);
       await RMUData.ensureExtendedTokenData();
 
       const live = this._isSpellAttack ? this.attack : RMUData.getLiveAttack(this.attack);
