@@ -303,6 +303,15 @@ export function defineMovementHud(CoreHUD) {
           const currentAccum = doc.getFlag("enhancedcombathud-rmu", "roundAPSpent") || 0;
           await doc.setFlag("enhancedcombathud-rmu", "roundAPSpent", currentAccum + phaseCost);
       }
+
+      // ACTION RESET LOGIC
+      // If an action (Attack/Spell/Perception Skill) was triggered this phase, reset the High Water Mark
+      // so the NEXT action doesn't inherit the penalty from this movement.
+      const actionTaken = doc.getFlag("enhancedcombathud-rmu", "actionTakenThisPhase");
+      if (actionTaken) {
+          await doc.setFlag("enhancedcombathud-rmu", "maxCompletedPhases", 0);
+          await doc.unsetFlag("enhancedcombathud-rmu", "actionTakenThisPhase");
+      }
   }
 
   /**
@@ -315,7 +324,8 @@ export function defineMovementHud(CoreHUD) {
       const updates = tokens.map(t => {
           const flags = {
               "-=phaseStartDist": null,     // Clear Phase Snapshot
-              "-=maxCompletedPhases": null  // Clear Phase High Water Mark (will reset on round change)
+              "-=maxCompletedPhases": null,  // Clear Phase High Water Mark (will reset on round change)
+              "-=actionTakenThisPhase": null  // Clear Action Taken Flag
           };
           if (fullWipe) {
               flags["-=roundAPSpent"] = null; // Clear AP Accumulator only on round change

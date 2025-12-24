@@ -260,6 +260,17 @@ const RMUUtils = {
       chipContainer.appendChild(chip);
     }
     return chipContainer;
+  },
+
+  /**
+   * Sets the 'actionTakenThisPhase' flag on the token.
+   * This signals the Movement HUD to reset the High Water Mark (penalty) 
+   * at the end of the current phase.
+   * @param {Token} token - The token performing the action.
+   */
+  async markActionTaken(token) {
+    if (!token) return;
+    await token.document.setFlag("enhancedcombathud-rmu", "actionTakenThisPhase", true);
   }
 };
 

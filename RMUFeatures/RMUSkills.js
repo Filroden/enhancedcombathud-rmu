@@ -269,6 +269,11 @@ export function defineSkillsMain(CoreHUD) {
      * Rolls the skill using the centralized API wrapper.
      */
     async _roll() {
+      // Mark action taken if this is the Perception skill
+      if (this.entry?.name === "Perception") {
+          await RMUUtils.markActionTaken(ui.ARGON?._token);
+      } 
+
       await RMUUtils.rmuTokenActionWrapper(
         ui.ARGON?._token,
         "rmuTokenSkillAction",
