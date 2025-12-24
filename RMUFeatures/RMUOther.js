@@ -239,28 +239,26 @@ export function defineMovementHud(CoreHUD) {
    * Extractor: Retrieves BMR and Encumbrance Limits from the Actor.
    * Ensures HUD and Commit logic use the exact same values.
    * @param {Actor} actor - The actor document.
-   * @returns {object} { roundBMR: number, maxPaceName: string, maxPaceRatio: number }
+   * @param {TokenDocument} [tokenDoc] - The token document (optional, needed for momentum check).
+   * @returns {object} { roundBMR, maxPaceName, maxPaceRatio }
    */
-  function getActorMovementData(actor) {
+  function getActorMovementData(actor, tokenDoc) {
     const movementBlock = actor?.system?._movementBlock ?? {};
     const modeKey = movementBlock._selected;
     const modeTbl = movementBlock._table?.[modeKey] ?? null;
     const rates = Array.isArray(modeTbl?.paceRates) ? modeTbl.paceRates : [];
 
-    // 1. Determine BMR from the "Walk" entry (Standard RMU definition)
-    // This accounts for Stride, Growth, etc. that modify the effective rates.
+    // 1. Determine BMR
     const walkEntry = rates.find(r => r.pace?.value === "Walk");
-    // Fallback to raw baseRate if table is missing, then to 30.
     const roundBMR = Number(walkEntry?.perRound ?? actor?.system?.movement?.baseRate ?? 30);
 
-    // 2. Determine Limits
+    // 2. Determine Hard Limit (Load/Armor)
     const LIMITS = { "Creep": 0.125, "Walk": 0.25, "Jog": 0.50, "Run": 0.75, "Sprint": 1.00, "Dash": 1.25 };
     const PACES = ["Creep", "Walk", "Jog", "Run", "Sprint", "Dash"];
     
     let maxPaceName = "Sprint";
     let maxPaceRatio = 1.0; 
 
-    // Find first forbidden pace
     const forbidden = rates.find(r => r.allowedPace === false);
     if (forbidden && forbidden.pace?.value) {
         const fName = forbidden.pace.value;
@@ -272,6 +270,37 @@ export function defineMovementHud(CoreHUD) {
             maxPaceName = "Stationary";
             maxPaceRatio = 0.001;
         }
+    } else {
+        maxPaceName = "Dash";
+        maxPaceRatio = 1.25;
+    }
+
+    // 3. DASH GATING (Prerequisite Check)
+    // Only applies if Dash is theoretically allowed by load.
+    if (maxPaceName === "Dash") {
+        let hasMomentum = false;
+        
+        if (tokenDoc) {
+            // Retrieve previous phase distance. 
+            // If undefined, it means this is the first phase of combat (flags wiped).
+            const prevDist = tokenDoc.getFlag("enhancedcombathud-rmu", "prevPhaseDist");
+            
+            if (prevDist === undefined) {
+                // First phase of combat: Assume momentum is valid.
+                hasMomentum = true; 
+            } else {
+                // Subsequent phases: Must have moved >= 50% BMR in previous phase.
+                const momentumThreshold = roundBMR * 0.5; // Jog distance
+                if (Number(prevDist) >= momentumThreshold) {
+                    hasMomentum = true;
+                }
+            }
+        }
+
+        if (!hasMomentum) {
+            maxPaceName = "Sprint";
+            maxPaceRatio = 1.0;
+        }
     }
 
     return { roundBMR, maxPaceName, maxPaceRatio };
@@ -279,9 +308,6 @@ export function defineMovementHud(CoreHUD) {
 
   /**
    * Calculates pace category based on % of Round BMR.
-   * @param {number} dist - Distance moved in phase.
-   * @param {number} roundBMR - Full Round BMR.
-   * @returns {object} { penalty, pace, ratio }
    */
   function getPaceStats(dist, roundBMR) {
     if (roundBMR <= 0) return { penalty: 0, pace: "Stationary", ratio: 0 };
@@ -297,16 +323,10 @@ export function defineMovementHud(CoreHUD) {
 
   /**
    * Calculates AP Cost.
-   * Creep (<= 12.5%) = 0 AP.
-   * Otherwise 1 AP per "Max Allowed Phase Distance".
-   * @param {number} dist 
-   * @param {number} roundBMR 
-   * @param {number} maxPaceRatio 
-   * @returns {number} Cost in AP
    */
   function getAPCost(dist, roundBMR, maxPaceRatio = 1.0) {
     if (dist <= 0) return 0;
-    if ((dist / roundBMR) <= 0.125) return 0; // Creep is free
+    if ((dist / roundBMR) <= 0.125) return 0; 
 
     const maxDistPerAP = roundBMR * maxPaceRatio;
     if (maxDistPerAP <= 0) return 1; 
@@ -324,8 +344,6 @@ export function defineMovementHud(CoreHUD) {
     const history = doc._movementHistory ?? [];
     const segments = history.map(h => ({ x: h.x, y: h.y }));
     const currentTotal = history.length ? canvas.grid.measurePath(segments).distance : 0;
-
-    // Use a small epsilon/fixed to prevent floating point drift
     const phaseDist = Math.max(0, Number((currentTotal - startDist).toFixed(2)));
 
     // Update High Water Mark
@@ -334,25 +352,26 @@ export function defineMovementHud(CoreHUD) {
       await doc.setFlag("enhancedcombathud-rmu", "maxCompletedPhases", phaseDist);
     }
 
-    // --- Recalculate AP Cost ---
-    // Use the shared extractor to guarantee we use the same BMR/Limits as the HUD.
-    const { roundBMR, maxPaceRatio } = getActorMovementData(doc.actor);
+    // Recalculate AP Cost using shared data extractor
+    const { roundBMR, maxPaceRatio } = getActorMovementData(doc.actor, doc);
     const phaseCost = getAPCost(phaseDist, roundBMR, maxPaceRatio);
 
     if (phaseCost > 0) {
       const currentAccum = doc.getFlag("enhancedcombathud-rmu", "roundAPSpent") || 0;
       await doc.setFlag("enhancedcombathud-rmu", "roundAPSpent", Number(currentAccum) + Number(phaseCost));
       
-      // STICKY FLAG: If this phase exceeded 1 AP, mark the round as "Bonus AP used"
       if (phaseCost > 1) {
           await doc.setFlag("enhancedcombathud-rmu", "hasUsedBonusAP", true);
       }
     }
 
-    // --- Close Phase (Prevent Double Counting) ---
+    // --- SAVE MOMENTUM ---
+    await doc.setFlag("enhancedcombathud-rmu", "prevPhaseDist", phaseDist);
+
+    // Close Phase
     await doc.setFlag("enhancedcombathud-rmu", "phaseStartDist", currentTotal);
 
-    // --- Action Reset Logic ---
+    // Action Reset Logic
     const actionTaken = doc.getFlag("enhancedcombathud-rmu", "actionTakenThisPhase");
     if (actionTaken) {
       await doc.setFlag("enhancedcombathud-rmu", "maxCompletedPhases", 0);
@@ -363,7 +382,7 @@ export function defineMovementHud(CoreHUD) {
   /**
    * Clears movement tracking flags.
    */
-  async function wipeFlags(tokens, fullWipe = false) {
+  async function wipeFlags(tokens, fullWipe = false, preserveMomentum = false) {
     if (!canvas.scene || !tokens.length) return;
     const updates = tokens.map(t => {
       const flags = {
@@ -373,7 +392,10 @@ export function defineMovementHud(CoreHUD) {
       };
       if (fullWipe) {
         flags["-=roundAPSpent"] = null;
-        flags["-=hasUsedBonusAP"] = null; // Reset the sticky warning flag on new round
+        flags["-=hasUsedBonusAP"] = null;
+        if (!preserveMomentum) {
+            flags["-=prevPhaseDist"] = null;
+        }
       }
       return { _id: t.id, "flags.enhancedcombathud-rmu": flags };
     });
@@ -387,6 +409,7 @@ export function defineMovementHud(CoreHUD) {
   Hooks.on("updateCombat", async (combat, updates) => {
     if (!combat.started) return;
 
+    // 1. ROUND CHANGE (Reset All, but preserve Momentum)
     if ("round" in updates) {
       const prevId = combat.previous.combatantId;
       if (prevId) {
@@ -396,10 +419,11 @@ export function defineMovementHud(CoreHUD) {
         }
       }
       const tokens = combat.combatants.map(c => c.token?.object).filter(t => t && t.isOwner);
-      await wipeFlags(tokens, true);
+      await wipeFlags(tokens, true, true);
       return;
     }
 
+    // 2. TURN CHANGE (Normal Phase Transition)
     const prevId = combat.previous.combatantId;
     if (prevId) {
       const prevComb = combat.combatants.get(prevId);
@@ -424,12 +448,12 @@ export function defineMovementHud(CoreHUD) {
 
   Hooks.on("combatStart", async (combat) => {
     const tokens = combat.combatants.map(c => c.token).filter(t => t && t.isOwner);
-    await wipeFlags(tokens, true);
+    await wipeFlags(tokens, true, false); 
   });
 
   Hooks.on("deleteCombat", async (combat) => {
     const docs = combat.combatants.map(c => c.token).filter(t => t && t.isOwner);
-    await wipeFlags(docs, true);
+    await wipeFlags(docs, true, false);
   });
 
   // ===========================================================================
@@ -440,8 +464,7 @@ export function defineMovementHud(CoreHUD) {
     get visible() { return true; }
     get movementMax() { return 10; }
 
-    // Use shared extractor for Consistency
-    get _actorData() { return getActorMovementData(this.actor); }
+    get _actorData() { return getActorMovementData(this.actor, this.token?.document); }
 
     get totalRoundMovement() {
       if (!game.combat?.started || !this.token) return 0;
@@ -466,7 +489,6 @@ export function defineMovementHud(CoreHUD) {
       return this.token.document.getFlag("enhancedcombathud-rmu", "roundAPSpent") || 0;
     }
 
-    // New Sticky Flag Getter
     get hasUsedBonusAP() {
       return this.token.document.getFlag("enhancedcombathud-rmu", "hasUsedBonusAP") || false;
     }
@@ -535,16 +557,12 @@ export function defineMovementHud(CoreHUD) {
       const currentRatio = effectivePhaseDist / roundBMR;
       const isEncumberedAction = currentRatio > maxPaceRatio;
 
-      // --- WARNINGS (Bonus AP) ---
-      // 1. Current Cost warning: If current phase exceeds 1 AP
+      // --- WARNINGS ---
       const isCostBonus = currentPhaseCost > 1;
-      
-      // 2. Total Round warning: If historical flag is set OR current is high
       const isTotalBonus = this.hasUsedBonusAP || isCostBonus;
 
       const costStyle = isCostBonus ? 'color:var(--filroden-color-danger);' : '';
       const costSuffix = isCostBonus ? ' <span style="font-size:0.8em">(Bonus AP needed)</span>' : '';
-      
       const totalStyle = isTotalBonus ? 'color:var(--filroden-color-danger);' : '';
       const totalSuffix = isTotalBonus ? ' <span style="font-size:0.8em">(Bonus AP needed)</span>' : '';
 
@@ -583,8 +601,8 @@ export function defineMovementHud(CoreHUD) {
 
         <div class="rmu-info-section">
             <div class="rmu-section-header">Dedicated Movement</div>
-            <div class="rmu-info-line">Phase Cost: <strong style="${costStyle}">${currentPhaseCost} AP${costSuffix}</strong></div>
-            <div class="rmu-info-line">Round Cost: <strong style="${totalStyle}">${totalRoundAP} AP${totalSuffix}</strong></div>
+            <div class="rmu-info-line">Current Cost: <strong style="${costStyle}">${currentPhaseCost} AP${costSuffix}</strong></div>
+            <div class="rmu-info-line">Round Spent: <strong style="${totalStyle}">${totalRoundAP} AP${totalSuffix}</strong></div>
             ${nextApHtml}
         </div>
 
