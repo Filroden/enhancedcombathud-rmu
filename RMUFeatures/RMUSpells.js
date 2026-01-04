@@ -378,7 +378,7 @@ export function defineSpellsMain(CoreHUD) {
 
       // 2. Install search.
       const spellFilters = [
-        /* --- Re-enable when favorrites are implemented in RMU ---
+        /* --- Re-enable when favourites are implemented in RMU ---
         {
           id: "fav",
           dataKey: "favorite",

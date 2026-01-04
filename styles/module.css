@@ -6,18 +6,15 @@
 /* ────────────────────────────────────────────────
    Utility Classes (New Migrated Styles)
 ──────────────────────────────────────────────── */
-.enhancedcombathud-rmu .rmu-button-relative {
-  position: relative !important;
-}
+.enhancedcombathud-rmu .rmu-button-relative { position: relative !important; }
 
-.enhancedcombathud-rmu .rmu-overflow-hidden {
-  overflow: hidden !important;
-}
+.enhancedcombathud-rmu .rmu-overflow-hidden { overflow: hidden !important; }
 
 .enhancedcombathud-rmu .rmu-interactive-button {
   cursor: pointer !important;
   pointer-events: auto !important;
 }
+
 
 /* ────────────────────────────────────────────────
    HUD Value Overlay (Attacks + Resistances)
@@ -78,6 +75,7 @@
   line-height: 3rem;
 }
 
+
 /* ────────────────────────────────────────────────
    AoE "Place Template" state (attacks)
 ──────────────────────────────────────────────── */
@@ -112,6 +110,7 @@
   z-index: 3;
 }
 
+
 /* ────────────────────────────────────────────────
    Category count badge (RESISTANCE ROLLS tile)
 ──────────────────────────────────────────────── */
@@ -129,13 +128,13 @@
   z-index: 3;
 }
 
+
 /* ────────────────────────────────────────────────
    Disabled state (non-equipped attacks)
 ──────────────────────────────────────────────── */
-/* Disabled: do not rely on generic greying that can be confused with ech-blur */
+
 .enhancedcombathud-rmu .action-element.disabled {
   cursor: not-allowed !important;
-  /* keep underlying look; we overlay a stripe instead of heavy dimming */
 }
 
 .enhancedcombathud-rmu .action-element.disabled::after {
@@ -166,6 +165,7 @@
   pointer-events: none;
 }
 
+
 /* ────────────────────────────────────────────────
    DRAWER (MACROS)
 ──────────────────────────────────────────────── */
@@ -178,6 +178,7 @@
   background-color: var(--filroden-color-bg-light-solid);
   cursor: pointer;
 }
+
 
 /* =============================================
    WEAPON EQUIP TOGGLE (SVG ICON)
@@ -212,6 +213,7 @@
   height: 20px;
 }
 
+
 /* ==================================================================
    --- RMU HUD ACCORDION THEME ---
 ================================================================== */
@@ -233,7 +235,7 @@
   cursor: pointer;
 }
 
-/* Neutralise Argon’s absolute footer title so our vertical text shows */
+/* Neutralise Argon’s absolute footer title so vertical text shows */
 .enhancedcombathud-rmu .rmu-skill-header .action-element-title {
   position: static !important;
   bottom: auto !important;
@@ -277,6 +279,7 @@
 .enhancedcombathud-rmu .rmu-spell-list-header:hover {
   cursor: pointer;
 }
+
 
 /* ==================================================================
    --- DEFENSE DIALOG THEME (Updated) ---
@@ -363,6 +366,7 @@
   border-color: var(--filroden-color-text-accent) !important;
   color: var(--filroden-color-text-main-solid) !important;
 }
+
 
 /* ==================================================================
    --- Generic Search & Filter Bar ---
@@ -475,6 +479,7 @@
   opacity: 0.8; 
 }
 
+
 /* ==================================================================
    --- Spell & Skill Chips ---
 ================================================================== */
@@ -530,6 +535,7 @@ position: absolute;
 .enhancedcombathud-rmu .rmu-subconscious-chip::before {
   --icon-url: url('/modules/enhancedcombathud-rmu/icons/airline_seat_flat.svg');
 }
+
 
 /* ==================================================================
    --- Movement HUD ---
