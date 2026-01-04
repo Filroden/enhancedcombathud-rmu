@@ -1,4 +1,4 @@
-![Latest Version](https://img.shields.io/badge/Version-0.6.2-blue)
+![Latest Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![Foundry Version](https://img.shields.io/badge/Foundry_VTT-v13_%7C_v13-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Languages](https://img.shields.io/badge/Languages-1-blueviolet)
@@ -16,31 +16,35 @@ An implementation of the [Argon - Combat HUD](https://foundryvtt.com/packages/en
 ---
 
 ### Attack Panel
+
 ![Attacks](/images/attacks.png)
 
 ### Spell Panel including search bar
+
 ![Spells](/images/spells.png)
 
 ### Skill Panel including search bar
+
 ![Skills](/images/skills.png)
 
 ### Resistance Rolls
+
 ![Resistance](/images/resistances.png)
 
 ### Endurance Rolls
+
 ![Endurance](/images/endurance.png)
 
 ### Set Defenses
+
 ![Set Defenses](/images/set_defences.png)
 
----
+**Documentation for core Argon HUD features can be found at [TheRipper93's Wiki](https://api.theripper93.com/modulewiki/enhancedcombathud/free).**
 
-### The documentation for the core Argon features can be found [here](https://api.theripper93.com/modulewiki/enhancedcombathud/free)
+This module adjusts various Argon Combat HUD features for the Rolemaster Unified system:
 
-This module adjusts various Argon features for the Rolemaster Unified system:
-
-* **Portrait:** A customised portrait panel showing HP, Power Points, and Defensive Bonus, with buttons to open the character sheet, set defences (dodge, block and other DB modifier), and to roll initiative.
-* **Movement HUD:** Integrates with the RMU movement system showing the current movement in the phase and how much you can move before spending the next AP (dedicated movement) or incurring the next penalty (acting while moving).
+* **Portrait:** A customised portrait panel showing HP, Power Points, and Defensive Bonus, with buttons to open the character sheet, set defences (dodge, block and other DB modifier), and to roll initiative. At the top of the portrait is a drawer where you can access any macros on your macro hotbar.
+* **Movement HUD:** Integrates with the RMU movement system showing the current movement in the phase and how much you can move before spending the next AP (dedicated movement) or incurring the next penalty (acting while moving). The Movement HUD is only visible when in combat.
 
     <img src="images/movement_hud.png" width=200px>
 
@@ -50,13 +54,19 @@ This module adjusts various Argon features for the Rolemaster Unified system:
   * Skill Manoeuvre Rolls (including Spell Mastery)
   * Resistance Rolls
   * Endurance Checks (Physical/Mental)
-* **Search:** A search tool for spells and skills. Just start typing and it will show any spells or skills matching your text and the number found on the right of the search bar. Click the clear icon in the search bar to reset the filter. There are also toggleable filters for specific spell or skill properties such as filtering for spells that can be cast instantaneously or sub-consciously.
+* **Search:** A search tool for spells and skills. Just start typing and it will show any spells or skills matching your text and the number found on the right of the search bar. Click the clear icon in the search bar to reset the filter. There are also toggled filters for specific spell or skill properties such as filtering for spells that can be cast instantaneously or sub-consciously.
 * **Utilities:**
-  * A "Rest" button to open the RMU rest dialog.
-  * A combat panel to end the current combatant's turn.
+  * A "Rest" button to open the RMU rest dialogue.
+  * A combat panel to end the current combatant's turn (only visible when in combat).
 * **Tooltips:** Each action button has a rich tooltip showing the same data available in the character sheet.
 
----
+## Casting spells
+
+In RMU you potentially need to make three rolls to cast a spell. On the Actor Sheet all these are found in the same tab, but in Argon Combat HUD for RMU they are split between three panels.
+
+1. [Optional] A Spell Mastery roll to successfully adapt a spell from its base description. Spell Mastery rolls can be made from the **Skills Panel** using the appropriate **Spell List**.
+2. [Mandatory] A Spell Casting Roll (SCR) is always required. SCR can be made from the **Spells Panel** using the appropriate **Spell**.
+3. [Conditional] Some spells require an attack roll. Attack rolls can be found on the **Attacks Panel** under the **Spells** button.
 
 ## Version History
 
@@ -64,6 +74,6 @@ This module adjusts various Argon features for the Rolemaster Unified system:
 
 ## Roadmap
 
-* Items (waiting on a system dependency)
+* Using Items with activated effects (waiting on a system dependency)
 
 **If you have suggestions, questions, or requests for additional features, please [let me know](https://github.com/Filroden/enhancedcombathud-rmu/issues).**
