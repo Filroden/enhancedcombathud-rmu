@@ -321,7 +321,7 @@
 .enhancedcombathud-rmu.rmu-defenses-dialog input {
   background-color: var(--filroden-color-bg-medium-solid) !important; 
   color: var(--filroden-color-text-main-solid) !important;
-  border: var(--filroden-border-main) !important;
+  border: var(--filroden-border-main);
   border-radius: var(--filroden-radius-small, 3px);
   height: 2rem;
   padding: var(--filroden-space-s);
@@ -340,31 +340,53 @@
   box-shadow: 0 0 5px var(--filroden-color-bg-medium-solid);
 }
 
-.enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons {
+.enhancedcombathud-rmu.rmu-defenses-dialog .form-footer {
   gap: var(--filroden-space-s);
+  display: flex; 
+  justify-content: flex-end; 
+  margin-top: var(--filroden-space-m);
 }
 
-.enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons button {
+/* Base Button Style */
+.enhancedcombathud-rmu.rmu-defenses-dialog .form-footer button {
   background: var(--filroden-color-bg-light-solid) !important;
   border: var(--filroden-border-main) !important;
   border-radius: var(--filroden-radius-medium);
   color: var(--filroden-color-text-muted-solid) !important;
   padding: var(--filroden-space-xs) var(--filroden-space-m) !important; 
-  margin-top: var(--filroden-space-s);
   line-height: 24px !important;
-  transition: background-color 0.1s, border-color 0.1s, color 0.1s;
+  transition: all 0.2s ease;
   box-shadow: none !important;
+  width: auto; /* Prevent full width expansion */
 }
 
-.enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons button:hover {
+/* Hover State (Generic) */
+.enhancedcombathud-rmu.rmu-defenses-dialog .form-footer button:hover {
   background: var(--filroden-color-bg-hover-solid) !important;
   color: var(--filroden-color-text-main-solid) !important;
   border-color: var(--filroden-color-text-muted-solid) !important;
 }
 
-.enhancedcombathud-rmu.rmu-defenses-dialog .dialog-buttons button.default {
+/* --- APPLY BUTTON SPECIFIC STYLES --- */
+.enhancedcombathud-rmu.rmu-defenses-dialog .form-footer button[data-action="apply"] {
+  background-color: var(--filroden-color-text-accent) !important;
+  color: var(--filroden-color-text-on-accent) !important;
   border-color: var(--filroden-color-text-accent) !important;
-  color: var(--filroden-color-text-main-solid) !important;
+  font-weight: bold;
+}
+
+.enhancedcombathud-rmu.rmu-defenses-dialog .form-footer button[data-action="apply"]:hover {
+  filter: brightness(1.15);
+  border-color: var(--filroden-color-text-main-solid) !important;
+}
+
+/* --- DISABLED STATE --- */
+.enhancedcombathud-rmu.rmu-defenses-dialog .form-footer button:disabled,
+.enhancedcombathud-rmu.rmu-defenses-dialog .form-footer button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+  filter: grayscale(0.8);
+  pointer-events: none;
 }
 
 

@@ -122,6 +122,8 @@ export function defineSpellsMain(CoreHUD) {
       await super._renderInner();
       if (!this.element) return;
 
+      this.element.dataset.tooltipDirection = "UP";
+
       const s = this.spell;
 
       // Check for filterable properties
