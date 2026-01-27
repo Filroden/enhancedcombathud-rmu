@@ -91,8 +91,9 @@ export function definePortraitPanel(CoreHUD) {
         `).join("");
       };
 
+      // 1. Add an ID to the form and an error message container (hidden by default)
       const content = `
-        <form style="display: flex; flex-direction: column; gap: 10px;">
+        <form id="rmu-defense-form" style="display: flex; flex-direction: column; gap: 10px;">
           <div class="form-group">
             <label>Dodge</label>
             <select name="dodge">
@@ -109,57 +110,117 @@ export function definePortraitPanel(CoreHUD) {
             <label>Other DB modifiers</label>
             <input type="number" name="other" value="${currentOther}">
           </div>
+          
+          <div class="form-error" style="display: none; color: var(--filroden-color-danger); font-size: 0.9em; margin-top: 5px; text-align: center;">
+            <i class="fa-solid fa-triangle-exclamation"></i> Cannot use Passive Dodge & Block simultaneously.
+          </div>
         </form>
       `;
 
-      new Dialog({
-        title: "Set Defenses",
-        content: content,
-        buttons: {
-          apply: {
-            label: "Apply Changes",
-            callback: async (html) => {
-              const newDodge = html.find('[name="dodge"]').val();
-              const newBlock = html.find('[name="block"]').val();
-              const newOther = parseInt(html.find('[name="other"]').val()) || 0;
+      const { DialogV2 } = foundry.applications.api;
 
-              if (newDodge === "passive" && newBlock === "passive") {
-                ui.notifications.warn("You cannot use Passive Dodge and Passive Block at the same time.");
-                return;
-              }
-
-              // Locate the specific token instance for the action wrapper
-              let targetToken = ui.ARGON?._token;
-              if (!targetToken || targetToken.actor?.id !== this.actor.id) {
-                if (this.actor.isToken) {
-                  targetToken = this.actor.token?.object; 
-                } else {
-                  targetToken = this.actor.getActiveTokens()[0]; 
-                }
-              }
-
-              if (!targetToken) {
-                ui.notifications.warn("[ECH-RMU] No valid token found on the canvas to update defenses.");
-                return;
-              }
-
-              if (newDodge !== currentDodge) {
-                await RMUUtils.rmuTokenActionWrapper(targetToken, "rmuTokenSetDodgeOption", newDodge);
-              }
-              if (newBlock !== currentBlock) {
-                await RMUUtils.rmuTokenActionWrapper(targetToken, "rmuTokenSetBlockOption", newBlock);
-              }
-              if (newOther !== currentOther) {
-                await RMUUtils.rmuTokenActionWrapper(targetToken, "rmuTokenSetOtherDB", newOther);
-              }
-            }
-          },
-          cancel: { label: "Cancel" }
+      const result = await DialogV2.wait({
+        window: { 
+            title: "Set Defenses",
+            icon: "fa-solid fa-shield-halved" 
         },
-        default: "apply"
-      }, {
-        classes: ["dialog", "enhancedcombathud-rmu", "rmu-defenses-dialog"]
-      }).render(true);
+        position: {
+            width: 450
+        },
+        content: content,
+        buttons: [{
+          action: "apply",
+          label: "Apply Changes",
+          default: true,
+          callback: (event, button, dialog) => {
+            const formElement = dialog.element.querySelector("form");
+            const formData = new foundry.applications.ux.FormDataExtended(formElement).object;
+            
+            return {
+                dodge: formData.dodge,
+                block: formData.block,
+                other: parseInt(formData.other) || 0
+            };
+          }
+        }, {
+          action: "cancel",
+          label: "Cancel",
+          callback: () => null
+        }],
+        classes: ["enhancedcombathud-rmu", "rmu-defenses-dialog"],
+        modal: true,
+
+        // 2. Interactive Validation Hook
+        render: (event) => {
+            const html = event.target.element; 
+            
+            // Select elements
+            const dodgeSelect = html.querySelector("[name='dodge']");
+            const blockSelect = html.querySelector("[name='block']");
+            const applyButton = html.querySelector(".form-footer button[data-action='apply']");
+            const errorMsg = html.querySelector(".form-error");
+
+            if (!dodgeSelect || !blockSelect || !applyButton) return;
+
+            // Validation Logic
+            const validate = () => {
+                const isInvalid = dodgeSelect.value === "passive" && blockSelect.value === "passive";
+                
+                // Toggle Button
+                applyButton.disabled = isInvalid;
+                
+                // Toggle Error Message
+                if (errorMsg) errorMsg.style.display = isInvalid ? "block" : "none";
+                
+                // Visual feedback on the selects
+                if (isInvalid) {
+                    dodgeSelect.style.borderColor = "var(--filroden-color-danger)";
+                    blockSelect.style.borderColor = "var(--filroden-color-danger)";
+                } else {
+                    dodgeSelect.style.borderColor = ""; 
+                    blockSelect.style.borderColor = "";
+                }
+            };
+
+            // Attach listeners
+            dodgeSelect.addEventListener("change", validate);
+            blockSelect.addEventListener("change", validate);
+
+            // Run once on initial render
+            validate();
+        }
+      });
+
+      // If user clicked Cancel, result is null
+      if (!result) return;
+
+      const { dodge: newDodge, block: newBlock, other: newOther } = result;
+
+      // --- Target Token Resolution ---
+      let targetToken = ui.ARGON?._token;
+      if (!targetToken || targetToken.actor?.id !== this.actor.id) {
+        if (this.actor.isToken) {
+          targetToken = this.actor.token?.object; 
+        } else {
+          targetToken = this.actor.getActiveTokens()[0]; 
+        }
+      }
+
+      if (!targetToken) {
+        ui.notifications.warn("[ECH-RMU] No valid token found on the canvas to update defenses.");
+        return;
+      }
+
+      // --- Apply Updates ---
+      if (newDodge !== currentDodge) {
+        await RMUUtils.rmuTokenActionWrapper(targetToken, "rmuTokenSetDodgeOption", newDodge);
+      }
+      if (newBlock !== currentBlock) {
+        await RMUUtils.rmuTokenActionWrapper(targetToken, "rmuTokenSetBlockOption", newBlock);
+      }
+      if (newOther !== currentOther) {
+        await RMUUtils.rmuTokenActionWrapper(targetToken, "rmuTokenSetOtherDB", newOther);
+      }
     }
 
     /**

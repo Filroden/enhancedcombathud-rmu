@@ -2,6 +2,7 @@
 
 | Version   | Changes |
 | :--- | :--- |
+| **Version 1.0.1** | * Moved to ApplicationV2.<br>* Added a check inside the Set Defenses dialog to warn users if they are trying to set Passive Dodge and Passive Block at the same time.<br>* Made sure that spell casting tooltips always appear above their buttons.|
 | **Version 1.0.0** | **PUBLIC RELEASE**<br>* Updated documentation.<br>* Updated master css theme.|
 | **Version 0.6.2** | * Added a reset to the pace penalty if an attack, spell or perception action are taken during the phase (this will only work if they are triggered by using the HUD, not from the character sheet). Pace penalty tracking then begins again in the next phase from 0.<br>* Fixed bugs in calculating AP cost for in-phase dedicated movement.<br>* All movement is now limited by encumbrance.<br>* The info box shows a warning if the token is spending more than 1 AP per phase (which could be true, but acts as a failsafe).<br>* Improved documentation of the movement HUD code to show calculation logic.|
 | **Version 0.6.1** | * Fixed bug in calculating AP cost for in-phase dedicated movement.<br>* Simplified movement HUD to a single track and a more detailed information box to show how far you can move until you incur another AP cost or move to a higher penalty.|
