@@ -1,10 +1,10 @@
 /**
  * RMUFeatures/RMUAttacks.js
- * Defines the main Attacks panel, including Melee, Ranged,
- * and two Spell Attack categories (Target and Area).
+ * Defines the main Attacks panel, including Melee, Ranged, Natural, and Shield.
+ * Spell attacks have been moved to the Spells panel (RMUSpells.js).
  */
 
-import { ICONS, RMUUtils, SPELL_ATTACK_ICONS, UIGuards } from '../RMUCore.js';
+import { ICONS, RMUUtils, UIGuards } from '../RMUCore.js';
 import { RMUData } from '../RMUData.js';
 
 /**
@@ -36,37 +36,35 @@ export function defineAttacksMain(CoreHUD) {
 
   /**
    * Defines the categories for the Attacks panel.
+   * Spell categories removed to prevent duplication.
    */
   const CATS = [
     { key: "melee", label: "Melee", icon: ICONS.melee },
     { key: "ranged", label: "Ranged", icon: ICONS.ranged },
     { key: "natural", label: "Natural", icon: ICONS.natural },
-    { key: "shield", label: "Shield", icon: ICONS.shield },
-    { key: "spellTarget", label: "Spells (Target)", icon: ICONS.beam },
-    { key: "spellArea", label: "Spells (Area)", icon: ICONS.explosion }
+    { key: "shield", label: "Shield", icon: ICONS.shield }
   ];
 
   /**
-   * An action button representing a single attack (physical or spell).
+   * An action button representing a single physical attack.
    * @augments ActionButton
    */
   class RMUAttackActionButton extends ActionButton {
     /**
      * @param {object} attack - The attack object (from RMUData).
-     * @param {string} catKey - The category key (e.g., "melee", "spellTarget").
+     * @param {string} catKey - The category key (e.g., "melee").
      */
     constructor(attack, catKey) {
       super();
       this.attack = attack;
       this._catKey = catKey;
-      this._isSpellAttack = !!attack._isSpellAttack;
 
       // Check if this is a physical, equip-able item
-      this._isPhysicalWeapon = !this._isSpellAttack && this._catKey !== "natural";
+      this._isPhysicalWeapon = this._catKey !== "natural";
 
       // Get the live equipped state for styling the toggle
       const live = RMUData.getLiveAttack(this.attack);
-      this._equipped = this._isSpellAttack ? true : !!(live?.isEquipped ?? live?.readyState ?? false);
+      this._equipped = !!(live?.isEquipped ?? live?.readyState ?? false);
     }
 
     get isInteractive() { return true; }
@@ -96,16 +94,10 @@ export function defineAttacksMain(CoreHUD) {
 
     get label() {
       const name = this.attack?.attackName ?? this.attack?.name ?? "Attack";
-      
       return this._armed ? `Place: ${name}` : name;
     }
 
     get icon() {
-      if (this._isSpellAttack && SPELL_ATTACK_ICONS[this.attack.baseName]) {
-          return SPELL_ATTACK_ICONS[this.attack.baseName];
-      }
-      if (this._catKey === 'spellTarget') return ICONS.beam;
-      if (this._catKey === 'spellArea') return ICONS.explosion;
       return this.attack?.img || ICONS[this._catKey] || ICONS.melee;
     }
 
@@ -122,15 +114,14 @@ export function defineAttacksMain(CoreHUD) {
 
       this.element.classList.add("rmu-interactive-button");
       this.element.classList.toggle("disabled", this.disabled);
+      this.element.dataset.tooltipDirection = "UP";
 
       this._applyArmedVisual();
       this._updateBadge();
       this._updateOverlay();
 
       const valueLabel = "Total";
-      const value = this._isSpellAttack
-        ? this.attack?._totalBonus
-        : this.attack?.totalBonus;
+      const value = this.attack?.totalBonus;
 
       RMUUtils.applyValueOverlay(this.element, value ?? "", valueLabel);
 
@@ -243,25 +234,6 @@ export function defineAttacksMain(CoreHUD) {
     async getTooltipData() {
       const a = this.attack ?? {};
 
-      // Spell Attack Tooltip
-      if (this._isSpellAttack) {
-        return {
-          title: a.name,
-          subtitle: `Lvl ${a.level} - ${a.spellList}`,
-          details: [
-            { label: "Attack Type", value: a.attack },
-            { label: "Specialization", value: a.spellAttack.specialization },
-            { label: "Size", value: a.spellAttack.size },
-            { label: "Chart", value: a.spellAttack.chart?.name },
-            { label: "Fumble", value: a.spellAttack.fumble },
-            { label: "Range (interval)", value: a._modifiedRange.range || a.range },
-            { label: "AoE", value: a._modifiedAoE.range || a.AoE },
-            { label: "Targets", value: a._modifiedAoE.targets },
-            { label: "Total OB", value: a._totalBonus },
-          ].filter(x => x.value !== undefined && x.value !== null && x.value !== "")
-        };
-      }
-
       // Physical Attack Tooltip
       const details = [
         { label: "Specialization", value: a.skill?.specialization },
@@ -322,18 +294,15 @@ export function defineAttacksMain(CoreHUD) {
       await RMUUtils.markActionTaken(token);
       await RMUData.ensureExtendedTokenData();
 
-      const live = this._isSpellAttack ? this.attack : RMUData.getLiveAttack(this.attack);
+      const live = RMUData.getLiveAttack(this.attack);
 
       // This check is redundant due to _onMouseDown, but good defense.
-      if (!live.isEquipped && !this._isSpellAttack) {
+      if (!live.isEquipped) {
         ui.notifications?.warn?.(`${(live?.attackName ?? this.label).replace(/^Place:\s*/, "")} is not equipped.`);
         return;
       }
 
-      const apiToCall = this._isSpellAttack
-        ? "rmuTokenSpellAttackAction"
-        : "rmuTokenAttackAction";
-
+      const apiToCall = "rmuTokenAttackAction";
       const needsTemplate = live.isAoE === true;
 
       // If already armed, fire the attack and disarm
@@ -394,37 +363,21 @@ export function defineAttacksMain(CoreHUD) {
     async _getButtons() {
       await RMUData.ensureRMUReady();
       const allNormalAttacks = RMUData.getTokenAttacks();
-      const allSpellAttacks = RMUData.getDirectedSpellAttacks();
 
+      // We initialize buckets based ONLY on the filtered CATS array
       const buckets = new Map(CATS.map(c => [c.key, []]));
 
-      // 1. Bucket Normal Attacks
+      // Bucket Normal Attacks
       for (const atk of allNormalAttacks) {
         const key = RMUData.bucketOf(atk);
-        if (!buckets.has(key)) buckets.set(key, []);
-        buckets.get(key).push(atk);
-      }
-
-      // 2. Bucket Spell Attacks into new categories
-      for (const spell of allSpellAttacks) {
-        if (spell.isAoE) {
-          buckets.get("spellArea").push(spell);
-        } else {
-          buckets.get("spellTarget").push(spell);
+        // Safety check: ensure the bucket exists in our defined categories
+        if (buckets.has(key)) {
+            buckets.get(key).push(atk);
         }
       }
 
-      // 3. Sort attacks within each bucket
-      for (const [k, list] of buckets.entries()) {
-        if (k === "spellTarget" || k === "spellArea") {
-          // Sort spells by Name, then Level
-          list.sort((a, b) => {
-            const nameA = a.attackName || a.name;
-            const nameB = b.attackName || b.name;
-            return nameA.localeCompare(nameB) || a.level - b.level;
-          });
-        } else {
-          // Sort physical attacks by Equipped, then Name
+      // Sort attacks within each bucket (Physical logic only)
+      for (const list of buckets.values()) {
           list.sort((a, b) => {
             const la = RMUData.getLiveAttack(a);
             const lb = RMUData.getLiveAttack(b);
@@ -435,7 +388,6 @@ export function defineAttacksMain(CoreHUD) {
             const nb = String(lb?.attackName ?? lb?.name ?? "");
             return na.localeCompare(nb);
           });
-        }
       }
 
       // Create category buttons, filtering out empty categories

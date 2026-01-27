@@ -1,4 +1,4 @@
-![Latest Version](https://img.shields.io/badge/Version-1.0.1-blue)
+![Latest Version](https://img.shields.io/badge/Version-1.1.0-blue)
 ![Foundry Version](https://img.shields.io/badge/Foundry_VTT-v13_%7C_v13-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Languages](https://img.shields.io/badge/Languages-1-blueviolet)
@@ -48,9 +48,9 @@ This module adjusts various Argon Combat HUD features for the Rolemaster Unified
 
     <img src="images/movement_hud.png" width=200px>
 
-* **Attacks:** Categorised attack buttons for Melee, Ranged, Natural (including innate magic), Shield, and Spell attacks. Weapons can be equipped and unequipped within the panel.
+* **Attacks:** Categorised attack buttons for Melee, Ranged, Natural (including innate magic), and Shield attacks. Weapons can be equipped and unequipped within the panel.
 * **Other panels:** Dedicated panels for:
-  * Spell Casting Rolls (SCR)
+  * Spell Casting (including any follow-up attack roll)
   * Skill Manoeuvre Rolls (including Spell Mastery)
   * Resistance Rolls
   * Endurance Checks (Physical/Mental)
@@ -62,11 +62,11 @@ This module adjusts various Argon Combat HUD features for the Rolemaster Unified
 
 ## Casting spells
 
-In RMU you potentially need to make three rolls to cast a spell. On the Actor Sheet all these are found in the same tab, but in Argon Combat HUD for RMU they are split between three panels.
+In RMU you potentially need to make three rolls to cast a spell. On the Actor Sheet all these are found in the same tab, but in Argon Combat HUD for RMU they are split between two panels.
 
-1. [Optional] A Spell Mastery roll to successfully adapt a spell from its base description. Spell Mastery rolls can be made from the **Skills Panel** using the appropriate **Spell List**.
+1. [Optional] A Spell Mastery roll to successfully adapt a spell from its base description. Spell Mastery rolls can be made from the **Skills Panel** using the appropriate **Spell List** skill.
 2. [Mandatory] A Spell Casting Roll (SCR) is always required. SCR can be made from the **Spells Panel** using the appropriate **Spell**.
-3. [Conditional] Some spells require an attack roll. Attack rolls can be found on the **Attacks Panel** under the **Spells** button.
+3. [Conditional] Some spells require an attack roll. If a spell has an associated attack, it will show both its SCR bonus and OB bonus on the spell's button. Clicking it once will make the Spell Casting Roll. It will then change its appearance to have a warmer background, change its icon, only show its OB bonus, and (for area spells) remind you to place the template (in the SCR chat card result). Clicking again will roll the attack. If the SCR roll fails (which the HUD cannot detect), you can dismiss the armed state by right-clicking the button.
 
 ## Version History
 
