@@ -68,6 +68,14 @@ In RMU you potentially need to make three rolls to cast a spell. On the Actor Sh
 2. [Mandatory] A Spell Casting Roll (SCR) is always required. SCR can be made from the **Spells Panel** using the appropriate **Spell**.
 3. [Conditional] Some spells require an attack roll. If a spell has an associated attack, it will show both its SCR bonus and OB bonus on the spell's button. Clicking it once will make the Spell Casting Roll. It will then change its appearance to have a warmer background, change its icon, only show its OB bonus, and (for area spells) remind you to place the template (in the SCR chat card result). Clicking again will roll the attack. If the SCR roll fails (which the HUD cannot detect), you can dismiss the armed state by right-clicking the button.
 
+## Dependencies
+
+|Argon Combat HUD (RMU)|RMU System|Argon Combat HUD (CORE)|
+|---|---|---|
+|1.1.0|1.0.0|4.1.0|
+|1.0.1|1.0.0|4.1.0|
+|1.0.0|1.0.0|4.0.7|
+
 ## Version History
 
 [Version History](VERSION.md)
