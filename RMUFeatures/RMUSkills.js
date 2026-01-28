@@ -227,6 +227,7 @@ export function defineSkillsMain(CoreHUD) {
 
       this.element.style.pointerEvents = "auto";
       this.element.style.cursor = this.disabled ? "not-allowed" : "pointer";
+      this.element.dataset.tooltipDirection = "UP";
 
       // Apply total bonus overlay
       RMUUtils.applyValueOverlay(this.element, this.entry?.total ?? "", "Total");
