@@ -1,4 +1,4 @@
-![Latest Version](https://img.shields.io/badge/Version-1.1.0-blue)
+![Latest Version](https://img.shields.io/badge/Version-1.1.1-blue)
 ![Foundry Version](https://img.shields.io/badge/Foundry_VTT-v13_%7C_v13-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Languages](https://img.shields.io/badge/Languages-1-blueviolet)
@@ -70,9 +70,10 @@ In RMU you potentially need to make three rolls to cast a spell. On the Actor Sh
 
 ## Dependencies
 
+The table below only shows the earliest version where a dependency has changed. Later versions share the same dependencies.
+
 |Argon Combat HUD (RMU)|RMU System|Argon Combat HUD (CORE)|
 |---|---|---|
-|1.1.0|1.0.0|4.1.0|
 |1.0.1|1.0.0|4.1.0|
 |1.0.0|1.0.0|4.0.7|
 
