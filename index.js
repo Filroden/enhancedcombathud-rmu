@@ -7,21 +7,27 @@
  */
 
 // Import modular logic
-import { UIGuards, defineTooltip, defineSupportedActorTypes } from './RMUCore.js';
-import './RMUData.js'; // Imports RMUData for its side effects (attaching to window)
-import { defineAttacksMain } from './RMUFeatures/RMUAttacks.js';
-import { defineSkillsMain } from './RMUFeatures/RMUSkills.js';
-import { defineSpellsMain } from './RMUFeatures/RMUSpells.js';
 import {
-  defineResistancesMain,
-  defineSpecialChecksMain,
-  defineRestMain,
-  defineCombatMain,
-  definePortraitPanel,
-  defineMovementHud,
-  defineWeaponSets,
-  defineDrawerPanel
-} from './RMUFeatures/RMUOther.js';
+    UIGuards,
+    defineTooltip,
+    defineSupportedActorTypes,
+} from "./RMUCore.js";
+import "./RMUData.js"; // Imports RMUData for its side effects (attaching to window)
+import { defineAttacksMain } from "./RMUFeatures/RMUAttacks.js";
+import { defineSkillsMain } from "./RMUFeatures/RMUSkills.js";
+import { defineSpellsMain } from "./RMUFeatures/RMUSpells.js";
+import {
+    defineResistancesMain,
+    defineSpecialChecksMain,
+    defineRestMain,
+    defineCombatMain,
+    definePortraitPanel,
+    defineMovementHud,
+    defineWeaponSets,
+    defineDrawerPanel,
+} from "./RMUFeatures/RMUOther.js";
+
+const VALID_ACTOR_TYPES = ["Character", "Creature"];
 
 /**
  * Initializes the RMU-specific configuration for the Argon HUD.
@@ -29,30 +35,30 @@ import {
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 function initConfig(CoreHUD) {
-  if (game.system.id !== "rmu") return;
+    if (game.system.id !== "rmu") return;
 
-  // A. UI Basics
-  defineTooltip(CoreHUD);
-  defineSupportedActorTypes(CoreHUD);
+    // A. UI Basics
+    defineTooltip(CoreHUD);
+    defineSupportedActorTypes(CoreHUD);
 
-  // B. Portrait/Movement
-  definePortraitPanel(CoreHUD);
-  defineMovementHud(CoreHUD);
-  defineWeaponSets(CoreHUD);
+    // B. Portrait/Movement
+    definePortraitPanel(CoreHUD);
+    defineMovementHud(CoreHUD);
+    defineWeaponSets(CoreHUD);
 
-  // C. Main Panels (Attacks, Spells, Skills)
-  defineAttacksMain(CoreHUD);
-  defineSpellsMain(CoreHUD);
-  defineSkillsMain(CoreHUD);
+    // C. Main Panels (Attacks, Spells, Skills)
+    defineAttacksMain(CoreHUD);
+    defineSpellsMain(CoreHUD);
+    defineSkillsMain(CoreHUD);
 
-  // D. Main Panels (Resistances, Special, Rest, Combat)
-  defineResistancesMain(CoreHUD);
-  defineSpecialChecksMain(CoreHUD);
-  defineRestMain(CoreHUD);
-  defineCombatMain(CoreHUD);
+    // D. Main Panels (Resistances, Special, Rest, Combat)
+    defineResistancesMain(CoreHUD);
+    defineSpecialChecksMain(CoreHUD);
+    defineRestMain(CoreHUD);
+    defineCombatMain(CoreHUD);
 
-  // E. Drawer (Macros)
-  defineDrawerPanel(CoreHUD);
+    // E. Drawer (Macros)
+    defineDrawerPanel(CoreHUD);
 }
 
 // -----------------------------------------------------------------------------
@@ -62,28 +68,47 @@ function initConfig(CoreHUD) {
 Hooks.once("init", () => console.info(`[ECH-RMU] Initializing RMU extension`));
 
 Hooks.once("setup", () => {
-  console.info(`[ECH-RMU] Setting up RMU extension hooks`);
-  // Install the aggressive, global guard to prevent keydown conflicts.
-  UIGuards.installGlobalHudInputGuard();
+    console.info(`[ECH-RMU] Setting up RMU extension hooks`);
+    // Install the aggressive, global guard to prevent keydown conflicts.
+    UIGuards.installGlobalHudInputGuard();
 });
 
 // Register the main configuration function with Argon
 Hooks.on("argonInit", (CoreHUD) => initConfig(CoreHUD));
 
 Hooks.once("ready", () => {
-  console.info(`[ECH-RMU] RMU extension is ready`);
-  // Add a system-specific class to the body for CSS scoping
-  const body = document.body;
-  if (!body.classList.contains("enhancedcombathud-rmu")) {
-    body.classList.add("enhancedcombathud-rmu");
-    console.info("[ECH-RMU] Added .enhancedcombathud-rmu to <body> for scoped CSS");
-  }
+    console.info(`[ECH-RMU] RMU extension is ready`);
+    // Add a system-specific class to the body for CSS scoping
+    const body = document.body;
+    if (!body.classList.contains("enhancedcombathud-rmu")) {
+        body.classList.add("enhancedcombathud-rmu");
+    }
+
+    // MONKEY PATCH: Suppress "Loot" Warnings
+    // Safely intercepts the HUD's bind method to ignore unsupported actors
+    if (ui.ARGON?.bind) {
+        const originalBind = ui.ARGON.bind;
+        ui.ARGON.bind = function (token) {
+            // If a token is selected, check if it's a valid type
+            if (token?.actor && !VALID_ACTOR_TYPES.includes(token.actor.type)) {
+                // If invalid (e.g., Loot), force the HUD to close (unbind)
+                // ignoring the warning and preventing the HUD from getting stuck.
+                return originalBind.apply(this, [null]);
+            }
+            // Otherwise, proceed as normal
+            return originalBind.apply(this, arguments);
+        };
+    }
 });
 
 Hooks.once("shutdown", () => {
-  document.body.classList.remove("enhancedcombathud-rmu");
+    document.body.classList.remove("enhancedcombathud-rmu");
 });
 
 // Update visibility of REST and COMBAT buttons when combat starts/ends
-Hooks.on("updateCombat", () => ui.ARGON?.components?.main?.forEach(c => c.updateVisibility?.()));
-Hooks.on("deleteCombat", () => ui.ARGON?.components?.main?.forEach(c => c.updateVisibility?.()));
+Hooks.on("updateCombat", () =>
+    ui.ARGON?.components?.main?.forEach((c) => c.updateVisibility?.()),
+);
+Hooks.on("deleteCombat", () =>
+    ui.ARGON?.components?.main?.forEach((c) => c.updateVisibility?.()),
+);
