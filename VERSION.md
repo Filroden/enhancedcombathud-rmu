@@ -2,7 +2,7 @@
 
 | Version   | Changes |
 | :--- | :--- |
-| **Version 1.1.2** | - Preventative fix to prevent Argon Combat HUD (CORE) giving a warning if a "Loot" actor is selected.|
+| **Version 1.1.2** | - Fix to prevent Argon Combat HUD (CORE) giving a warning if a "Loot" actor is selected.|
 | **Version 1.1.1** | - Fix search bar filters in the Spell search bar. They should now show available instant and subconscious spells when toggled.|
 | **Version 1.1.0** | - Removed all spell attacks from the Attack panel.<br>- In the Spell panel (renamed from Spell (SCR) panel), if a spell has an attack, it shows both the SCR bonus and the OB bonus.<br>- If you cast a spell with an attack, it will change the state of the button after the attack to show it is armed and ready to be used again to make the attack roll.<br>- Clicking the button again (with your target selected / template placed) will do the attack and return the button to its unarmed state.<br>- The armed state has a slightly warmer background, a different icon, and only shows OB bonus (and the Place Template reminder for area spells).<br>- If the SCR roll fails (which the HUD cannot detect), you can dismiss the armed state by right-clicking the button.|
 | **Version 1.0.1** | - Moved to ApplicationV2.<br>- Added a check inside the 'Set Defenses' dialogue to warn users if they are trying to set Passive Dodge and Passive Block at the same time.<br>- Made sure that spell casting tooltips always appear above their buttons.|
