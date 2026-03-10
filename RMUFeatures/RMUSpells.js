@@ -4,14 +4,7 @@
  * Implements "Combo" buttons that transition from Casting (SCR) to Attacking (OB).
  */
 
-import {
-    ICONS,
-    SPELL_ATTACK_ICONS,
-    RMUUtils,
-    installListSearch,
-    UIGuards,
-    formatBonus,
-} from "../RMUCore.js";
+import { ICONS, SPELL_ATTACK_ICONS, RMUUtils, installListSearch, UIGuards, formatBonus } from "../RMUCore.js";
 import { RMUData } from "../RMUData.js";
 
 // Global state helpers
@@ -70,8 +63,7 @@ function applyAccordionVisibility(panelEl) {
         const tType = t.dataset.listTypeKey || "";
         const tName = t.dataset.listNameKey || "";
         const isSearchHidden = t.classList.contains("hidden");
-        const visible =
-            tType === openType && tName === openName && !isSearchHidden;
+        const visible = tType === openType && tName === openName && !isSearchHidden;
         t.style.display = visible ? "" : "none";
     });
 }
@@ -92,7 +84,7 @@ export function defineSpellsMain(CoreHUD) {
             this.spell = spell;
             if (spell) {
                 this._listKey = spell._rawListInfo.listKey;
-                this._listTypeKey = spell._rawListInfo.listType;
+                this._listTypeKey = spell._rawListInfo.groupName ?? spell._rawListInfo.listType;
             }
             this._relatedAttack = this._findRelatedAttack();
         }
@@ -118,9 +110,7 @@ export function defineSpellsMain(CoreHUD) {
 
         /** Getter/Setter for Template Active State (Placing AoE) */
         get _isTemplateActive() {
-            return (
-                SPELL_TEMPLATE_STATE.get(getSpellStateKey(this.spell)) === true
-            );
+            return SPELL_TEMPLATE_STATE.get(getSpellStateKey(this.spell)) === true;
         }
         set _isTemplateActive(value) {
             const key = getSpellStateKey(this.spell);
@@ -136,10 +126,7 @@ export function defineSpellsMain(CoreHUD) {
 
         get icon() {
             if (this._isArmed) {
-                if (
-                    this._relatedAttack?.baseName &&
-                    SPELL_ATTACK_ICONS[this._relatedAttack.baseName]
-                ) {
+                if (this._relatedAttack?.baseName && SPELL_ATTACK_ICONS[this._relatedAttack.baseName]) {
                     return SPELL_ATTACK_ICONS[this._relatedAttack.baseName];
                 }
                 if (this._relatedAttack?.isAoE) {
@@ -170,10 +157,7 @@ export function defineSpellsMain(CoreHUD) {
             const a = this._relatedAttack;
 
             // --- 1. BASE SPELL DETAILS (SCR) ---
-            const duration =
-                s._modifiedDuration?.duration ||
-                s._modifiedDuration?.dur?.duration ||
-                s.duration;
+            const duration = s._modifiedDuration?.duration || s._modifiedDuration?.dur?.duration || s.duration;
             const aoe = s._modifiedAoE?.aoe || s.aoe;
             const range = s._modifiedRange?.range || s.range;
 
@@ -214,11 +198,9 @@ export function defineSpellsMain(CoreHUD) {
             // --- 3. INSTRUCTIONS ---
             let helpText = "";
             if (this._isTemplateActive) {
-                helpText =
-                    "<br><br><b>Template Active!</b><br>Position the template, then <b>Left-Click</b> here to resolve.";
+                helpText = "<br><br><b>Template Active!</b><br>Position the template, then <b>Left-Click</b> here to resolve.";
             } else if (this._isArmed) {
-                helpText =
-                    "<br><br><b>Left-Click:</b> Roll Attack<br><b>Right-Click:</b> Cancel Attack";
+                helpText = "<br><br><b>Left-Click:</b> Roll Attack<br><b>Right-Click:</b> Cancel Attack";
             } else if (this._relatedAttack) {
                 helpText = "<br><br><b>Left-Click:</b> Cast Spell (SCR)";
             }
@@ -227,14 +209,7 @@ export function defineSpellsMain(CoreHUD) {
                 title: this.label,
                 subtitle: `Lvl ${s.level} - ${s.spellList}`,
                 description: (s.description || "") + helpText,
-                details: RMUUtils.formatTooltipDetails(
-                    details.filter(
-                        (x) =>
-                            x.value !== undefined &&
-                            x.value !== null &&
-                            x.value !== "",
-                    ),
-                ),
+                details: RMUUtils.formatTooltipDetails(details.filter((x) => x.value !== undefined && x.value !== null && x.value !== "")),
             };
         }
 
@@ -248,15 +223,11 @@ export function defineSpellsMain(CoreHUD) {
             // Chips
             const modifiersStr = this.spell.modifiers || "";
             const isInstant = modifiersStr.includes("*");
-            const isSubconscious = (this.spell.spellType || "")
-                .substring(1)
-                .includes("s");
+            const isSubconscious = (this.spell.spellType || "").substring(1).includes("s");
 
             // Apply data attributes so the Search Filter can find them
             this.element.dataset.isInstant = isInstant ? "true" : "false";
-            this.element.dataset.isSubconscious = isSubconscious
-                ? "true"
-                : "false";
+            this.element.dataset.isSubconscious = isSubconscious ? "true" : "false";
 
             const chips = [];
             if (isInstant)
@@ -274,23 +245,13 @@ export function defineSpellsMain(CoreHUD) {
             // --- COMBO OVERLAY ---
             if (this._relatedAttack) {
                 const scrVal = formatBonus(this.spell.scr);
-                const rawOb =
-                    this._relatedAttack._totalBonus ??
-                    this._relatedAttack.totalBonus;
+                const rawOb = this._relatedAttack._totalBonus ?? this._relatedAttack.totalBonus;
                 const obVal = formatBonus(rawOb);
 
                 if (this._isArmed) {
-                    RMUUtils.applyValueOverlay(
-                        this.element,
-                        obVal,
-                        "Attack OB",
-                    );
+                    RMUUtils.applyValueOverlay(this.element, obVal, "Attack OB");
                 } else {
-                    RMUUtils.applyValueOverlay(
-                        this.element,
-                        `${scrVal} / ${obVal}`,
-                        "SCR / OB",
-                    );
+                    RMUUtils.applyValueOverlay(this.element, `${scrVal} / ${obVal}`, "SCR / OB");
                     this.element.classList.add("rmu-combo-spell");
                 }
             } else {
@@ -311,8 +272,7 @@ export function defineSpellsMain(CoreHUD) {
 
             // Attributes
             const listInfo = this.spell._rawListInfo || {};
-            const nameNorm =
-                `${this.spell.name} ${listInfo.listName} ${listInfo.realm} ${listInfo.listType} Lvl ${this.spell.level}`.toLowerCase();
+            const nameNorm = `${this.spell.name} ${listInfo.listName} ${listInfo.realm} ${listInfo.listType} Lvl ${this.spell.level}`.toLowerCase();
 
             this.element.dataset.listTypeKey = this._listTypeKey;
             this.element.dataset.listNameKey = this._listKey;
@@ -320,8 +280,7 @@ export function defineSpellsMain(CoreHUD) {
             this.element.dataset.catKey = this._listKey;
 
             const { type: openType, name: openName } = getOpenSpellState();
-            const isVisible =
-                this._listTypeKey === openType && this._listKey === openName;
+            const isVisible = this._listTypeKey === openType && this._listKey === openName;
             this.element.style.display = isVisible ? "" : "none";
         }
 
@@ -348,19 +307,13 @@ export function defineSpellsMain(CoreHUD) {
                     // For RESOLVING attacks (Directed OR Area final step), check targets
                     const targets = game.user?.targets ?? new Set();
                     if (!targets.size) {
-                        ui.notifications?.warn?.(
-                            "Select at least one target before resolving the attack.",
-                        );
+                        ui.notifications?.warn?.("Select at least one target before resolving the attack.");
                         return;
                     }
 
                     // Resolve the attack
                     await RMUUtils.markActionTaken(ui.ARGON?._token);
-                    const success = await RMUUtils.rmuTokenActionWrapper(
-                        ui.ARGON?._token,
-                        "rmuTokenSpellAttackAction",
-                        this._relatedAttack,
-                    );
+                    const success = await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenSpellAttackAction", this._relatedAttack);
 
                     // If successful, reset all states
                     if (success) {
@@ -383,16 +336,10 @@ export function defineSpellsMain(CoreHUD) {
                         this._isTemplateActive = true;
                         this.render(); // Update UI immediately (Badge + Gold + Orange)
 
-                        ui.notifications?.info?.(
-                            "Place the template on the scene, then click this attack again to resolve.",
-                        );
+                        ui.notifications?.info?.("Place the template on the scene, then click this attack again to resolve.");
 
                         // Call API to init placement ghost immediately
-                        await RMUUtils.rmuTokenActionWrapper(
-                            ui.ARGON?._token,
-                            "rmuTokenSpellAttackAction",
-                            this._relatedAttack,
-                        );
+                        await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenSpellAttackAction", this._relatedAttack);
                         return; // Stop here, user must interact with template then click again
                     }
 
@@ -409,11 +356,7 @@ export function defineSpellsMain(CoreHUD) {
 
         async _roll() {
             await RMUUtils.markActionTaken(ui.ARGON?._token);
-            await RMUUtils.rmuTokenActionWrapper(
-                ui.ARGON?._token,
-                "rmuTokenSCRAction",
-                this.spell,
-            );
+            await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenSCRAction", this.spell);
         }
     }
 
@@ -439,14 +382,8 @@ export function defineSpellsMain(CoreHUD) {
         }
         get classes() {
             const { type: openType, name: openName } = getOpenSpellState();
-            const isOpen =
-                openType === this._listTypeKey && openName === this._listName;
-            return [
-                ...super.classes,
-                "rmu-skill-header",
-                "rmu-spell-list-header",
-                isOpen ? "open" : "closed",
-            ];
+            const isOpen = openType === this._listTypeKey && openName === this._listName;
+            return [...super.classes, "rmu-skill-header", "rmu-spell-list-header", isOpen ? "open" : "closed"];
         }
         _bindPanel(panelEl) {
             this._panelEl = panelEl;
@@ -469,10 +406,7 @@ export function defineSpellsMain(CoreHUD) {
             event.stopImmediatePropagation();
             const { name: openName } = getOpenSpellState();
             const isOpen = openName === this._listName;
-            setOpenSpellState(
-                this._listTypeKey,
-                isOpen ? null : this._listName,
-            );
+            setOpenSpellState(this._listTypeKey, isOpen ? null : this._listName);
             applyAccordionVisibility(this._panelEl);
         }
         async _onLeftClick(e) {
@@ -502,12 +436,7 @@ export function defineSpellsMain(CoreHUD) {
         get classes() {
             const { type: openType } = getOpenSpellState();
             const isOpen = openType === this._listType;
-            return [
-                ...super.classes,
-                "rmu-skill-header",
-                "rmu-spell-type-header",
-                isOpen ? "open" : "closed",
-            ];
+            return [...super.classes, "rmu-skill-header", "rmu-spell-type-header", isOpen ? "open" : "closed"];
         }
         _bindPanel(panelEl) {
             this._panelEl = panelEl;
@@ -581,19 +510,18 @@ export function defineSpellsMain(CoreHUD) {
             }
 
             const listOrder = {
+                Innate: 0,
                 Base: 1,
                 Open: 2,
                 Closed: 3,
                 Arcane: 4,
                 Restricted: 5,
             };
-            const sortedListTypes = Array.from(allSpellsByListType.keys()).sort(
-                (a, b) => {
-                    const rankA = listOrder[a] || 99;
-                    const rankB = listOrder[b] || 99;
-                    return rankA - rankB;
-                },
-            );
+            const sortedListTypes = Array.from(allSpellsByListType.keys()).sort((a, b) => {
+                const rankA = listOrder[a] ?? 99;
+                const rankB = listOrder[b] ?? 99;
+                return rankA - rankB;
+            });
 
             const allButtons = [];
             const allHeaderInstances = [];
@@ -604,9 +532,8 @@ export function defineSpellsMain(CoreHUD) {
                 allButtons.push(l1Button);
                 allHeaderInstances.push(l1Button);
 
-                const sortedListNames = Array.from(listMap.keys()).sort(
-                    (a, b) => a.localeCompare(b),
-                );
+                const sortedListNames = Array.from(listMap.keys()).sort((a, b) => a.localeCompare(b));
+
                 for (const listName of sortedListNames) {
                     const spells = listMap.get(listName);
                     const l2Button = new RMUSpellListButton(listName, listType);
@@ -640,24 +567,16 @@ export function defineSpellsMain(CoreHUD) {
                 },
             ];
 
-            installListSearch(
-                panel,
-                ".rmu-spell-tile",
-                ".rmu-spell-type-header, .rmu-spell-list-header",
-                "spell",
-                {
-                    filters: spellFilters,
-                    onClear: (panelEl) => {
-                        if (!panelEl) return;
-                        setOpenSpellState(null, null);
-                        applyAccordionVisibility(panelEl);
-                        const summaryEl = panelEl.querySelector(
-                            ".rmu-search-summary",
-                        );
-                        if (summaryEl) summaryEl.style.display = "none";
-                    },
+            installListSearch(panel, ".rmu-spell-tile", ".rmu-spell-type-header, .rmu-spell-list-header", "spell", {
+                filters: spellFilters,
+                onClear: (panelEl) => {
+                    if (!panelEl) return;
+                    setOpenSpellState(null, null);
+                    applyAccordionVisibility(panelEl);
+                    const summaryEl = panelEl.querySelector(".rmu-search-summary");
+                    if (summaryEl) summaryEl.style.display = "none";
                 },
-            );
+            });
 
             const panelEl = panel.element;
             allHeaderInstances.forEach((h) => h._bindPanel(panelEl));
