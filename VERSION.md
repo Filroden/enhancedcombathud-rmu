@@ -2,6 +2,7 @@
 
 | Version   | Changes |
 | :--- | :--- |
+| **Version 1.1.4** | - Version bump to confirm compliance with Foundry's AI Content Policy.|
 | **Version 1.1.3** | - Added support and proper sorting for the new "Innate" spell list category.|
 | **Version 1.1.2** | - Fix to prevent Argon Combat HUD (CORE) giving a warning if a "Loot" actor is selected.|
 | **Version 1.1.1** | - Fix search bar filters in the Spell search bar. They should now show available instant and subconscious spells when toggled.|
