@@ -7,15 +7,11 @@
  */
 
 // Import modular logic
-import {
-    UIGuards,
-    defineTooltip,
-    defineSupportedActorTypes,
-} from "./RMUCore.js";
-import "./RMUData.js"; // Imports RMUData for its side effects (attaching to window)
-import { defineAttacksMain } from "./RMUFeatures/RMUAttacks.js";
-import { defineSkillsMain } from "./RMUFeatures/RMUSkills.js";
-import { defineSpellsMain } from "./RMUFeatures/RMUSpells.js";
+import { UIGuards, defineTooltip, defineSupportedActorTypes } from "./src/RMUCore.js";
+import "./src/RMUData.js"; // Imports RMUData for its side effects (attaching to window)
+import { defineAttacksMain } from "./src/RMUFeatures/RMUAttacks.js";
+import { defineSkillsMain } from "./src/RMUFeatures/RMUSkills.js";
+import { defineSpellsMain } from "./src/RMUFeatures/RMUSpells.js";
 import {
     defineResistancesMain,
     defineSpecialChecksMain,
@@ -25,7 +21,7 @@ import {
     defineMovementHud,
     defineWeaponSets,
     defineDrawerPanel,
-} from "./RMUFeatures/RMUOther.js";
+} from "./src/RMUFeatures/RMUOther.js";
 
 const VALID_ACTOR_TYPES = ["Character", "Creature"];
 
@@ -106,9 +102,5 @@ Hooks.once("shutdown", () => {
 });
 
 // Update visibility of REST and COMBAT buttons when combat starts/ends
-Hooks.on("updateCombat", () =>
-    ui.ARGON?.components?.main?.forEach((c) => c.updateVisibility?.()),
-);
-Hooks.on("deleteCombat", () =>
-    ui.ARGON?.components?.main?.forEach((c) => c.updateVisibility?.()),
-);
+Hooks.on("updateCombat", () => ui.ARGON?.components?.main?.forEach((c) => c.updateVisibility?.()));
+Hooks.on("deleteCombat", () => ui.ARGON?.components?.main?.forEach((c) => c.updateVisibility?.()));

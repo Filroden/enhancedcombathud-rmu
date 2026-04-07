@@ -15,6 +15,7 @@ The following icons included within this module are from Google's Material Desig
 * refresh.svg
 * search.svg
 * skip-next-circle.svg
+* sprint.svg
 * star.svg
 
 ## Game-icons.net icons

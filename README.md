@@ -1,11 +1,9 @@
-![Latest Version](https://img.shields.io/badge/Version-1.1.4-blue)
-![Foundry Version](https://img.shields.io/badge/Foundry_VTT-v13_%7C_v13-orange)
+![Latest Version](https://img.shields.io/badge/Version-1.2.0-blue)
+![Foundry Version](https://img.shields.io/badge/Foundry_VTT-v13_%7C_v14-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Languages](https://img.shields.io/badge/Languages-1-blueviolet)
-![Download Count](https://img.shields.io/github/downloads/Filroden/enhancedcombathud-rmu/enhancedcombathud-rmu.zip
-)
-![Download Count](https://img.shields.io/github/downloads/Filroden/enhancedcombathud-rmu/latest/enhancedcombathud-rmu.zip
-)
+![Download Count](https://img.shields.io/github/downloads/Filroden/enhancedcombathud-rmu/enhancedcombathud-rmu.zip)
+![Download Count](https://img.shields.io/github/downloads/Filroden/enhancedcombathud-rmu/latest/enhancedcombathud-rmu.zip)
 ![Last Commit](https://img.shields.io/github/last-commit/Filroden/enhancedcombathud-rmu)
 ![Issues](https://img.shields.io/github/issues/Filroden/enhancedcombathud-rmu)
 
@@ -15,29 +13,29 @@ An implementation of the [Argon - Combat HUD](https://foundryvtt.com/packages/en
 
 ---
 
-### Attack Panel
+## Attack Panel
 
 ![Attacks](/images/attacks.png)
 
-### Spell Panel including search bar
+## Spell Panel including search bar
 
 ![Spells](/images/spells.png)
 
-### Skill Panel including search bar
+## Skill Panel including search bar
 
 ![Skills](/images/skills.png)
 
-### Resistance Rolls
+## Resistance Rolls
 
 ![Resistance](/images/resistances.png)
 
-### Endurance Rolls
+## Endurance Rolls
 
 ![Endurance](/images/endurance.png)
 
-### Set Defenses
+## Set Defenses
 
-![Set Defenses](/images/set_defences.png)
+![Set Defences](/images/set_defences.png)
 
 **Documentation for core Argon HUD features can be found at [TheRipper93's Wiki](https://api.theripper93.com/modulewiki/enhancedcombathud/free).**
 
@@ -64,15 +62,15 @@ This module adjusts various Argon Combat HUD features for the Rolemaster Unified
 
 In RMU you potentially need to make three rolls to cast a spell. On the Actor Sheet all these are found in the same tab, but in Argon Combat HUD for RMU they are split between two panels.
 
-1. [Optional] A Spell Mastery roll to successfully adapt a spell from its base description. Spell Mastery rolls can be made from the **Skills Panel** using the appropriate **Spell List** skill.
-2. [Mandatory] A Spell Casting Roll (SCR) is always required. SCR can be made from the **Spells Panel** using the appropriate **Spell**.
-3. [Conditional] Some spells require an attack roll. If a spell has an associated attack, it will show both its SCR bonus and OB bonus on the spell's button. Clicking it once will make the Spell Casting Roll. It will then change its appearance to have a warmer background, change its icon, only show its OB bonus, and (for area spells) remind you to place the template (in the SCR chat card result). Clicking again will roll the attack. If the SCR roll fails (which the HUD cannot detect), you can dismiss the armed state by right-clicking the button.
+1. [**Optional**] A Spell Mastery roll to successfully adapt a spell from its base description. Spell Mastery rolls can be made from the **Skills Panel** using the appropriate **Spell List** skill.
+2. [**Mandatory**] A Spell Casting Roll (SCR) is always required. SCR can be made from the **Spells Panel** using the appropriate **Spell**.
+3. [**Conditional**] Some spells require an attack roll. If a spell has an associated attack, it will show both its SCR bonus and OB bonus on the spell's button. Clicking it once will make the Spell Casting Roll. It will then change its appearance to have a warmer background, change its icon, only show its OB bonus, and (for area spells) remind you to place the template (in the SCR chat card result). Clicking again will roll the attack. If the SCR roll fails (which the HUD cannot detect), you can dismiss the armed state by right-clicking the button.
 
 ## Dependencies
 
 The table below only shows the earliest version where a dependency has changed. Later versions share the same dependencies.
 
-|Argon Combat HUD (RMU)|RMU System|Argon Combat HUD (CORE)|
+|Argon Combat HUD<br>(RMU)|RMU System|Argon Combat HUD<br>(CORE)|
 |---|---|---|
 |1.0.1|1.0.0|4.1.0|
 |1.0.0|1.0.0|4.0.7|
