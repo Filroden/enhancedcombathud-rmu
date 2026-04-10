@@ -51,6 +51,7 @@ const ICONS = {
     explosion: MOD_ICON("bright-explosion.svg"),
     equip_closed: MOD_ICON("back_hand_closed.svg"),
     equip_open: MOD_ICON("back_hand_open.svg"),
+    ranked: MOD_ICON("voting_chip.svg"),
 
     // Resistances
     panel: MOD_ICON("resistance-panel.svg"),

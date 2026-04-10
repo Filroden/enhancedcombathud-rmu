@@ -431,7 +431,7 @@
   outline: none;
   color: var(--filroden-color-text-main-solid);
   font-family: var(--filroden-font-family);
-  font-size: var(--filroden-font-size-m);
+  font-size: var(--filroden-font-size-l);
   pointer-events: auto; /* Clicks MUST work on the input */
 }
 .enhancedcombathud-rmu .rmu-search-input:focus {
@@ -450,8 +450,8 @@
 .enhancedcombathud-rmu .rmu-search-icon,
 .enhancedcombathud-rmu .rmu-search-clear,
 .enhancedcombathud-rmu .rmu-filter-button {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 2rem;
+  height: 2rem;
   flex-shrink: 0;
   cursor: pointer;
   background: transparent;
@@ -492,6 +492,9 @@
 }
 .enhancedcombathud-rmu .rmu-filter-button img[src*="airline_seat_flat.svg"] {
   --icon-url: url('/modules/enhancedcombathud-rmu/icons/airline_seat_flat.svg');
+}
+.enhancedcombathud-rmu .rmu-filter-button img[src*="voting_chip.svg"] {
+  --icon-url: url('/modules/enhancedcombathud-rmu/icons/voting_chip.svg');
 }
 
 /* --- Button States (Hover, Active) --- */

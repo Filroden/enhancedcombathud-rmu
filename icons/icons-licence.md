@@ -17,6 +17,7 @@ The following icons included within this module are from Google's Material Desig
 * skip-next-circle.svg
 * sprint.svg
 * star.svg
+* voting_chip.svg
 
 ## Game-icons.net icons
 

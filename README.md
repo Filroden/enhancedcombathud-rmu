@@ -1,4 +1,4 @@
-![Latest Version](https://img.shields.io/badge/Version-1.2.0-blue)
+![Latest Version](https://img.shields.io/badge/Version-1.3.0-blue)
 ![Foundry Version](https://img.shields.io/badge/Foundry_VTT-v13_%7C_v14-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Languages](https://img.shields.io/badge/Languages-1-blueviolet)
@@ -52,7 +52,7 @@ This module adjusts various Argon Combat HUD features for the Rolemaster Unified
   * Skill Manoeuvre Rolls (including Spell Mastery)
   * Resistance Rolls
   * Endurance Checks (Physical/Mental)
-* **Search:** A search tool for spells and skills. Just start typing and it will show any spells or skills matching your text and the number found on the right of the search bar. Click the clear icon in the search bar to reset the filter. There are also toggled filters for specific spell or skill properties such as filtering for spells that can be cast instantaneously or sub-consciously.
+* **Search:** A search tool for spells and skills. Just start typing and it will show any spells or skills matching your text and the number found on the right of the search bar. Click the clear icon in the search bar to reset the filter. There are also toggled filters for specific spell or skill properties such as filtering for favourites, or for spells that can be cast instantaneously or sub-consciously, or for skills which have 1 or more ranks.
 * **Utilities:**
   * A "Rest" button to open the RMU rest dialogue.
   * A combat panel to end the current combatant's turn (only visible when in combat).
