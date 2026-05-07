@@ -16,7 +16,7 @@ function catKeyOf(s) {
         .normalize("NFKC")
         .trim()
         .toLowerCase()
-        .replace(/\s+/g, " ");
+        .replaceAll(/\s+/g, " ");
 }
 
 /**
@@ -277,7 +277,7 @@ export function defineSkillsMain(CoreHUD) {
             const chips = [];
             if (isFav) {
                 chips.push({
-                    class: "rmu-fav-chip",
+                    class: "rmu-skill-fav-chip",
                     title: "Favorite",
                 });
             }

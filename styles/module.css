@@ -167,7 +167,7 @@
 }
 
 /* Favorite chip on tiles */
-.enhancedcombathud-rmu .rmu-fav-chip {
+.enhancedcombathud-rmu .rmu-skill-fav-chip {
   position: absolute;
   top: 4px;
   left: 6px;
@@ -564,7 +564,8 @@ position: absolute;
 }
 
 /* --- Set individual chip icons --- */
-.enhancedcombathud-rmu .rmu-fav-chip::before {
+.enhancedcombathud-rmu .rmu-skill-fav-chip::before,
+.enhancedcombathud-rmu .rmu-spell-fav-chip::before {
   --icon-url: url('/modules/enhancedcombathud-rmu/icons/star.svg');
 }
 .enhancedcombathud-rmu .rmu-instant-chip::before {
