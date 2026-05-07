@@ -222,24 +222,19 @@ export function defineSpellsMain(CoreHUD) {
 
             // Chips
             const modifiersStr = this.spell.modifiers || "";
+            const isFav = this.spell.isFavorite === true;
             const isInstant = modifiersStr.includes("*");
             const isSubconscious = (this.spell.spellType || "").substring(1).includes("s");
 
             // Apply data attributes so the Search Filter can find them
+            this.element.dataset.favorite = isFav ? "true" : "false";
             this.element.dataset.isInstant = isInstant ? "true" : "false";
             this.element.dataset.isSubconscious = isSubconscious ? "true" : "false";
 
             const chips = [];
-            if (isInstant)
-                chips.push({
-                    class: "rmu-instant-chip",
-                    title: "Instantaneous",
-                });
-            if (isSubconscious)
-                chips.push({
-                    class: "rmu-subconscious-chip",
-                    title: "Sub-conscious",
-                });
+            if (isFav) chips.push({ class: "rmu-spell-fav-chip", title: "Favorite" });
+            if (isInstant) chips.push({ class: "rmu-instant-chip", title: "Instantaneous" });
+            if (isSubconscious) chips.push({ class: "rmu-subconscious-chip", title: "Sub-conscious" });
             RMUUtils.buildChipContainer(this.element, chips);
 
             // --- COMBO OVERLAY ---
@@ -553,6 +548,12 @@ export function defineSpellsMain(CoreHUD) {
             UIGuards.attachPanelInteractionGuards(panel);
 
             const spellFilters = [
+                {
+                    id: "fav",
+                    dataKey: "favorite",
+                    icon: ICONS.star,
+                    tooltip: "Show Only Favorites",
+                },
                 {
                     id: "instant",
                     dataKey: "isInstant",

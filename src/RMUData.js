@@ -240,7 +240,7 @@ RMUData.getShortRange = function (arr) {
     if (!Array.isArray(arr)) return "—";
     const short = arr.find((r) => String(r.label).toLowerCase() === "short");
     if (!short) return "—";
-    const dist = short.distance || (short.distInFt != null ? `${short.distInFt}'` : (short.dist ?? ""));
+    const dist = short.distance || (short.distInFt === null ? (short.dist ?? "") : `${short.distInFt}'`);
     return dist ? `${dist}` : "—";
 };
 
@@ -316,7 +316,7 @@ RMUData.getGroupedSkillsForHUD_All = function () {
         groups.get(sk.category).push(sk);
     }
     // Sort alpha by display name within each category
-    for (const [cat, list] of groups.entries()) {
+    for (const list of groups.values()) {
         list.sort((a, b) => {
             const da = a.spec ? `${a.name} (${a.spec})` : a.name;
             const db = b.spec ? `${b.name} (${b.spec})` : b.name;
@@ -327,9 +327,8 @@ RMUData.getGroupedSkillsForHUD_All = function () {
 };
 
 /**
- * Gets all known spells for the current HUD actor, grouped by list type and list name.
- * @returns {Map<string, Map<string, Array<object>>>}
- * Map(ListType -> Map(ListName -> [Spell, ...]))
+ * RMUData.js
+ * Update the getGroupedSpellsForHUD function
  */
 RMUData.getGroupedSpellsForHUD = function () {
     const actor = ui.ARGON?._actor ?? ui.ARGON?._token?.actor;
@@ -338,7 +337,9 @@ RMUData.getGroupedSpellsForHUD = function () {
     const sourceData = actor.system?._spells;
     if (!Array.isArray(sourceData)) return new Map();
 
-    const groups = new Map(); // Key: ListType (Base, Open, Closed, etc.)
+    const spellFavorites = actor.getFlag("rmu", "spell-favorites") ?? {};
+
+    const groups = new Map();
 
     for (const listTypeGroup of sourceData) {
         if (!Array.isArray(listTypeGroup.spellLists)) continue;
@@ -351,27 +352,26 @@ RMUData.getGroupedSpellsForHUD = function () {
             if (!Array.isArray(spellList.spells)) continue;
 
             const listName = spellList.spellListName;
-            const realm = spellList.realms;
-            const listKey = listName; // Key is just the list name
+            const listFavorites = spellFavorites[listName] ?? {};
 
             const knownSpells = spellList.spells
                 .filter((spell) => spell.known === true)
                 .map((spell) => ({
                     ...spell,
-                    // Attach raw list info for later reference
+                    isFavorite: listFavorites[spell.name] === true,
                     _rawListInfo: {
                         groupName: listTypeKey,
                         listType: listTypeKey,
                         listName: listName,
-                        realm: realm,
-                        listKey: listKey,
+                        realm: spellList.realms,
+                        listKey: listName,
                         spellListSkill: spellList.skill,
                     },
                 }))
-                .sort((a, b) => a.level - b.level); // Sort spells by level
+                .sort((a, b) => a.level - b.level);
 
             if (knownSpells.length > 0) {
-                spellsByList.set(listKey, knownSpells);
+                spellsByList.set(listName, knownSpells);
             }
         }
     }
@@ -400,7 +400,7 @@ RMUData.getDirectedSpellAttacks = function () {
             if (!Array.isArray(spellList.spells)) continue;
             for (const spell of spellList.spells) {
                 // Find known spells that have a spellAttack chart
-                if (spell.known === true && spell.spellAttack && spell.spellAttack.chart?.name) {
+                if (spell.known === true && spell.spellAttack?.chart?.name) {
                     const baseName = spell.name.replace(/ (I|II|III|IV|V|VI|VII|VIII|IX|X|True)$/, "").trim();
                     // Create a standardized attack-like object
                     const attack = {
