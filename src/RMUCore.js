@@ -127,7 +127,7 @@ function formatBonus(n) {
     const s = String(n).trim();
     if (s === "") return s;
     const num = Number(s);
-    if (isNaN(num)) return n;
+    if (Number.isNaN(num)) return n;
     return num > 0 ? `+${num}` : String(num);
 }
 
@@ -142,9 +142,9 @@ const RMUUtils = {
      * @returns {Array<object>} The formatted array.
      */
     formatTooltipDetails(details) {
-        const excludedLabels = ["Ranks", "Total ranks", "Culture ranks", "Fumble", "Level"];
+        const excludedLabels = new Set(["Ranks", "Total ranks", "Culture ranks", "Fumble", "Level"]);
         return details.map((detail) => {
-            if (excludedLabels.includes(detail.label)) {
+            if (excludedLabels.has(detail.label)) {
                 return detail;
             }
             return { ...detail, value: formatBonus(detail.value) };
@@ -268,12 +268,12 @@ const RMUUtils = {
 
         element.classList.add("rmu-button-relative");
         let chipContainer = element.querySelector(".rmu-chip-container");
-        if (!chipContainer) {
+        if (chipContainer) {
+            chipContainer.innerHTML = ""; // Clear old chips
+        } else {
             chipContainer = document.createElement("div");
             chipContainer.className = "rmu-chip-container";
             element.appendChild(chipContainer);
-        } else {
-            chipContainer.innerHTML = ""; // Clear old chips
         }
 
         for (const chipData of chips) {
@@ -456,13 +456,12 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
         const visibleTiles = [];
         tiles.forEach((tile) => {
             const name = tile.dataset.nameNorm || "";
-            const textMatch = terms.length === 0 || terms.every((t) => name.includes(t));
-            const filterMatch =
-                activeFilters.length === 0 ||
-                activeFilters.every((f) => {
-                    return tile.dataset[f.dataKey] === "true";
-                });
+            const textMatch = terms.every((t) => name.includes(t));
+            const filterMatch = activeFilters.every((f) => {
+                return tile.dataset[f.dataKey] === "true";
+            });
             const isVisible = textMatch && filterMatch;
+
             tile.style.display = isVisible ? "" : "none";
             if (isVisible) visibleTiles.push(tile);
         });

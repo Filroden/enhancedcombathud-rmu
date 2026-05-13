@@ -46,7 +46,7 @@ export function definePortraitPanel(CoreHUD) {
             if (!a) return "";
             const level = a.system?.level ?? a.system?.details?.level;
             const prof = a.system?.profession ?? a.system?.details?.profession;
-            return [level != null ? `Lvl ${level}` : null, prof].filter(Boolean).join(" · ");
+            return [level == null ? null : `Lvl ${level}`, prof].filter(Boolean).join(" · ");
         }
 
         /** @override */
@@ -145,7 +145,7 @@ export function definePortraitPanel(CoreHUD) {
                             return {
                                 dodge: formData.dodge,
                                 block: formData.block,
-                                other: parseInt(formData.other) || 0,
+                                other: Number.parseInt(formData.other) || 0,
                             };
                         },
                     },
@@ -309,7 +309,7 @@ export function definePortraitPanel(CoreHUD) {
             defenseButton.innerHTML = `<img src="${setDefensesIconPath}" width="28px" height="28px" alt="Set Defenses" style="vertical-align: middle; border: none;">`;
             defenseButton.addEventListener("click", this._onOpenDefenseDialog.bind(this));
 
-            buttonBar.insertBefore(defenseButton, actorSheetButton);
+            actorSheetButton.before(defenseButton);
 
             // 2. Reset Movement Penalty / High Tide Button
             const resetMoveButton = document.createElement("div");
@@ -320,7 +320,7 @@ export function definePortraitPanel(CoreHUD) {
             resetMoveButton.innerHTML = `<img src="${resetPaceIconPath}" width="28px" height="28px" alt="Reset Pace Penalty" style="vertical-align: middle; border: none;">`;
             resetMoveButton.addEventListener("click", this._onResetMovementDialog.bind(this));
 
-            buttonBar.insertBefore(resetMoveButton, actorSheetButton);
+            actorSheetButton.before(resetMoveButton);
         }
 
         /** @override */
@@ -358,178 +358,7 @@ export function defineMovementHud(CoreHUD) {
     if (!Base) return;
 
     // ===========================================================================
-    // 1. LOGIC HELPERS
-    // ===========================================================================
-
-    /**
-     * Extractor: Retrieves BMR and Encumbrance Limits from the Actor.
-     * Ensures HUD and Commit logic use the exact same values.
-     * @param {Actor} actor - The actor document.
-     * @param {TokenDocument} [tokenDoc] - The token document (optional, needed for momentum check).
-     * @returns {object} { roundBMR, maxPaceName, maxPaceRatio }
-     */
-    function getActorMovementData(actor, tokenDoc) {
-        const movementBlock = actor?.system?._movementBlock ?? {};
-        const modeKey = movementBlock._selected;
-        const modeTbl = movementBlock._table?.[modeKey] ?? null;
-        const rates = Array.isArray(modeTbl?.paceRates) ? modeTbl.paceRates : [];
-
-        // 1. Determine BMR
-        const walkEntry = rates.find((r) => r.pace?.value === "Walk");
-        const roundBMR = Number(walkEntry?.perRound ?? actor?.system?.movement?.baseRate ?? 30);
-
-        // 2. Determine Hard Limit (Load/Armor)
-        const LIMITS = { Creep: 0.125, Walk: 0.25, Jog: 0.5, Run: 0.75, Sprint: 1.0, Dash: 1.25 };
-        const PACES = ["Creep", "Walk", "Jog", "Run", "Sprint", "Dash"];
-
-        let maxPaceName = "Sprint";
-        let maxPaceRatio = 1.0;
-
-        const forbidden = rates.find((r) => r.allowedPace === false);
-        if (forbidden && forbidden.pace?.value) {
-            const fName = forbidden.pace.value;
-            const fIdx = PACES.indexOf(fName);
-            if (fIdx > 0) {
-                maxPaceName = PACES[fIdx - 1];
-                maxPaceRatio = LIMITS[maxPaceName] ?? 1.0;
-            } else {
-                maxPaceName = "Stationary";
-                maxPaceRatio = 0.001;
-            }
-        } else {
-            maxPaceName = "Dash";
-            maxPaceRatio = 1.25;
-        }
-
-        // 3. DASH GATING (Prerequisite Check)
-        // Only applies if Dash is theoretically allowed by load.
-        if (maxPaceName === "Dash") {
-            let hasMomentum = false;
-
-            if (tokenDoc) {
-                // Retrieve previous phase distance.
-                // If undefined, it means this is the first phase of combat (flags wiped).
-                const prevDist = tokenDoc.getFlag("enhancedcombathud-rmu", "prevPhaseDist");
-
-                if (prevDist === undefined) {
-                    // First phase of combat: Assume momentum is valid.
-                    hasMomentum = true;
-                } else {
-                    // Subsequent phases: Must have moved >= 50% BMR in previous phase.
-                    const momentumThreshold = roundBMR * 0.5; // Jog distance
-                    if (Number(prevDist) >= momentumThreshold) {
-                        hasMomentum = true;
-                    }
-                }
-            }
-
-            if (!hasMomentum) {
-                maxPaceName = "Sprint";
-                maxPaceRatio = 1.0;
-            }
-        }
-
-        return { roundBMR, maxPaceName, maxPaceRatio };
-    }
-
-    /**
-     * Calculates pace category based on % of Round BMR.
-     */
-    function getPaceStats(dist, roundBMR) {
-        if (roundBMR <= 0) return { penalty: 0, pace: "Stationary", ratio: 0 };
-        const ratio = dist / roundBMR;
-        if (ratio <= 0.001) return { penalty: 0, pace: "Stationary", ratio };
-        if (ratio <= 0.125) return { penalty: 0, pace: "Creep", ratio };
-        if (ratio <= 0.25) return { penalty: -25, pace: "Walk", ratio };
-        if (ratio <= 0.5) return { penalty: -50, pace: "Jog", ratio };
-        if (ratio <= 0.75) return { penalty: -75, pace: "Run", ratio };
-        if (ratio <= 1.0) return { penalty: -100, pace: "Sprint", ratio };
-        return { penalty: -125, pace: "Dash", ratio };
-    }
-
-    /**
-     * Calculates AP Cost.
-     */
-    function getAPCost(dist, roundBMR, maxPaceRatio = 1.0) {
-        if (dist <= 0) return 0;
-        if (dist / roundBMR <= 0.125) return 0;
-
-        const maxDistPerAP = roundBMR * maxPaceRatio;
-        if (maxDistPerAP <= 0) return 1;
-
-        return Math.ceil(dist / maxDistPerAP);
-    }
-
-    /**
-     * Commits the current phase's movement data to flags at end of turn.
-     */
-    async function commitTurnData(token, combat) {
-        const doc = token.document || token;
-
-        const startDist = doc.getFlag("enhancedcombathud-rmu", "phaseStartDist") ?? 0;
-        const history = doc._movementHistory ?? [];
-        const segments = history.map((h) => ({ x: h.x, y: h.y }));
-        const currentTotal = history.length ? canvas.grid.measurePath(segments).distance : 0;
-        const phaseDist = Math.max(0, Number((currentTotal - startDist).toFixed(2)));
-
-        // Update High Water Mark
-        let currentMax = doc.getFlag("enhancedcombathud-rmu", "maxCompletedPhases") ?? 0;
-        if (phaseDist > currentMax) {
-            await doc.setFlag("enhancedcombathud-rmu", "maxCompletedPhases", phaseDist);
-        }
-
-        // Recalculate AP Cost using shared data extractor
-        const { roundBMR, maxPaceRatio } = getActorMovementData(doc.actor, doc);
-        const phaseCost = getAPCost(phaseDist, roundBMR, maxPaceRatio);
-
-        if (phaseCost > 0) {
-            const currentAccum = doc.getFlag("enhancedcombathud-rmu", "roundAPSpent") || 0;
-            await doc.setFlag("enhancedcombathud-rmu", "roundAPSpent", Number(currentAccum) + Number(phaseCost));
-
-            if (phaseCost > 1) {
-                await doc.setFlag("enhancedcombathud-rmu", "hasUsedBonusAP", true);
-            }
-        }
-
-        // --- SAVE MOMENTUM ---
-        await doc.setFlag("enhancedcombathud-rmu", "prevPhaseDist", phaseDist);
-
-        // Close Phase
-        await doc.setFlag("enhancedcombathud-rmu", "phaseStartDist", currentTotal);
-
-        // Action Reset Logic
-        const actionTaken = doc.getFlag("enhancedcombathud-rmu", "actionTakenThisPhase");
-        if (actionTaken) {
-            await doc.setFlag("enhancedcombathud-rmu", "maxCompletedPhases", 0);
-            await doc.unsetFlag("enhancedcombathud-rmu", "actionTakenThisPhase");
-        }
-    }
-
-    /**
-     * Clears movement tracking flags.
-     */
-    async function wipeFlags(tokens, fullWipe = false, preserveMomentum = false) {
-        if (!canvas.scene || !tokens.length) return;
-        const updates = tokens.map((t) => {
-            const flags = {
-                "-=phaseStartDist": null,
-                "-=maxCompletedPhases": null,
-                "-=actionTakenThisPhase": null,
-            };
-            if (fullWipe) {
-                flags["-=roundAPSpent"] = null;
-                flags["-=hasUsedBonusAP"] = null;
-                if (!preserveMomentum) {
-                    flags["-=prevPhaseDist"] = null;
-                }
-            }
-            return { _id: t.id, "flags.enhancedcombathud-rmu": flags };
-        });
-        await canvas.scene.updateEmbeddedDocuments("Token", updates);
-    }
-
-    // ===========================================================================
-    // 2. HOOKS
+    // HOOKS
     // ===========================================================================
 
     Hooks.on("updateCombat", async (combat, updates) => {
@@ -544,7 +373,7 @@ export function defineMovementHud(CoreHUD) {
                     await commitTurnData(prevComb.token.object, combat);
                 }
             }
-            const tokens = combat.combatants.map((c) => c.token?.object).filter((t) => t && t.isOwner);
+            const tokens = combat.combatants.map((c) => c.token?.object).filter((t) => t?.isOwner);
             await wipeFlags(tokens, true, true);
             return;
         }
@@ -573,17 +402,17 @@ export function defineMovementHud(CoreHUD) {
     });
 
     Hooks.on("combatStart", async (combat) => {
-        const tokens = combat.combatants.map((c) => c.token).filter((t) => t && t.isOwner);
+        const tokens = combat.combatants.map((c) => c.token).filter((t) => t?.isOwner);
         await wipeFlags(tokens, true, false);
     });
 
     Hooks.on("deleteCombat", async (combat) => {
-        const docs = combat.combatants.map((c) => c.token).filter((t) => t && t.isOwner);
+        const docs = combat.combatants.map((c) => c.token).filter((t) => t?.isOwner);
         await wipeFlags(docs, true, false);
     });
 
     // ===========================================================================
-    // 3. HUD CLASS
+    // HUD CLASS
     // ===========================================================================
 
     class RMUMovementHud extends Base {
@@ -719,7 +548,7 @@ export function defineMovementHud(CoreHUD) {
                 nextApHtml = `<div class="rmu-info-sub">Next AP in: ${distToNextAP.toFixed(2)} ft</div>`;
             }
 
-            const LIMITS = { Creep: 0.125, Walk: 0.25, Jog: 0.5, Run: 0.75, Sprint: 1.0, Dash: 1.25 };
+            const LIMITS = { Creep: 0.125, Walk: 0.25, Jog: 0.5, Run: 0.75, Sprint: 1, Dash: 1.25 };
             const thresholds = Object.values(LIMITS).sort((a, b) => a - b);
             const nextThreshold = thresholds.find((t) => t > currentRatio);
             let nextPenaltyHtml = "";
@@ -764,7 +593,11 @@ export function defineMovementHud(CoreHUD) {
             }
         }
 
-        set movementUsed(value) {}
+        set movementUsed(value) {
+            // Intentionally empty. We calculate movement dynamically via the getter,
+            // but Argon CORE still attempts to write to this property.
+        }
+
         get movementUsed() {
             return this.totalRoundMovement;
         }
@@ -804,7 +637,11 @@ export function defineWeaponSets(CoreHUD) {
         get sets() {
             return [];
         }
-        _onSetChange(_id) {}
+        _onSetChange(_id) {
+            // Intentionally empty. RMU does not use Argon's weapon set logic,
+            // but this method must be overridden to prevent the parent class
+            // from executing its default behavior.
+        }
         get visible() {
             return false;
         }
@@ -964,123 +801,90 @@ export function defineSpecialChecksMain(CoreHUD) {
     const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
     const { ActionButton, ButtonPanelButton } = BUTTONS;
 
-    async function rollSkillWithOption(token, skillObj, optionText) {
-        await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenSkillAction", skillObj, { specialManeuver: optionText });
+    /**
+     * Factory function to create Special Check classes dynamically.
+     */
+    function createSpecialCheckClass(className, config) {
+        // Using computed properties ensures the generated class has the correct 'name'
+        const ClassFactory = {
+            [className]: class extends ActionButton {
+                constructor() {
+                    super();
+                    this._skill = null;
+                }
+
+                get label() {
+                    return config.label;
+                }
+                get icon() {
+                    return config.icon;
+                }
+                get isInteractive() {
+                    return true;
+                }
+                get hasTooltip() {
+                    return true;
+                }
+
+                async getTooltipData() {
+                    const title = this.label;
+                    const subtitle = this._skill?.system?.name ?? `${config.rollOption} Check`;
+                    return RMUUtils.buildSkillTooltip(this._skill, title, subtitle);
+                }
+
+                async _renderInner() {
+                    await super._renderInner();
+                    if (!this.element) return;
+                    this.element.style.pointerEvents = "auto";
+                    this.element.style.cursor = "pointer";
+                    const actor = ui.ARGON?._token?.actor;
+                    this._skill = actor ? RMUData.getSkillByName(actor, config.skillName) : null;
+                    RMUUtils.applyValueOverlay(this.element, this._skill?.system?._bonus ?? "", "Total");
+                }
+
+                async _onMouseDown(event) {
+                    if (event?.button !== 0) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    await RMUData.ensureRMUReady();
+                    const token = ui.ARGON?._token;
+                    const actor = token?.actor;
+                    if (!actor) {
+                        ui.notifications?.error?.("No active token for HUD.");
+                        return;
+                    }
+                    const skill = this._skill ?? RMUData.getSkillByName(actor, config.skillName);
+                    if (!skill) {
+                        ui.notifications?.warn?.(`Skill not found: ${config.skillName}`);
+                        return;
+                    }
+                    await rollSkillWithOption(token, skill, config.rollOption);
+                }
+
+                async _onLeftClick(e) {
+                    e?.preventDefault?.();
+                    e?.stopPropagation?.();
+                }
+            },
+        };
+
+        return ClassFactory[className];
     }
 
-    class RMUSpecialCheck_Endurance extends ActionButton {
-        constructor() {
-            super();
-            this._skill = null;
-        }
-        get label() {
-            return "PHYSICAL";
-        }
-        get icon() {
-            return ICONS.endurance;
-        }
-        get isInteractive() {
-            return true;
-        }
-        get hasTooltip() {
-            return true;
-        }
+    // Generate specific classes using the factory
+    const RMUSpecialCheckEndurance = createSpecialCheckClass("RMUSpecialCheckEndurance", {
+        label: "PHYSICAL",
+        icon: ICONS.endurance,
+        skillName: "Body Development",
+        rollOption: "Endurance",
+    });
 
-        async getTooltipData() {
-            const title = this.label;
-            const subtitle = this._skill?.system?.name ?? "Endurance Check";
-            return RMUUtils.buildSkillTooltip(this._skill, title, subtitle);
-        }
-
-        async _renderInner() {
-            await super._renderInner();
-            if (!this.element) return;
-            this.element.style.pointerEvents = "auto";
-            this.element.style.cursor = "pointer";
-            const actor = ui.ARGON?._token?.actor;
-            this._skill = actor ? RMUData.getSkillByName(actor, "Body Development") : null;
-            RMUUtils.applyValueOverlay(this.element, this._skill?.system?._bonus ?? "", "Total");
-        }
-        async _onMouseDown(event) {
-            if (event?.button !== 0) return;
-            event.preventDefault();
-            event.stopPropagation();
-            await RMUData.ensureRMUReady();
-            const token = ui.ARGON?._token;
-            const actor = token?.actor;
-            if (!actor) {
-                ui.notifications?.error?.("No active token for HUD.");
-                return;
-            }
-            const skill = this._skill ?? RMUData.getSkillByName(actor, "Body Development");
-            if (!skill) {
-                ui.notifications?.warn?.("Skill not found: Body Development");
-                return;
-            }
-            await rollSkillWithOption(token, skill, "Endurance");
-        }
-        async _onLeftClick(e) {
-            e?.preventDefault?.();
-            e?.stopPropagation?.();
-        }
-    }
-
-    class RMUSpecialCheck_Concentration extends ActionButton {
-        constructor() {
-            super();
-            this._skill = null;
-        }
-        get label() {
-            return "MENTAL";
-        }
-        get icon() {
-            return ICONS.concentration;
-        }
-        get isInteractive() {
-            return true;
-        }
-        get hasTooltip() {
-            return true;
-        }
-
-        async getTooltipData() {
-            const title = this.label;
-            const subtitle = this._skill?.system?.name ?? "Concentration Check";
-            return RMUUtils.buildSkillTooltip(this._skill, title, subtitle);
-        }
-
-        async _renderInner() {
-            await super._renderInner();
-            if (!this.element) return;
-            this.element.style.pointerEvents = "auto";
-            this.element.style.cursor = "pointer";
-            const actor = ui.ARGON?._token?.actor;
-            this._skill = actor ? RMUData.getSkillByName(actor, "Mental Focus") : null;
-            RMUUtils.applyValueOverlay(this.element, this._skill?.system?._bonus ?? "", "Total");
-        }
-        async _onMouseDown(event) {
-            if (event?.button !== 0) return;
-            event.preventDefault();
-            event.stopPropagation();
-            await RMUData.ensureRMUReady();
-            const token = ui.ARGON?._token;
-            const actor = token?.actor;
-            if (!actor) {
-                ui.notifications?.error?.("No active token for HUD.");
-                return;
-            }
-            const skill = this._skill ?? RMUData.getSkillByName(actor, "Mental Focus");
-            if (!skill) {
-                ui.notifications?.warn?.("Skill not found: Mental Focus");
-                return;
-            }
-            await rollSkillWithOption(token, skill, "Concentration");
-        }
-        async _onLeftClick(e) {
-            e?.preventDefault?.();
-            e?.stopPropagation?.();
-        }
-    }
+    const RMUSpecialCheckConcentration = createSpecialCheckClass("RMUSpecialCheckConcentration", {
+        label: "MENTAL",
+        icon: ICONS.concentration,
+        skillName: "Mental Focus",
+        rollOption: "Concentration",
+    });
 
     class RMUSpecialChecksCategoryButton extends ButtonPanelButton {
         get label() {
@@ -1094,7 +898,7 @@ export function defineSpecialChecksMain(CoreHUD) {
         }
         async _getPanel() {
             await RMUData.ensureRMUReady();
-            const buttons = [new RMUSpecialCheck_Endurance(), new RMUSpecialCheck_Concentration()];
+            const buttons = [new RMUSpecialCheckEndurance(), new RMUSpecialCheckConcentration()];
             const panel = new ButtonPanel({ id: "rmu-special-checks", buttons });
             UIGuards.attachPanelInteractionGuards(panel);
             return panel;
@@ -1115,7 +919,12 @@ export function defineSpecialChecksMain(CoreHUD) {
             return [new RMUSpecialChecksCategoryButton()];
         }
     }
+
     CoreHUD.defineMainPanels([RMUSpecialChecksActionPanel]);
+}
+
+async function rollSkillWithOption(token, skillObj, optionText) {
+    await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenSkillAction", skillObj, { specialManeuver: optionText });
 }
 
 // -----------------------------------------------------------------------------
@@ -1321,14 +1130,14 @@ export function defineDrawerPanel(CoreHUD) {
         get categories() {
             const hotbarMacros = Object.values(game.user.hotbar)
                 .map((id) => game.macros.get(id))
-                .filter((macro) => macro);
+                .filter(Boolean);
 
             let macroButtons;
-            if (!hotbarMacros.length) {
+            if (hotbarMacros.length) {
+                macroButtons = hotbarMacros.map((macro) => new RMUMacroDrawerButton(macro));
+            } else {
                 const emptyButtonPart = [{ label: "No Macros in Hotbar" }];
                 macroButtons = [new BaseDrawerButton(emptyButtonPart)];
-            } else {
-                macroButtons = hotbarMacros.map((macro) => new RMUMacroDrawerButton(macro));
             }
 
             return [
@@ -1343,4 +1152,175 @@ export function defineDrawerPanel(CoreHUD) {
     }
 
     CoreHUD.defineDrawerPanel(RMUDrawer);
+}
+
+/**
+ * Extractor: Retrieves BMR and Encumbrance Limits from the Actor.
+ * Ensures HUD and Commit logic use the exact same values.
+ * @param {Actor} actor - The actor document.
+ * @param {TokenDocument} [tokenDoc] - The token document (optional, needed for momentum check).
+ * @returns {object} { roundBMR, maxPaceName, maxPaceRatio }
+ */
+function getActorMovementData(actor, tokenDoc) {
+    const movementBlock = actor?.system?._movementBlock ?? {};
+    const modeKey = movementBlock._selected;
+    const modeTbl = movementBlock._table?.[modeKey] ?? null;
+    const rates = Array.isArray(modeTbl?.paceRates) ? modeTbl.paceRates : [];
+
+    // 1. Determine BMR
+    const walkEntry = rates.find((r) => r.pace?.value === "Walk");
+    const roundBMR = Number(walkEntry?.perRound ?? actor?.system?.movement?.baseRate ?? 30);
+
+    // 2. Determine Hard Limit (Load/Armor)
+    const LIMITS = { Creep: 0.125, Walk: 0.25, Jog: 0.5, Run: 0.75, Sprint: 1, Dash: 1.25 };
+    const PACES = ["Creep", "Walk", "Jog", "Run", "Sprint", "Dash"];
+
+    let maxPaceName;
+    let maxPaceRatio;
+
+    const forbidden = rates.find((r) => r.allowedPace === false);
+    if (forbidden?.pace?.value) {
+        const fName = forbidden.pace.value;
+        const fIdx = PACES.indexOf(fName);
+        if (fIdx > 0) {
+            maxPaceName = PACES[fIdx - 1];
+            maxPaceRatio = LIMITS[maxPaceName] ?? 1;
+        } else {
+            maxPaceName = "Stationary";
+            maxPaceRatio = 0.001;
+        }
+    } else {
+        maxPaceName = "Dash";
+        maxPaceRatio = 1.25;
+    }
+
+    // 3. DASH GATING (Prerequisite Check)
+    // Only applies if Dash is theoretically allowed by load.
+    if (maxPaceName === "Dash") {
+        let hasMomentum = false;
+
+        if (tokenDoc) {
+            // Retrieve previous phase distance.
+            // If undefined, it means this is the first phase of combat (flags wiped).
+            const prevDist = tokenDoc.getFlag("enhancedcombathud-rmu", "prevPhaseDist");
+
+            if (prevDist === undefined) {
+                // First phase of combat: Assume momentum is valid.
+                hasMomentum = true;
+            } else {
+                // Subsequent phases: Must have moved >= 50% BMR in previous phase.
+                const momentumThreshold = roundBMR * 0.5; // Jog distance
+                if (Number(prevDist) >= momentumThreshold) {
+                    hasMomentum = true;
+                }
+            }
+        }
+
+        if (!hasMomentum) {
+            maxPaceName = "Sprint";
+            maxPaceRatio = 1;
+        }
+    }
+
+    return { roundBMR, maxPaceName, maxPaceRatio };
+}
+
+/**
+ * Calculates pace category based on % of Round BMR.
+ */
+function getPaceStats(dist, roundBMR) {
+    if (roundBMR <= 0) return { penalty: 0, pace: "Stationary", ratio: 0 };
+    const ratio = dist / roundBMR;
+    if (ratio <= 0.001) return { penalty: 0, pace: "Stationary", ratio };
+    if (ratio <= 0.125) return { penalty: 0, pace: "Creep", ratio };
+    if (ratio <= 0.25) return { penalty: -25, pace: "Walk", ratio };
+    if (ratio <= 0.5) return { penalty: -50, pace: "Jog", ratio };
+    if (ratio <= 0.75) return { penalty: -75, pace: "Run", ratio };
+    if (ratio <= 1) return { penalty: -100, pace: "Sprint", ratio };
+    return { penalty: -125, pace: "Dash", ratio };
+}
+
+/**
+ * Calculates AP Cost.
+ */
+function getAPCost(dist, roundBMR, maxPaceRatio = 1) {
+    if (dist <= 0) return 0;
+    if (dist / roundBMR <= 0.125) return 0;
+
+    const maxDistPerAP = roundBMR * maxPaceRatio;
+    if (maxDistPerAP <= 0) return 1;
+
+    return Math.ceil(dist / maxDistPerAP);
+}
+
+/**
+ * Commits the current phase's movement data to flags at end of turn.
+ */
+async function commitTurnData(token, combat) {
+    const doc = token.document || token;
+
+    const startDist = doc.getFlag("enhancedcombathud-rmu", "phaseStartDist") ?? 0;
+    const history = doc._movementHistory ?? [];
+    const segments = history.map((h) => ({ x: h.x, y: h.y }));
+    const currentTotal = history.length ? canvas.grid.measurePath(segments).distance : 0;
+    const phaseDist = Math.max(0, Number((currentTotal - startDist).toFixed(2)));
+
+    // Update High Water Mark
+    let currentMax = doc.getFlag("enhancedcombathud-rmu", "maxCompletedPhases") ?? 0;
+    if (phaseDist > currentMax) {
+        await doc.setFlag("enhancedcombathud-rmu", "maxCompletedPhases", phaseDist);
+    }
+
+    // Recalculate AP Cost using shared data extractor
+    const { roundBMR, maxPaceRatio } = getActorMovementData(doc.actor, doc);
+    const phaseCost = getAPCost(phaseDist, roundBMR, maxPaceRatio);
+
+    if (phaseCost > 0) {
+        const currentAccum = doc.getFlag("enhancedcombathud-rmu", "roundAPSpent") || 0;
+        await doc.setFlag("enhancedcombathud-rmu", "roundAPSpent", Number(currentAccum) + Number(phaseCost));
+
+        if (phaseCost > 1) {
+            await doc.setFlag("enhancedcombathud-rmu", "hasUsedBonusAP", true);
+        }
+    }
+
+    // --- SAVE MOMENTUM ---
+    await doc.setFlag("enhancedcombathud-rmu", "prevPhaseDist", phaseDist);
+
+    // Close Phase
+    await doc.setFlag("enhancedcombathud-rmu", "phaseStartDist", currentTotal);
+
+    // Action Reset Logic
+    const actionTaken = doc.getFlag("enhancedcombathud-rmu", "actionTakenThisPhase");
+    if (actionTaken) {
+        await doc.setFlag("enhancedcombathud-rmu", "maxCompletedPhases", 0);
+        await doc.unsetFlag("enhancedcombathud-rmu", "actionTakenThisPhase");
+    }
+}
+
+/**
+ * Clears movement tracking flags using modern DataModel operators.
+ */
+async function wipeFlags(tokens, fullWipe = false, preserveMomentum = false) {
+    if (!canvas.scene || !tokens.length) return;
+
+    const updates = tokens.map((t) => {
+        const flags = {
+            phaseStartDist: new foundry.data.operators.ForcedDeletion(),
+            maxCompletedPhases: new foundry.data.operators.ForcedDeletion(),
+            actionTakenThisPhase: new foundry.data.operators.ForcedDeletion(),
+        };
+
+        if (fullWipe) {
+            flags.roundAPSpent = new foundry.data.operators.ForcedDeletion();
+            flags.hasUsedBonusAP = new foundry.data.operators.ForcedDeletion();
+            if (!preserveMomentum) {
+                flags.prevPhaseDist = new foundry.data.operators.ForcedDeletion();
+            }
+        }
+
+        return { _id: t.id, "flags.enhancedcombathud-rmu": flags };
+    });
+
+    await canvas.scene.updateEmbeddedDocuments("Token", updates);
 }

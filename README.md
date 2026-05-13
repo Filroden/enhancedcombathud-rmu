@@ -1,4 +1,6 @@
-![Latest Version](https://img.shields.io/badge/Version-1.4.0-blue)
+# Argon Combat HUD extension for Rolemaster Unified (RMU)
+
+![Latest Version](https://img.shields.io/badge/Version-2.0.0-blue)
 ![Foundry Version](https://img.shields.io/badge/Foundry_VTT-v13_%7C_v14-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Languages](https://img.shields.io/badge/Languages-1-blueviolet)
@@ -7,9 +9,14 @@
 ![Last Commit](https://img.shields.io/github/last-commit/Filroden/enhancedcombathud-rmu)
 ![Issues](https://img.shields.io/github/issues/Filroden/enhancedcombathud-rmu)
 
-# Argon Combat HUD extension for Rolemaster Unified (RMU)
+## Welcome to Argon Combat HUD extension for Rolemaster Unified (RMU)
 
 An implementation of the [Argon - Combat HUD](https://foundryvtt.com/packages/enhancedcombathud) (by [TheRipper93](https://theripper93.com/) and [Mouse0270](https://github.com/mouse0270)) for the Rolemaster Unified (RMU) system. The Argon Combat HUD (CORE) module is required for this module to work.
+
+Please install the correct version of the module:
+
+- **v1.x is compatible with v13 of FoundryVTT:** This version is only being updated for bug fixes and will not contain features added to v2.
+- **v2.x is compatible with v14 of FoundryVTT.**
 
 ---
 
@@ -41,22 +48,22 @@ An implementation of the [Argon - Combat HUD](https://foundryvtt.com/packages/en
 
 This module adjusts various Argon Combat HUD features for the Rolemaster Unified system:
 
-* **Portrait:** A customised portrait panel showing HP, Power Points, and Defensive Bonus, with buttons to open the character sheet, set defences (dodge, block and other DB modifier), and to roll initiative. At the top of the portrait is a drawer where you can access any macros on your macro hotbar.
-* **Movement HUD:** Integrates with the RMU movement system showing the current movement in the phase and how much you can move before spending the next AP (dedicated movement) or incurring the next penalty (acting while moving). The Movement HUD is only visible when in combat.
+- **Portrait:** A customised portrait panel showing HP, Power Points, and Defensive Bonus, with buttons to open the character sheet, set defences (dodge, block and other DB modifier), and to roll initiative. At the top of the portrait is a drawer where you can access any macros on your macro hotbar.
+- **Movement HUD:** Integrates with the RMU movement system showing the current movement in the phase and how much you can move before spending the next AP (dedicated movement) or incurring the next penalty (acting while moving). The Movement HUD is only visible when in combat.
 
     <img src="images/movement_hud.png" width=200px>
 
-* **Attacks:** Categorised attack buttons for Melee, Ranged, Natural (including innate magic), and Shield attacks. Weapons can be equipped and unequipped within the panel.
-* **Other panels:** Dedicated panels for:
-  * Spell Casting (including any follow-up attack roll)
-  * Skill Manoeuvre Rolls (including Spell Mastery)
-  * Resistance Rolls
-  * Endurance Checks (Physical/Mental)
-* **Search:** A search tool for spells and skills. Just start typing and it will show any spells or skills matching your text and the number found on the right of the search bar. Click the clear icon in the search bar to reset the filter. There are also toggled filters for specific spell or skill properties such as filtering for favourites, or for spells that can be cast instantaneously or sub-consciously, or for skills which have 1 or more ranks.
-* **Utilities:**
-  * A "Rest" button to open the RMU rest dialogue.
-  * A combat panel to end the current combatant's turn (only visible when in combat).
-* **Tooltips:** Each action button has a rich tooltip showing the same data available in the character sheet.
+- **Attacks:** Categorised attack buttons for Melee, Ranged, Natural (including innate magic), and Shield attacks. Weapons can be equipped and unequipped within the panel.
+- **Other panels:** Dedicated panels for:
+  - Spell Casting (including any follow-up attack roll)
+  - Skill Manoeuvre Rolls (including Spell Mastery)
+  - Resistance Rolls
+  - Endurance Checks (Physical/Mental)
+- **Search:** A search tool for spells and skills. Just start typing and it will show any spells or skills matching your text and the number found on the right of the search bar. Click the clear icon in the search bar to reset the filter. There are also toggled filters for specific spell or skill properties such as filtering for favourites, or for spells that can be cast instantaneously or sub-consciously, or for skills which have 1 or more ranks.
+- **Utilities:**
+  - A "Rest" button to open the RMU rest dialogue.
+  - A combat panel to end the current combatant's turn (only visible when in combat).
+- **Tooltips:** Each action button has a rich tooltip showing the same data available in the character sheet.
 
 ## Casting spells
 
@@ -70,10 +77,11 @@ In RMU you potentially need to make three rolls to cast a spell. On the Actor Sh
 
 The table below only shows the earliest version where a dependency has changed. Later versions share the same dependencies.
 
-|Argon Combat HUD<br>(RMU)|RMU System|Argon Combat HUD<br>(CORE)|
-|---|---|---|
-|1.0.1|1.0.0|4.1.0|
-|1.0.0|1.0.0|4.0.7|
+|Argon Combat HUD<br>(RMU)|RMU System|Argon Combat HUD<br>(CORE)|FoundryVTT|
+|:---:|:---:|:---:|:---:|
+|2.0.0|1.2.5|5.0.0|14|
+|1.0.1|1.0.0|4.1.0|13|
+|1.0.0|1.0.0|4.0.7|13|
 
 ## Version History
 
@@ -81,6 +89,6 @@ The table below only shows the earliest version where a dependency has changed. 
 
 ## Roadmap
 
-* Using Items with activated effects (waiting on a system dependency)
+- Using Items with activated effects (waiting on a system dependency)
 
 **If you have suggestions, questions, or requests for additional features, please [let me know](https://github.com/Filroden/enhancedcombathud-rmu/issues).**

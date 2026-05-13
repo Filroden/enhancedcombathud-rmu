@@ -2,6 +2,7 @@
 
 | Version   | Changes |
 | :--- | :--- |
+| **Version 2.0.0** | **UNDER THE HOOD**<br>- Updated the module to require Foundry VTT v14, Argon Combat HUD v5.0.0, and RMU v1.2.5.<br>- Replaced deprecated data deletion methods.<br>- Restructured the codebase for Endurance and Concentration checks to improve long-term maintainability. |
 | **Version 1.4.0** | **IMPROVEMENTS**<br>- **Spell Favourites:** Added a the abliity to filter spells to those marked as favourites in the actor's sheet.|
 | **Version 1.3.0** | **IMPROVEMENTS**<br>- **Ranked Skill Filter:** Added a filter to the search bar to show only skills which have 1 or more ranks.<br>- **Search Bar Clarity:** Made the search bar icons and text a little larger to make them easier to see.|
 | **Version 1.2.0** | **IMPROVEMENTS**<br>- **Reset Pace Penalty:** Added a new `Reset Pace Penalty` button to the portrait panel (next to the `Set Defenses` button). This lets you to manually reset your "high tide" movement mark mid-turn, if you have ended one action that is not being tracked by the module and are beginning another.<br><br>**UNDER THE HOOD**<br>- Version bump to confirm compatibility with FoundryVTT v14 with no changes to code needed.<br>- Renamed files and directories to match my other modules.|
