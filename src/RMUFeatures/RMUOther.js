@@ -923,6 +923,10 @@ export function defineSpecialChecksMain(CoreHUD) {
     CoreHUD.defineMainPanels([RMUSpecialChecksActionPanel]);
 }
 
+async function rollSkillWithOption(token, skillObj, optionText) {
+    await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenSkillAction", skillObj, { specialManeuver: optionText });
+}
+
 // -----------------------------------------------------------------------------
 // Rest & Combat Actions
 // -----------------------------------------------------------------------------

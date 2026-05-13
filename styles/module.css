@@ -192,6 +192,10 @@
   cursor: pointer;
 }
 
+.extended-combat-hud .ability-menu ul.ability-toggle li:after {
+  font-family: var(--font-awesome) !important
+}
+
 
 /* =============================================
    WEAPON EQUIP TOGGLE (SVG ICON)
