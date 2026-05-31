@@ -1,34 +1,15 @@
 /**
  * RMUFeatures/RMUSpells.js
  * Defines the main Spellcasting panel (3-Level Nested Accordion)
- * Implements "Combo" buttons that transition from Casting (SCR) to Attacking (OB).
+ * Implements standard Spell Casting Rolls (SCR).
  */
 
-import { ICONS, SPELL_ATTACK_ICONS, RMUUtils, installListSearch, UIGuards, formatBonus } from "../RMUCore.js";
+import { ICONS, RMUUtils, installListSearch, UIGuards, formatBonus } from "../RMUCore.js";
 import { RMUData } from "../RMUData.js";
 
 // Global state helpers
 const getOpenSpellState = RMUData.getOpenSpellState;
 const setOpenSpellState = RMUData.setOpenSpellState;
-
-/**
- * MODULE-LEVEL STATE:
- * Tracks which spells are currently "Armed" (Casting complete, ready to Attack).
- * Key Format: "TokenID::SpellName"
- */
-const SPELL_ARMED_STATE = new Map();
-
-/**
- * MODULE-LEVEL STATE:
- * Tracks which Area Spells are currently in "Template Placement" mode.
- * Key Format: "TokenID::SpellName"
- */
-const SPELL_TEMPLATE_STATE = new Map();
-
-function getSpellStateKey(spell) {
-    const tokenId = ui.ARGON?._token?.id ?? "no-token";
-    return `${tokenId}::${spell?.name}`;
-}
 
 /**
  * Applies visibility to the 3-level accordion based on global state.
@@ -76,7 +57,7 @@ export function defineSpellsMain(CoreHUD) {
 
     /**
      * L3: An action button for a single spell.
-     * Handles both SCR (Casting) and Spell Attacks (via state toggle).
+     * Handles standard SCR (Casting).
      */
     class RMUSpellActionButton extends ActionButton {
         constructor(spell) {
@@ -98,42 +79,11 @@ export function defineSpellsMain(CoreHUD) {
             return attacks.find((a) => a.name === this.spell.name);
         }
 
-        /** Getter/Setter for Armed State (Ready to Attack) */
-        get _isArmed() {
-            return SPELL_ARMED_STATE.get(getSpellStateKey(this.spell)) === true;
-        }
-        set _isArmed(value) {
-            const key = getSpellStateKey(this.spell);
-            if (value) SPELL_ARMED_STATE.set(key, true);
-            else SPELL_ARMED_STATE.delete(key);
-        }
-
-        /** Getter/Setter for Template Active State (Placing AoE) */
-        get _isTemplateActive() {
-            return SPELL_TEMPLATE_STATE.get(getSpellStateKey(this.spell)) === true;
-        }
-        set _isTemplateActive(value) {
-            const key = getSpellStateKey(this.spell);
-            if (value) SPELL_TEMPLATE_STATE.set(key, true);
-            else SPELL_TEMPLATE_STATE.delete(key);
-        }
-
         get label() {
-            if (this._isTemplateActive) return `Place: ${this.spell.name}`;
-            if (this._isArmed) return `Attack: ${this.spell.name}`;
             return `${this.spell.name} (Lvl ${this.spell.level})`;
         }
 
         get icon() {
-            if (this._isArmed) {
-                if (this._relatedAttack?.baseName && SPELL_ATTACK_ICONS[this._relatedAttack.baseName]) {
-                    return SPELL_ATTACK_ICONS[this._relatedAttack.baseName];
-                }
-                if (this._relatedAttack?.isAoE) {
-                    return ICONS.explosion;
-                }
-                return ICONS.beam;
-            }
             return ICONS.spells_muted;
         }
 
@@ -142,10 +92,7 @@ export function defineSpellsMain(CoreHUD) {
         }
 
         get classes() {
-            const c = [...super.classes, "rmu-spell-tile"];
-            if (this._isArmed) c.push("spell-armed");
-            if (this._isTemplateActive) c.push("template-active");
-            return c;
+            return [...super.classes, "rmu-spell-tile"];
         }
 
         get hasTooltip() {
@@ -172,38 +119,23 @@ export function defineSpellsMain(CoreHUD) {
                 { label: "Level", value: s.level },
             ];
 
-            // --- 2. COMBO ATTACK DETAILS (If applicable) ---
+            // --- 2. COMBO ATTACK DETAILS ---
             if (a) {
                 const attackDetails = [
                     { label: "Attack Type", value: a.attack },
-                    {
-                        label: "Specialization",
-                        value: a.spellAttack?.specialization,
-                    },
+                    { label: "Specialization", value: a.spellAttack?.specialization },
                     { label: "Size", value: a.spellAttack?.size },
                     { label: "Chart", value: a.spellAttack?.chart?.name },
                     { label: "Fumble", value: a.spellAttack?.fumble },
-                    {
-                        label: "Range (interval)",
-                        value: a._modifiedRange?.range || a.range,
-                    },
+                    { label: "Range (interval)", value: a._modifiedRange?.range || a.range },
                     { label: "AoE", value: a._modifiedAoE?.range || a.AoE },
                     { label: "Targets", value: a._modifiedAoE?.targets },
                     { label: "Total OB", value: a._totalBonus ?? a.totalBonus },
                 ];
-
                 details.push(...attackDetails);
             }
 
-            // --- 3. INSTRUCTIONS ---
-            let helpText = "";
-            if (this._isTemplateActive) {
-                helpText = "<br><br><b>Template Active!</b><br>Position the template, then <b>Left-Click</b> here to resolve.";
-            } else if (this._isArmed) {
-                helpText = "<br><br><b>Left-Click:</b> Roll Attack<br><b>Right-Click:</b> Cancel Attack";
-            } else if (this._relatedAttack) {
-                helpText = "<br><br><b>Left-Click:</b> Cast Spell (SCR)";
-            }
+            const helpText = "<br><br><b>Left-Click:</b> Cast Spell (SCR)";
 
             return {
                 title: this.label,
@@ -237,29 +169,17 @@ export function defineSpellsMain(CoreHUD) {
             if (isSubconscious) chips.push({ class: "rmu-subconscious-chip", title: "Sub-conscious" });
             RMUUtils.buildChipContainer(this.element, chips);
 
-            // --- COMBO OVERLAY ---
+            // --- SCR / OB OVERLAY ---
+            const scrVal = formatBonus(this.spell.scr);
             if (this._relatedAttack) {
-                const scrVal = formatBonus(this.spell.scr);
                 const rawOb = this._relatedAttack._totalBonus ?? this._relatedAttack.totalBonus;
                 const obVal = formatBonus(rawOb);
 
-                if (this._isArmed) {
-                    RMUUtils.applyValueOverlay(this.element, obVal, "Attack OB");
-                } else {
-                    RMUUtils.applyValueOverlay(this.element, `${scrVal} / ${obVal}`, "SCR / OB");
-                    this.element.classList.add("rmu-combo-spell");
-                }
+                RMUUtils.applyValueOverlay(this.element, `${scrVal} / ${obVal}`, "SCR / OB");
+                // Ensures custom CSS font-size reduction for dual values is applied
+                this.element.classList.add("rmu-combo-spell");
             } else {
-                const scrVal = formatBonus(this.spell.scr);
                 RMUUtils.applyValueOverlay(this.element, scrVal ?? "", "SCR");
-            }
-
-            // --- TEMPLATE BADGE ---
-            if (this._isTemplateActive) {
-                const badge = document.createElement("div");
-                badge.className = "rmu-place-badge";
-                badge.textContent = "PLACE TEMPLATE";
-                this.element.appendChild(badge);
             }
 
             this.element.style.pointerEvents = "auto";
@@ -280,67 +200,11 @@ export function defineSpellsMain(CoreHUD) {
         }
 
         async _onMouseDown(event) {
-            // 1. Right Click (Cancel)
-            if (event.button === 2) {
-                event.preventDefault();
-                event.stopPropagation();
-                if (this._isArmed) {
-                    this._isArmed = false;
-                    this._isTemplateActive = false;
-                    this.render();
-                }
-                return;
-            }
-
-            // 2. Left Click (Action)
+            // Left Click (Action)
             if (event.button === 0) {
                 event.preventDefault();
                 event.stopPropagation();
-
-                // --- A) ALREADY ARMED (Attack / Resolve Template) ---
-                if (this._isArmed && this._relatedAttack) {
-                    // For RESOLVING attacks (Directed OR Area final step), check targets
-                    const targets = game.user?.targets ?? new Set();
-                    if (!targets.size) {
-                        ui.notifications?.warn?.("Select at least one target before resolving the attack.");
-                        return;
-                    }
-
-                    // Resolve the attack
-                    await RMUUtils.markActionTaken(ui.ARGON?._token);
-                    const success = await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenSpellAttackAction", this._relatedAttack);
-
-                    // If successful, reset all states
-                    if (success) {
-                        this._isTemplateActive = false;
-                        this._isArmed = false;
-                        this.render();
-                    }
-                    return;
-                }
-
-                // --- B) NOT ARMED (Cast SCR -> Transition) ---
                 await this._roll();
-
-                // Transition to Armed
-                if (this._relatedAttack) {
-                    this._isArmed = true;
-
-                    // AREA SPELL: Auto-trigger template placement
-                    if (this._relatedAttack.isAoE) {
-                        this._isTemplateActive = true;
-                        this.render(); // Update UI immediately (Badge + Gold + Orange)
-
-                        ui.notifications?.info?.("Place the template on the scene, then click this attack again to resolve.");
-
-                        // Call API to init placement ghost immediately
-                        await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenSpellAttackAction", this._relatedAttack);
-                        return; // Stop here, user must interact with template then click again
-                    }
-
-                    // DIRECTED SPELL: Just arm and wait for click
-                    this.render();
-                }
             }
         }
 
