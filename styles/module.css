@@ -117,12 +117,6 @@
   z-index: 3;
 }
 
-/* --- Spell Armed State (Gold Background) --- */
-.enhancedcombathud-rmu .rmu-spell-tile.spell-armed {
-  background-color: rgba(var(--filroden-color-text-accent-rgb), 0.25) !important;
-  border-color: var(--filroden-color-text-accent) !important;
-}
-
 
 /* ────────────────────────────────────────────────
    Category count badge (RESISTANCE ROLLS tile)

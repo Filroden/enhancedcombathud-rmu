@@ -2,6 +2,7 @@
 
 | Version   | Changes |
 | :--- | :--- |
+| **Version 2.1.0** | **IMPROVEMENTS**<br>- **Spell Attack Rolls:** Removed spell arming for spells which have an attack, as the attack is now triggered from the chat card after a Spell Casting Roll. This reverses some of the changes implemented in v1.1.0.<br>- **All Known Spells:** The "All Known Spells" list is no longer shown in the Spell panel, as these are just duplicates of spells already being shown in the HUD.|
 | **Version 2.0.0** | **UNDER THE HOOD**<br>- Updated the module to require Foundry VTT v14, Argon Combat HUD v5.0.0, and RMU v1.2.5.<br>- Replaced deprecated data deletion methods.<br>- Restructured the codebase for Endurance and Concentration checks to improve long-term maintainability. |
 | **Version 1.4.0** | **IMPROVEMENTS**<br>- **Spell Favourites:** Added a the abliity to filter spells to those marked as favourites in the actor's sheet.|
 | **Version 1.3.0** | **IMPROVEMENTS**<br>- **Ranked Skill Filter:** Added a filter to the search bar to show only skills which have 1 or more ranks.<br>- **Search Bar Clarity:** Made the search bar icons and text a little larger to make them easier to see.|

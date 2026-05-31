@@ -326,10 +326,6 @@ RMUData.getGroupedSkillsForHUD_All = function () {
     return groups;
 };
 
-/**
- * RMUData.js
- * Update the getGroupedSpellsForHUD function
- */
 RMUData.getGroupedSpellsForHUD = function () {
     const actor = ui.ARGON?._actor ?? ui.ARGON?._token?.actor;
     if (!actor) return new Map();
@@ -337,12 +333,16 @@ RMUData.getGroupedSpellsForHUD = function () {
     const sourceData = actor.system?._spells;
     if (!Array.isArray(sourceData)) return new Map();
 
+    // Retrieve the favorites flag
     const spellFavorites = actor.getFlag("rmu", "spell-favorites") ?? {};
 
     const groups = new Map();
 
     for (const listTypeGroup of sourceData) {
         if (!Array.isArray(listTypeGroup.spellLists)) continue;
+
+        // Skip the system's collated list to prevent HUD duplication
+        if (listTypeGroup.listType === "All Known Spells") continue;
 
         const listTypeKey = listTypeGroup.groupName ?? listTypeGroup.listType;
         if (!groups.has(listTypeKey)) groups.set(listTypeKey, new Map());
@@ -352,12 +352,13 @@ RMUData.getGroupedSpellsForHUD = function () {
             if (!Array.isArray(spellList.spells)) continue;
 
             const listName = spellList.spellListName;
-            const listFavorites = spellFavorites[listName] ?? {};
+            const listFavorites = spellFavorites[listName] ?? {}; // Get favorites for this list
 
             const knownSpells = spellList.spells
                 .filter((spell) => spell.known === true)
                 .map((spell) => ({
                     ...spell,
+                    // Determine if this specific spell is marked as true in flags
                     isFavorite: listFavorites[spell.name] === true,
                     _rawListInfo: {
                         groupName: listTypeKey,
