@@ -17,85 +17,224 @@ const MODULE_ID = "enhancedcombathud-rmu";
 
 /**
  * Route helper for module icons.
- * @param {string} file - The icon file name (e.g., "sword-brandish.svg").
- * @returns {string} The web path to the icon file.
  */
 const MOD_ICON = (file) => (foundry?.utils?.getRoute ? foundry.utils.getRoute(`modules/${MODULE_ID}/icons/${file}`) : `modules/${MODULE_ID}/icons/${file}`);
 
 /**
- * Global icon definitions for the RMU HUD.
- * @global
+ * Configuration map for all user-customizable icons.
  */
-const ICONS = {
-    // Main
-    melee: MOD_ICON("sword-brandish.svg"),
-    ranged: MOD_ICON("high-shot.svg"),
-    natural: MOD_ICON("fist.svg"),
-    shield: MOD_ICON("vibrating-shield.svg"),
-    skills: MOD_ICON("skills.svg"),
-    skills_muted: MOD_ICON("skills-muted.svg"),
-    spells: MOD_ICON("spell-book.svg"),
-    spells_muted: MOD_ICON("spell-book-muted.svg"),
-    combat: MOD_ICON("skip-next-circle.svg"),
-    rest: MOD_ICON("rest.svg"),
-    special: MOD_ICON("hazard-sign.svg"),
-    endurance: MOD_ICON("mountain-climbing.svg"),
-    concentration: MOD_ICON("meditation.svg"),
-    star: MOD_ICON("star.svg"),
-    instant: MOD_ICON("asterisk.svg"),
-    subconscious: MOD_ICON("airline_seat_flat.svg"),
-    close: MOD_ICON("clear-text.svg"),
-    search: MOD_ICON("search.svg"),
-    beam: MOD_ICON("ringed-beam.svg"),
-    scroll: MOD_ICON("scroll-unfurled.svg"),
-    explosion: MOD_ICON("bright-explosion.svg"),
-    equip_closed: MOD_ICON("back_hand_closed.svg"),
-    equip_open: MOD_ICON("back_hand_open.svg"),
-    ranked: MOD_ICON("voting_chip.svg"),
+const ICON_CONFIG = {
+    // --- MAIN HUD ICONS ---
+    melee: { name: "Melee Attack", default: MOD_ICON("sword-brandish.svg") },
+    ranged: { name: "Ranged Attack", default: MOD_ICON("high-shot.svg") },
+    natural: { name: "Natural Attack", default: MOD_ICON("fist.svg") },
+    shield: { name: "Shield Attack", default: MOD_ICON("vibrating-shield.svg") },
+    skills: { name: "Skills Category", default: MOD_ICON("skills.svg") },
+    skills_muted: { name: "Skill Action (Muted)", default: MOD_ICON("skills-muted.svg") },
+    spells: { name: "Spells Category", default: MOD_ICON("spell-book.svg") },
+    spells_muted: { name: "Spell Action (Muted)", default: MOD_ICON("spell-book-muted.svg") },
+    combat: { name: "End Turn (Combat)", default: MOD_ICON("skip-next-circle.svg") },
+    rest: { name: "Rest Action", default: MOD_ICON("rest.svg") },
+    special: { name: "Special Checks", default: MOD_ICON("hazard-sign.svg") },
+    endurance: { name: "Endurance Check", default: MOD_ICON("mountain-climbing.svg") },
+    concentration: { name: "Concentration Check", default: MOD_ICON("meditation.svg") },
+    star: { name: "Favorite Star", default: MOD_ICON("star.svg") },
+    instant: { name: "Instantaneous Asterisk", default: MOD_ICON("asterisk.svg") },
+    subconscious: { name: "Sub-conscious Indicator", default: MOD_ICON("airline_seat_flat.svg") },
+    close: { name: "Close/Clear", default: MOD_ICON("clear-text.svg") },
+    search: { name: "Search Magnifier", default: MOD_ICON("search.svg") },
+    beam: { name: "Directed Attack Beam", default: MOD_ICON("ringed-beam.svg") },
+    scroll: { name: "Scroll/Item", default: MOD_ICON("scroll-unfurled.svg") },
+    explosion: { name: "Area Attack Explosion", default: MOD_ICON("bright-explosion.svg") },
+    equip_closed: { name: "Equipped Shield", default: MOD_ICON("back_hand_closed.svg") },
+    equip_open: { name: "Unequipped Shield", default: MOD_ICON("back_hand_open.svg") },
+    ranked: { name: "Ranked Skill Chip", default: MOD_ICON("voting_chip.svg") },
+    panel: { name: "Generic Panel", default: MOD_ICON("resistance-panel.svg") },
 
-    // Resistances
-    panel: MOD_ICON("resistance-panel.svg"),
-    Channeling: MOD_ICON("resistance-channeling.svg"),
-    Essence: MOD_ICON("resistance-essence.svg"),
-    Mentalism: MOD_ICON("resistance-mentalism.svg"),
-    Physical: MOD_ICON("resistance-physical.svg"),
-    Fear: MOD_ICON("resistance-fear.svg"),
+    // --- RESISTANCE ICONS ---
+    Channeling: { name: "Resist: Channeling", default: MOD_ICON("resistance-channeling.svg") },
+    Essence: { name: "Resist: Essence", default: MOD_ICON("resistance-essence.svg") },
+    Mentalism: { name: "Resist: Mentalism", default: MOD_ICON("resistance-mentalism.svg") },
+    Physical: { name: "Resist: Physical", default: MOD_ICON("resistance-physical.svg") },
+    Fear: { name: "Resist: Fear", default: MOD_ICON("resistance-fear.svg") },
 };
 
 /**
- * Map of spell base names to their Foundry icon paths.
- * @global
+ * Global ICONS object using dynamic getters.
+ * This ensures backwards compatibility with existing code (e.g., `ICONS.melee`)
+ * while pulling live user settings.
  */
-const SPELL_ATTACK_ICONS = {
-    "Acidic Bolt": "icons/magic/acid/projectile-smoke-glowing.webp",
-    "Bolt of Fire": "icons/magic/fire/beam-jet-stream-embers.webp",
-    "Bolt of Water": "icons/magic/water/projectile-water-rings.webp",
-    "Corner Fires": "icons/magic/fire/beam-strike-whip-red.webp",
-    "Corner Lightning Bolt": "icons/magic/lightning/bolt-strike-beam-yellow.webp",
-    "Dragon's Fire": "icons/magic/fire/blast-jet-stream-embers-orange.webp",
-    "Fire Bolt": "icons/magic/fire/beam-jet-stream-embers.webp",
-    Flare: "icons/magic/fire/projectile-fireball-embers-yellow.webp",
-    "Following Fires": "icons/magic/fire/beam-strike-whip-red.webp",
-    "Following Lightning Bolt": "icons/magic/lightning/bolt-strike-beam-yellow.webp",
-    "Greater Hurling": "icons/magic/earth/projectile-boulder-yellow.webp",
-    "Hand of Fire": "icons/magic/fire/beam-jet-stream-embers.webp",
-    Hurling: "icons/magic/earth/projectile-boulder-debris.webp",
-    "Ice Bolt Barrage": "icons/magic/water/projectile-bolts-salvo-blue.webp",
-    "Ice Bolt": "icons/magic/water/projectile-ice-chunk-blue.webp",
-    "Lightning Bolt": "icons/magic/lightning/orb-ball-blue.webp",
-    "Shock Bolt": "icons/magic/lightning/bolt-strike-sparks-yellow.webp",
-    "Shocking Bolts": "icons/magic/lightning/bolt-forked-orange.webp",
-    "Steam Bolt": "icons/magic/water/beam-ice-impact.webp",
-    Strike: "icons/magic/fire/flame-burning-fist-strike.webp",
-    Striking: "icons/magic/fire/flame-burning-fist-strike.webp",
-    "Triad of Flame": "icons/magic/fire/projectiles-salvo-trio-orange.webp",
-    "Triad of Ice": "icons/magic/water/projectile-ice-teardrops-salvo.webp",
-    "Triad of Water": "icons/magic/water/projectile-ice-teardrops-salvo.webp",
-    "Water Bolt": "icons/magic/water/projectile-water-rings.webp",
-    "Cold Ball": "icons/magic/water/projectile-ice-snowball.webp",
-    "Fire Ball": "icons/magic/fire/explosion-fireball-large-orange.webp",
-    "Shock Ball": "icons/magic/lightning/orb-ball-blue.webp",
-};
+const ICONS = {};
+for (const key of Object.keys(ICON_CONFIG)) {
+    Object.defineProperty(ICONS, key, {
+        get: () => game.settings.get(MODULE_ID, `icon_main_${key}`),
+        enumerable: true,
+    });
+}
+
+/**
+ * Safely retrieves a custom icon path defined by the user.
+ * @param {string} name - The exact name of the spell or skill.
+ */
+function getUserIcon(name) {
+    if (!name) return null;
+    try {
+        const icons = game.settings.get(MODULE_ID, "custom_user_icons") || {};
+        return icons[name] || null;
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * Modern ApplicationV2 Settings Menu for Custom Icons.
+ */
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
+class RMUCustomIconsMenu extends HandlebarsApplicationMixin(ApplicationV2) {
+    constructor(options) {
+        super(options);
+        const savedIcons = game.settings.get(MODULE_ID, "custom_user_icons") || {};
+        this.iconRows = Object.entries(savedIcons).map(([name, path]) => ({
+            id: foundry.utils.randomID(),
+            name,
+            path,
+        }));
+    }
+
+    static DEFAULT_OPTIONS = {
+        id: "rmu-custom-icons",
+        window: {
+            title: "Custom Spell & Skill Icons",
+            icon: "fas fa-images",
+            resizable: true,
+        },
+        position: { width: 550, height: "auto" },
+        actions: {
+            addRow: RMUCustomIconsMenu._onAddRow,
+            deleteRow: RMUCustomIconsMenu._onDeleteRow,
+            pickFile: RMUCustomIconsMenu._onPickFile,
+            cancel: RMUCustomIconsMenu._onCancel,
+            save: RMUCustomIconsMenu._onSave,
+        },
+    };
+
+    static PARTS = {
+        form: {
+            template: "modules/enhancedcombathud-rmu/templates/rmu-custom-icons.hbs",
+        },
+    };
+
+    async _prepareContext(options) {
+        return {
+            icons: this.iconRows,
+        };
+    }
+
+    _syncState() {
+        if (!this.element) return;
+        const form = this.element.querySelector("form");
+        if (!form) return;
+
+        const formData = new FormData(form);
+        this.iconRows = (this.iconRows || []).map((row) => ({
+            id: row.id,
+            name: formData.get(`name_${row.id}`)?.trim() || "",
+            path: formData.get(`path_${row.id}`)?.trim() || "",
+        }));
+    }
+
+    // --- Action Handlers ---
+
+    static async _onAddRow(event, target) {
+        this._syncState();
+        this.iconRows.push({ id: foundry.utils.randomID(), name: "", path: "" });
+        this.render();
+    }
+
+    static async _onDeleteRow(event, target) {
+        this._syncState();
+        const rowId = target.closest(".form-group").dataset.rowId;
+        this.iconRows = this.iconRows.filter((r) => r.id !== rowId);
+        this.render();
+    }
+
+    static async _onPickFile(event, target) {
+        const targetName = target.dataset.target;
+        const input = this.element.querySelector(`input[name="${targetName}"]`);
+        if (!input) return;
+
+        new FilePicker({
+            type: "image",
+            current: input.value,
+            callback: (path) => {
+                input.value = path;
+            },
+        }).render(true);
+    }
+
+    static async _onCancel(event, target) {
+        this.close();
+    }
+
+    static async _onSave(event, target) {
+        event.preventDefault(); // Extra defense against native submission
+
+        // Grab all current inputs directly into our array
+        this._syncState();
+
+        const newIcons = {};
+        for (const row of this.iconRows) {
+            // Only save complete pairs
+            if (row.name && row.path) {
+                newIcons[row.name] = row.path;
+            }
+        }
+
+        await game.settings.set(MODULE_ID, "custom_user_icons", newIcons);
+        ui.notifications.info("Custom icons saved. Reloading...");
+        this.close();
+
+        // Native clean reload
+        setTimeout(() => window.location.reload(), 500);
+    }
+}
+
+/**
+ * Registers all icon settings with Foundry VTT.
+ */
+function registerIconSettings() {
+    // 1. Register Main Structural Icons (Melee, Shield, etc.)
+    for (const [key, config] of Object.entries(ICON_CONFIG)) {
+        game.settings.register(MODULE_ID, `icon_main_${key}`, {
+            name: config.name,
+            scope: "world",
+            config: true,
+            type: String,
+            filePicker: "image",
+            default: config.default,
+            requiresReload: true,
+        });
+    }
+
+    // 2. Hidden Object Setting to store custom pairs
+    game.settings.register(MODULE_ID, "custom_user_icons", {
+        scope: "world",
+        config: false,
+        type: Object,
+        default: {},
+    });
+
+    // 3. The Settings Menu Button that opens the UI
+    game.settings.registerMenu(MODULE_ID, "custom_icons_menu", {
+        name: "Custom Spell & Skill Icons",
+        label: "Configure Icons",
+        hint: "Map specific spells and skills to custom icons.",
+        icon: "fas fa-images",
+        type: RMUCustomIconsMenu,
+        restricted: true,
+    });
+}
 
 // -----------------------------------------------------------------------------
 // II. Core Utilities (Reusable logic, API wrappers, Formatting)
@@ -269,7 +408,7 @@ const RMUUtils = {
         element.classList.add("rmu-button-relative");
         let chipContainer = element.querySelector(".rmu-chip-container");
         if (chipContainer) {
-            chipContainer.innerHTML = ""; // Clear old chips
+            chipContainer.innerHTML = "";
         } else {
             chipContainer = document.createElement("div");
             chipContainer.className = "rmu-chip-container";
@@ -278,9 +417,34 @@ const RMUUtils = {
 
         for (const chipData of chips) {
             const chip = document.createElement("div");
-            // Use a generic class and a specific class
             chip.className = `rmu-chip ${chipData.class}`;
             chip.title = chipData.title;
+
+            // Map the icon dynamically so we don't have to alter other files
+            let iconUrl = chipData.icon;
+            if (!iconUrl) {
+                if (chipData.class.includes("fav-chip")) iconUrl = ICONS.star;
+                else if (chipData.class.includes("instant-chip")) iconUrl = ICONS.instant;
+                else if (chipData.class.includes("subconscious-chip")) iconUrl = ICONS.subconscious;
+            }
+
+            // Mimic the old CSS ::before pseudo-element inline
+            if (iconUrl) {
+                const iconInner = document.createElement("div");
+                iconInner.style.width = "100%";
+                iconInner.style.height = "100%";
+                iconInner.style.backgroundColor = "var(--filroden-color-success)";
+                iconInner.style.maskImage = `url('${iconUrl}')`;
+                iconInner.style.webkitMaskImage = `url('${iconUrl}')`;
+                iconInner.style.maskSize = "contain";
+                iconInner.style.webkitMaskSize = "contain";
+                iconInner.style.maskRepeat = "no-repeat";
+                iconInner.style.webkitMaskRepeat = "no-repeat";
+                iconInner.style.maskPosition = "center";
+                iconInner.style.webkitMaskPosition = "center";
+                chip.appendChild(iconInner);
+            }
+
             chipContainer.appendChild(chip);
         }
         return chipContainer;
@@ -541,7 +705,7 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
         // C. Create Search Icon
         const searchIcon = document.createElement("a");
         searchIcon.className = "rmu-search-icon";
-        searchIcon.innerHTML = `<img src="${ICONS.search}" alt="Search">`;
+        searchIcon.innerHTML = `<img src="${ICONS.search}" alt="Search" style="-webkit-mask-image: url('${ICONS.search}'); mask-image: url('${ICONS.search}');">`;
         searchIcon.addEventListener("click", (e) => {
             e.preventDefault();
             filter(search.value);
@@ -551,7 +715,7 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
         const clearBtn = document.createElement("a");
         clearBtn.className = "rmu-search-clear rmu-filter-button";
         clearBtn.title = "Clear search and filters";
-        clearBtn.innerHTML = `<img src="${ICONS.close}" alt="Clear">`;
+        clearBtn.innerHTML = `<img src="${ICONS.close}" alt="Clear" style="-webkit-mask-image: url('${ICONS.close}'); mask-image: url('${ICONS.close}');">`;
 
         // E. Create Filter Button Container
         const filterContainer = document.createElement("div");
@@ -564,10 +728,7 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
             btn.className = "rmu-filter-button";
             btn.id = btnId;
             btn.title = f.tooltip;
-            btn.innerHTML = `<img src="${f.icon}" alt="${f.tooltip}">`;
-            if (RMUData.getFilterActive(panelId, f.id)) {
-                btn.classList.add("active");
-            }
+            btn.innerHTML = `<img src="${f.icon}" alt="${f.tooltip}" style="-webkit-mask-image: url('${f.icon}'); mask-image: url('${f.icon}');">`;
             btn.addEventListener("click", (e) => {
                 e.preventDefault();
                 const isActive = e.currentTarget.classList.toggle("active");
@@ -616,7 +777,7 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
  */
 function defineTooltip(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
-    const BaseTooltip = ARGON.CORE.Tooltip;
+    const BaseTooltip = ARGON?.CORE?.Tooltip || ARGON?.HUD?.Tooltip || ARGON?.Tooltip;
 
     if (!BaseTooltip) {
         console.warn("[ECH-RMU] Argon CORE.Tooltip base class not found; skipping custom tooltip.");
@@ -645,4 +806,4 @@ function defineSupportedActorTypes(CoreHUD) {
 // VI. Export
 // -----------------------------------------------------------------------------
 
-export { ICONS, SPELL_ATTACK_ICONS, RMUUtils, UIGuards, installListSearch, formatBonus, defineTooltip, defineSupportedActorTypes };
+export { ICONS, getUserIcon, RMUUtils, UIGuards, installListSearch, formatBonus, defineTooltip, defineSupportedActorTypes, registerIconSettings };

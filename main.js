@@ -7,7 +7,7 @@
  */
 
 // Import modular logic
-import { UIGuards, defineTooltip, defineSupportedActorTypes } from "./src/RMUCore.js";
+import { UIGuards, defineTooltip, defineSupportedActorTypes, registerIconSettings } from "./src/RMUCore.js";
 import "./src/RMUData.js"; // Imports RMUData for its side effects (attaching to window)
 import { defineAttacksMain } from "./src/RMUFeatures/RMUAttacks.js";
 import { defineSkillsMain } from "./src/RMUFeatures/RMUSkills.js";
@@ -23,7 +23,7 @@ import {
     defineDrawerPanel,
 } from "./src/RMUFeatures/RMUOther.js";
 
-const VALID_ACTOR_TYPES = ["Character", "Creature"];
+const VALID_ACTOR_TYPES = new Set(["Character", "Creature"]);
 
 /**
  * Initializes the RMU-specific configuration for the Argon HUD.
@@ -61,7 +61,10 @@ function initConfig(CoreHUD) {
 // III. Foundry Hooks
 // -----------------------------------------------------------------------------
 
-Hooks.once("init", () => console.info(`[ECH-RMU] Initializing RMU extension`));
+Hooks.once("init", () => {
+    console.info(`[ECH-RMU] Initializing RMU extension`);
+    registerIconSettings();
+});
 
 Hooks.once("setup", () => {
     console.info(`[ECH-RMU] Setting up RMU extension hooks`);
@@ -86,7 +89,7 @@ Hooks.once("ready", () => {
         const originalBind = ui.ARGON.bind;
         ui.ARGON.bind = function (token) {
             // If a token is selected, check if it's a valid type
-            if (token?.actor && !VALID_ACTOR_TYPES.includes(token.actor.type)) {
+            if (token?.actor && !VALID_ACTOR_TYPES.has(token.actor.type)) {
                 // If invalid (e.g., Loot), force the HUD to close (unbind)
                 // ignoring the warning and preventing the HUD from getting stuck.
                 return originalBind.apply(this, [null]);

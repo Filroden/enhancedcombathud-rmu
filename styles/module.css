@@ -467,32 +467,10 @@
   width: 100%;
   height: 100%;
   border: none;
-  mask-image: var(--icon-url);
-  -webkit-mask-image: var(--icon-url);
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;
   background-color: var(--filroden-color-text-muted-solid);
-}
-
-/* --- Icon Paths --- */
-.enhancedcombathud-rmu .rmu-search-icon img[src*="search.svg"] {
-  --icon-url: url('/modules/enhancedcombathud-rmu/icons/search.svg');
-}
-.enhancedcombathud-rmu .rmu-search-clear img[src*="clear-text.svg"] {
-  --icon-url: url('/modules/enhancedcombathud-rmu/icons/clear-text.svg');
-}
-.enhancedcombathud-rmu .rmu-filter-button img[src*="star.svg"] {
-  --icon-url: url('/modules/enhancedcombathud-rmu/icons/star.svg');
-}
-.enhancedcombathud-rmu .rmu-filter-button img[src*="asterisk.svg"] {
-  --icon-url: url('/modules/enhancedcombathud-rmu/icons/asterisk.svg');
-}
-.enhancedcombathud-rmu .rmu-filter-button img[src*="airline_seat_flat.svg"] {
-  --icon-url: url('/modules/enhancedcombathud-rmu/icons/airline_seat_flat.svg');
-}
-.enhancedcombathud-rmu .rmu-filter-button img[src*="voting_chip.svg"] {
-  --icon-url: url('/modules/enhancedcombathud-rmu/icons/voting_chip.svg');
 }
 
 /* --- Button States (Hover, Active) --- */
@@ -542,35 +520,6 @@ position: absolute;
   border-radius: 999px; /* Fully rounded */
   background-color: var(--filroden-color-bg-darkest);
   box-sizing: border-box;
-}
-
-/* --- This is the icon inside the chip --- */
-.enhancedcombathud-rmu .rmu-chip::before {
-  content: '';
-  display: block;
-  width: 100%;
-  height: 100%;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  mask-size: contain;
-  background-color: var(--filroden-color-success);
-  -webkit-mask-image: var(--icon-url);
-  mask-image: var(--icon-url);
-}
-
-/* --- Set individual chip icons --- */
-.enhancedcombathud-rmu .rmu-skill-fav-chip::before,
-.enhancedcombathud-rmu .rmu-spell-fav-chip::before {
-  --icon-url: url('/modules/enhancedcombathud-rmu/icons/star.svg');
-}
-.enhancedcombathud-rmu .rmu-instant-chip::before {
-  --icon-url: url('/modules/enhancedcombathud-rmu/icons/asterisk.svg');
-}
-.enhancedcombathud-rmu .rmu-subconscious-chip::before {
-  --icon-url: url('/modules/enhancedcombathud-rmu/icons/airline_seat_flat.svg');
 }
 
 

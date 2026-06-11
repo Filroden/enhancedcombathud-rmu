@@ -2,6 +2,7 @@
 
 | Version   | Changes |
 | :--- | :--- |
+| **Version 2.2.0** | **FEATURES**<br>- **Custom Icon Configuration:** Added a game setting to choose own icons. Icons for specific spells and skills can be configured. Note that the spell or skill name must match the local version of the name (if localised). You do not need to include any roman numerals or `True` after a spell name. The same icon will apply to all variants.<br><br>**BUG FIXES**<br>- Switched data extraction of weapon ranges to new `weapon.system.usage[index]._range` object. |
 | **Version 2.1.0** | **IMPROVEMENTS**<br>- **Spell Attack Rolls:** Removed spell arming for spells which have an attack, as the attack is now triggered from the chat card after a Spell Casting Roll. This reverses some of the changes implemented in v1.1.0.<br>- **All Known Spells:** The "All Known Spells" list is no longer shown in the Spell panel, as these are just duplicates of spells already being shown in the HUD.|
 | **Version 2.0.0** | **UNDER THE HOOD**<br>- Updated the module to require Foundry VTT v14, Argon Combat HUD v5.0.0, and RMU v1.2.5.<br>- Replaced deprecated data deletion methods.<br>- Restructured the codebase for Endurance and Concentration checks to improve long-term maintainability. |
 | **Version 1.4.0** | **IMPROVEMENTS**<br>- **Spell Favourites:** Added a the abliity to filter spells to those marked as favourites in the actor's sheet.|

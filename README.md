@@ -1,6 +1,6 @@
 # Argon Combat HUD extension for Rolemaster Unified (RMU)
 
-![Latest Version](https://img.shields.io/badge/Version-2.1.0-blue)
+![Latest Version](https://img.shields.io/badge/Version-2.2.0-blue)
 ![Foundry Version](https://img.shields.io/badge/Foundry_VTT-v13_%7C_v14-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Languages](https://img.shields.io/badge/Languages-1-blueviolet)
