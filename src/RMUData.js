@@ -213,7 +213,7 @@ RMUData.bucketOf = function (att) {
     const sName = String(att?.skill?.name ?? "").toLowerCase();
     const sSpec = String(att?.skill?.specialization ?? att?.skill?.specialisation ?? "").toLowerCase();
     const type = String(att?.subType ?? att?.type ?? att?.category ?? att?.attackType ?? "").toLowerCase();
-    const incs = att?.rangeInrements ?? att?.rangeIncrements ?? null;
+    const incs = att?.range ?? att?.rangeInrements ?? att?.rangeIncrements ?? att?.rangeIntervals ?? null;
 
     if (sName.includes("shield") || sSpec.includes("shield") || type.includes("shield")) return "shield";
 
@@ -223,7 +223,14 @@ RMUData.bucketOf = function (att) {
         return "ranged";
     }
 
-    // Heuristic fallback: only treat as ranged if an increment with a real distance exists
+    // Heuristic fallback: New Object format check
+    if (incs && typeof incs === "object" && !Array.isArray(incs)) {
+        if (Object.values(incs).some((val) => Number(val) > 0)) {
+            return "ranged";
+        }
+    }
+
+    // Heuristic fallback: Legacy Array format check
     if (Array.isArray(incs) && incs.some((x) => Number(x?.distInFt ?? x?.dist ?? 0) > 0)) {
         return "ranged";
     }
@@ -232,16 +239,29 @@ RMUData.bucketOf = function (att) {
 };
 
 /**
- * Gets the short-range distance string from a range increments array.
- * @param {Array<object>} arr - The range increments array.
+ * Gets the short-range distance string from range data.
+ * Supports both the modern Object format and the legacy Array format.
+ * @param {Array<object>|object} rangeData - The range increments data.
  * @returns {string} The formatted short range (e.g., "50'"), or "—".
  */
-RMUData.getShortRange = function (arr) {
-    if (!Array.isArray(arr)) return "—";
-    const short = arr.find((r) => String(r.label).toLowerCase() === "short");
-    if (!short) return "—";
-    const dist = short.distance || (short.distInFt === null ? (short.dist ?? "") : `${short.distInFt}'`);
-    return dist ? `${dist}` : "—";
+RMUData.getShortRange = function (rangeData) {
+    if (!rangeData) return "—";
+
+    // 1. Modern Object Format (e.g., { short: 10, medium: 20 })
+    if (typeof rangeData === "object" && !Array.isArray(rangeData)) {
+        const shortVal = rangeData.short ?? rangeData._short;
+        return shortVal !== undefined && shortVal !== null ? `${shortVal}'` : "—";
+    }
+
+    // 2. Legacy Array Format (e.g., [{ label: "Short", distance: 50 }])
+    if (Array.isArray(rangeData)) {
+        const short = rangeData.find((r) => String(r.label).toLowerCase() === "short");
+        if (!short) return "—";
+        const dist = short.distance || (short.distInFt === null ? (short.dist ?? "") : `${short.distInFt}'`);
+        return dist ? `${dist}` : "—";
+    }
+
+    return "—";
 };
 
 /**
