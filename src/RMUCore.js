@@ -164,7 +164,7 @@ class RMUCustomIconsMenu extends HandlebarsApplicationMixin(ApplicationV2) {
         const input = this.element.querySelector(`input[name="${targetName}"]`);
         if (!input) return;
 
-        new FilePicker({
+        new foundry.applications.apps.FilePicker({
             type: "image",
             current: input.value,
             callback: (path) => {
@@ -196,7 +196,7 @@ class RMUCustomIconsMenu extends HandlebarsApplicationMixin(ApplicationV2) {
         this.close();
 
         // Native clean reload
-        setTimeout(() => window.location.reload(), 500);
+        setTimeout(() => globalThis.location.reload(), 500);
     }
 }
 
