@@ -1,10 +1,9 @@
 /**
- * RMUFeatures/RMUSpells.js
  * Defines the main Spellcasting panel (3-Level Nested Accordion)
  * Implements standard Spell Casting Rolls (SCR).
  */
 
-import { ICONS, RMUUtils, installListSearch, UIGuards, formatBonus } from "../RMUCore.js";
+import { ICONS, getUserIcon, RMUUtils, installListSearch, UIGuards, formatBonus } from "../RMUCore.js";
 import { RMUData } from "../RMUData.js";
 
 // Global state helpers
@@ -84,6 +83,15 @@ export function defineSpellsMain(CoreHUD) {
         }
 
         get icon() {
+            // Extract the base spell name
+            const spellName = this.spell?.name || "";
+            const baseName = spellName.replace(/ (I|II|III|IV|V|VI|VII|VIII|IX|X|True)$/, "").trim();
+
+            // Check if the user has configured a custom icon
+            const customIcon = getUserIcon(baseName);
+            if (customIcon) return customIcon;
+
+            // Fallback for all spells
             return ICONS.spells_muted;
         }
 

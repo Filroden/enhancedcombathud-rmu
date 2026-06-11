@@ -1,9 +1,8 @@
 /**
- * RMUFeatures/RMUSkills.js
  * Defines the main Skills panel, using an accordion and the shared search filter.
  */
 
-import { ICONS, RMUUtils, installListSearch, UIGuards } from "../RMUCore.js";
+import { ICONS, getUserIcon, RMUUtils, installListSearch, UIGuards } from "../RMUCore.js";
 import { RMUData } from "../RMUData.js";
 
 /**
@@ -189,6 +188,13 @@ export function defineSkillsMain(CoreHUD) {
             return e?.spec ? `${e.name} (${e.spec})` : (e?.name ?? "Skill");
         }
         get icon() {
+            const skillName = this.entry?.name;
+
+            // Check if the user has configured a custom icon
+            const customIcon = getUserIcon(skillName);
+            if (customIcon) return customIcon;
+
+            // Fallback for all skills
             return ICONS.skills_muted;
         }
         get isInteractive() {

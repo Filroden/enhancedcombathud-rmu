@@ -27,7 +27,7 @@ import { RMUData } from "../RMUData.js";
  */
 export function definePortraitPanel(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
-    const Base = ARGON.PORTRAIT.PortraitPanel;
+    const Base = ARGON?.PORTRAIT?.PortraitPanel || ARGON?.HUD?.PortraitPanel || ARGON?.PortraitPanel;
 
     if (!Base) {
         console.warn("[ECH-RMU] PortraitPanel base not found; skipping.");
@@ -1080,8 +1080,8 @@ export function defineCombatMain(CoreHUD) {
  */
 export function defineDrawerPanel(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
-    const BaseDrawer = ARGON.DRAWER.DrawerPanel;
-    const BaseDrawerButton = ARGON.DRAWER.DrawerButton;
+    const BaseDrawer = ARGON?.DRAWER?.DrawerPanel || ARGON?.HUD?.DrawerPanel || ARGON?.DrawerPanel;
+    const BaseDrawerButton = ARGON?.DRAWER?.DrawerButton || ARGON?.HUD?.DrawerButton || ARGON?.DrawerButton;
 
     if (!BaseDrawer || !BaseDrawerButton) {
         console.warn("[ECH-RMU] DrawerPanel or DrawerButton base not found; skipping macro drawer.");
