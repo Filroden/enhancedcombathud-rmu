@@ -1,6 +1,6 @@
 # Argon Combat HUD extension for Rolemaster Unified (RMU)
 
-![Latest Version](https://img.shields.io/badge/Version-2.2.0-blue)
+![Latest Version](https://img.shields.io/badge/Version-2.3.0-blue)
 ![Foundry Version](https://img.shields.io/badge/Foundry_VTT-v13_%7C_v14-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Languages](https://img.shields.io/badge/Languages-1-blueviolet)
@@ -40,19 +40,11 @@ Please install the correct version of the module:
 
 ![Endurance](/images/endurance.png)
 
-## Set Defenses
-
-![Set Defences](/images/set_defences.png)
-
 **Documentation for core Argon HUD features can be found at [TheRipper93's Wiki](https://api.theripper93.com/modulewiki/enhancedcombathud/free).**
 
 This module adjusts various Argon Combat HUD features for the Rolemaster Unified system:
 
-- **Portrait:** A customised portrait panel showing HP, Power Points, and Defensive Bonus, with buttons to open the character sheet, set defences (dodge, block and other DB modifier), and to roll initiative. At the top of the portrait is a drawer where you can access any macros on your macro hotbar.
-- **Movement HUD:** Integrates with the RMU movement system to show your current phase movement, detailing how much further you can move before spending your next AP (for dedicated movement) or incurring the next pace penalty (for acting while moving). Note: This HUD is only visible during combat. Movement accumulates across phases to calculate the total AP cost or the maximum pace reached while acting (the GM determines if a round has 1, 2, or 4 phases when creating the combat). If you make an attack or cast a spell using the HUD, it will automatically reset your pace penalty. If you take a different action, you can manually clear the tracker by clicking the "Reset Pace Penalty" icon above your portrait.
-
-    <img src="images/movement_hud.png" width=200px>
-
+- **Portrait:** A customised portrait panel showing HP, Power Points and Defensive Bonus, with buttons to open the character sheet and to roll initiative. At the top of the portrait is a drawer where you can access any macros on your macro hotbar.
 - **Attacks:** Categorised attack buttons for Melee, Ranged, Natural (including innate magic), and Shield attacks. Weapons can be equipped and unequipped within the panel.
 - **Other panels:** Dedicated panels for:
   - Spell Casting (including any follow-up attack roll)
@@ -86,14 +78,11 @@ The table below only shows the earliest version where a dependency has changed. 
 
 |Argon Combat HUD<br>(RMU)|RMU System|Argon Combat HUD<br>(CORE)|FoundryVTT|
 |:---:|:---:|:---:|:---:|
+|2.3.0|1.3.40|5.0.0|14|
 |2.1.0|1.2.43|5.0.0|14|
 |2.0.0|1.2.5|5.0.0|14|
 |1.0.1|1.0.0|4.1.0|13|
 |1.0.0|1.0.0|4.0.7|13|
-
-## Version History
-
-[Version History](VERSION.md)
 
 ## Roadmap
 

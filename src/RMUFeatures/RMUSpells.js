@@ -222,7 +222,6 @@ export function defineSpellsMain(CoreHUD) {
         }
 
         async _roll() {
-            await RMUUtils.markActionTaken(ui.ARGON?._token);
             await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenSCRAction", this.spell);
         }
     }
