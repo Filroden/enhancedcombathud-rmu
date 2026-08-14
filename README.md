@@ -44,7 +44,7 @@ Please install the correct version of the module:
 
 This module adjusts various Argon Combat HUD features for the Rolemaster Unified system:
 
-- **Portrait:** A customised portrait panel showing HP, Power Points, and Defensive Bonus, with buttons to open the character sheet, set defences (dodge, block and other DB modifier), and to roll initiative. At the top of the portrait is a drawer where you can access any macros on your macro hotbar.
+- **Portrait:** A customised portrait panel showing HP, Power Points and Defensive Bonus, with buttons to open the character sheet and to roll initiative. At the top of the portrait is a drawer where you can access any macros on your macro hotbar.
 - **Attacks:** Categorised attack buttons for Melee, Ranged, Natural (including innate magic), and Shield attacks. Weapons can be equipped and unequipped within the panel.
 - **Other panels:** Dedicated panels for:
   - Spell Casting (including any follow-up attack roll)
@@ -83,10 +83,6 @@ The table below only shows the earliest version where a dependency has changed. 
 |2.0.0|1.2.5|5.0.0|14|
 |1.0.1|1.0.0|4.1.0|13|
 |1.0.0|1.0.0|4.0.7|13|
-
-## Version History
-
-[Version History](VERSION.md)
 
 ## Roadmap
 
