@@ -1,25 +1,56 @@
 /**
  * RMUFeatures/RMUItems.js
- * Defines the Items panel using a strict 3-tier nested hierarchy to prevent horizontal sprawl.
+ * Defines the Items panel using CSS ordering to display spells above items.
  */
 
 import { ICONS, RMUUtils, UIGuards } from "../RMUCore.js";
 import { RMUData } from "../RMUData.js";
 
+// Global state for the magic items panel
+let openItemGroupId = null;
+
+/**
+ * Applies visibility to the spells and the flex-break based on the open item.
+ */
+function applyItemAccordionVisibility(panelEl) {
+    if (!panelEl) return;
+
+    let anySpellVisible = false;
+
+    // 1. Toggle Spell Visibility
+    panelEl.querySelectorAll(".rmu-item-spell-button").forEach((el) => {
+        const isVisible = el.dataset.groupId === openItemGroupId;
+        el.style.display = isVisible ? "" : "none";
+        if (isVisible) anySpellVisible = true;
+    });
+
+    // 2. Toggle Flex Break
+    const flexBreak = panelEl.querySelector(".rmu-items-flex-break");
+    if (flexBreak) {
+        flexBreak.style.display = anySpellVisible ? "" : "none";
+    }
+
+    // 3. Highlight Active Item
+    panelEl.querySelectorAll(".rmu-item-category-button").forEach((el) => {
+        const isActive = el.dataset.groupId === openItemGroupId;
+        el.style.opacity = openItemGroupId && !isActive ? "0.6" : "1";
+    });
+}
+
 export function defineMagicItemsMain(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
     const { ActionPanel } = ARGON.MAIN;
     const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
-    const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
+    const { ActionButton, ButtonPanelButton } = ARGON.MAIN.BUTTONS;
 
     /**
-     * TIER 3: An action button representing a single spell castable from an item.
-     * @augments ActionButton
+     * TIER 2 (Top Row): The Spell Action Button
      */
     class RMUItemSpellActionButton extends ActionButton {
-        constructor(spell, itemDoc) {
+        constructor(spell, itemGroup, itemDoc) {
             super();
             this.spell = spell;
+            this.itemGroup = itemGroup;
             this.itemDoc = itemDoc;
         }
 
@@ -27,21 +58,24 @@ export function defineMagicItemsMain(CoreHUD) {
             return true;
         }
 
-        get disabled() {
-            return this.itemDoc?.system?.equipped !== "equipped";
+        // Renamed to avoid being overwritten by the Argon base constructor
+        get _isDisabled() {
+            const eq = this.itemDoc?.system?.equipped;
+            // RMU items can be "equipped", "worn", "1h", "2h". Anything other than carried/none is equipped.
+            return !eq || eq === "carried" || eq === "none";
         }
 
         get label() {
             return this.spell?.name ?? "Item Spell";
         }
-
         get icon() {
             return ICONS.spells;
         }
 
         get classes() {
             const c = super.classes.slice().filter((cls) => cls !== "disabled");
-            if (this.disabled) c.push("disabled");
+            if (this._isDisabled) c.push("disabled");
+            c.push("rmu-item-spell-button");
             return c;
         }
 
@@ -49,9 +83,16 @@ export function defineMagicItemsMain(CoreHUD) {
             await super._renderInner();
             if (!this.element) return;
 
-            this.element.classList.add("rmu-interactive-button");
-            this.element.classList.toggle("disabled", this.disabled);
+            UIGuards.attachButtonInteractionGuards(this);
+
+            this.element.dataset.groupId = this.itemGroup.groupName;
             this.element.dataset.tooltipDirection = "UP";
+
+            const isVisible = this.itemGroup.groupName === openItemGroupId;
+            this.element.style.display = isVisible ? "" : "none";
+
+            // Explicitly toggle the visual class using our custom getter
+            this.element.classList.toggle("disabled", this._isDisabled);
 
             const value = this.spell?.scr;
             if (value !== undefined && value !== null) {
@@ -83,17 +124,16 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         async _onMouseDown(event) {
-            if (event.button !== 0 || this.disabled) return;
+            if (event.button !== 0 || this._isDisabled) return;
             event.preventDefault();
             event.stopPropagation();
-
             const token = ui.ARGON?._token;
             if (!token) return;
-
             await RMUData.ensureExtendedTokenData();
             await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenSCRAction", this.spell);
         }
 
+        // Silently catch native Argon click routing
         async _onLeftClick(event) {
             event?.preventDefault?.();
             event?.stopPropagation?.();
@@ -101,44 +141,48 @@ export function defineMagicItemsMain(CoreHUD) {
     }
 
     /**
-     * TIER 2: A category button representing the Physical Item.
-     * Clicking it opens a higher tier containing the spells.
-     * @augments ButtonPanelButton
+     * TIER 2 (Bottom Row): The Physical Item Button
      */
-    class RMUMagicItemCategoryButton extends ButtonPanelButton {
+    class RMUItemCategoryButton extends ActionButton {
         constructor(itemGroup, actor) {
             super();
             this.itemGroup = itemGroup;
             this.itemDoc = actor.items.get(itemGroup.groupName);
-            this._spells = (itemGroup.spellLists || []).flatMap((sl) => sl.spells || []);
+            this._panelEl = null;
         }
 
         get label() {
             return this.itemGroup.groupLabel || this.itemDoc?.name || "Magic Item";
         }
-
         get icon() {
             return this.itemDoc?.img || ICONS.items;
         }
-
-        get hasContents() {
-            return this._spells.length > 0;
-        }
-
         get isInteractive() {
             return true;
         }
 
         get _equipped() {
-            return this.itemDoc?.system?.equipped === "equipped";
+            const eq = this.itemDoc?.system?.equipped;
+            return !!(eq && eq !== "carried" && eq !== "none");
+        }
+
+        get classes() {
+            return [...super.classes, "rmu-item-category-button"];
+        }
+
+        _bindPanel(panelEl) {
+            this._panelEl = panelEl;
         }
 
         async _renderInner() {
             await super._renderInner();
             if (!this.element) return;
 
-            // Trap the click so it doesn't bleed to the canvas
             UIGuards.attachButtonInteractionGuards(this);
+            this.element.dataset.groupId = this.itemGroup.groupName;
+
+            const isActive = this.itemGroup.groupName === openItemGroupId;
+            this.element.style.opacity = openItemGroupId && !isActive ? "0.6" : "1";
 
             if (this.itemDoc) {
                 const toggle = document.createElement("div");
@@ -168,7 +212,6 @@ export function defineMagicItemsMain(CoreHUD) {
         async _onToggleEquip(event) {
             const token = ui.ARGON?._token;
             if (!token || !this.itemDoc) return;
-
             try {
                 await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenToggleEquippedState", this.itemDoc.id);
                 ui.ARGON?.refresh?.();
@@ -177,18 +220,49 @@ export function defineMagicItemsMain(CoreHUD) {
             }
         }
 
-        async _getPanel() {
-            const buttons = this._spells.map((s) => new RMUItemSpellActionButton(s, this.itemDoc));
-            const panel = new ButtonPanel({ id: `rmu-magicitem-${this.itemGroup.groupName}`, buttons });
-            UIGuards.attachPanelInteractionGuards(panel);
-            return panel;
+        async _onMouseDown(event) {
+            if (event.button !== 0) return;
+            event.preventDefault();
+            event.stopPropagation();
+
+            openItemGroupId = openItemGroupId === this.itemGroup.groupName ? null : this.itemGroup.groupName;
+            applyItemAccordionVisibility(this._panelEl);
+        }
+
+        // Silently catch native Argon click routing
+        async _onLeftClick(event) {
+            event?.preventDefault?.();
+            event?.stopPropagation?.();
         }
     }
 
     /**
-     * TIER 1: The single master "Items" category button on the main HUD row.
-     * Clicking it opens the tier containing the physical items.
-     * @augments ButtonPanelButton
+     * Dummy button to force the layout break between Spells and Items
+     */
+    class RMUFlexBreakButton extends ActionButton {
+        get label() {
+            return "";
+        }
+        get icon() {
+            return "";
+        }
+        get classes() {
+            return [...super.classes, "rmu-items-flex-break"];
+        }
+        async _renderInner() {
+            if (!this.element) return;
+            this.element.style.flexBasis = "100%";
+            this.element.style.height = "0px";
+            this.element.style.minHeight = "0px";
+            this.element.style.margin = "0px";
+            this.element.style.padding = "0px";
+            this.element.style.border = "none";
+            this.element.style.display = openItemGroupId ? "" : "none";
+        }
+    }
+
+    /**
+     * TIER 1: Master "ITEMS" button returning the unified layout panel
      */
     class RMUItemsMasterCategoryButton extends ButtonPanelButton {
         constructor(itemSpells, actor) {
@@ -218,17 +292,39 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         async _getPanel() {
-            const buttons = this.itemSpells.map((group) => new RMUMagicItemCategoryButton(group, this._actor)).filter((b) => b.hasContents);
+            const buttons = [];
+            const allItemInstances = [];
+
+            openItemGroupId = null; // Reset state when reopening the panel
+
+            for (const group of this.itemSpells) {
+                // Generate the item button
+                const itemBtn = new RMUItemCategoryButton(group, this._actor);
+                buttons.push(itemBtn);
+                allItemInstances.push(itemBtn);
+
+                // Generate the spell buttons
+                const spells = (group.spellLists || []).flatMap((sl) => sl.spells || []);
+                for (const spell of spells) {
+                    buttons.push(new RMUItemSpellActionButton(spell, group, this._actor.items.get(group.groupName)));
+                }
+            }
+
+            buttons.push(new RMUFlexBreakButton());
 
             const panel = new ButtonPanel({ id: "rmu-magicitems-master", buttons });
             UIGuards.attachPanelInteractionGuards(panel);
+
+            // Bind the panel reference to the items so they can trigger DOM updates
+            const panelEl = panel.element;
+            allItemInstances.forEach((h) => h._bindPanel(panelEl));
+
             return panel;
         }
     }
 
     /**
      * TIER 0: The main panel definition mounted to CoreHUD.
-     * @augments ActionPanel
      */
     class RMUMagicItemsActionPanel extends ActionPanel {
         get label() {
@@ -246,7 +342,6 @@ export function defineMagicItemsMain(CoreHUD) {
             if (!actor) return [];
 
             await RMUData.ensureRMUReady();
-
             const itemSpells = (actor.system._spells || []).filter((s) => s.kind === "item");
             if (itemSpells.length === 0) return [];
 

@@ -373,6 +373,32 @@ position: absolute;
 
 
 /* ==================================================================
+   --- Magic Items Two-Tier Layout ---
+================================================================== */
+/* Enable flex wrapping upwards specifically on the master Items panel */
+.enhancedcombathud-rmu .action-hud [id="rmu-magicitems-master"] .features-container {
+    display: flex;
+    flex-wrap: wrap-reverse !important; 
+}
+
+/* Order 1: Items appear on the bottom row (the anchor line in wrap-reverse) */
+.enhancedcombathud-rmu .rmu-item-category-button {
+    order: 1;
+    transition: opacity 0.2s ease;
+}
+
+/* Order 2: The invisible break forces the layout to wrap */
+.enhancedcombathud-rmu .rmu-items-flex-break {
+    order: 2;
+}
+
+/* Order 3: Spells wrap to the next line UP */
+.enhancedcombathud-rmu .rmu-item-spell-button {
+    order: 3;
+}
+
+
+/* ==================================================================
    --- Movement HUD (Hidden) ---
 ================================================================== */
 .enhancedcombathud-rmu .movement-hud {
