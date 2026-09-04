@@ -1,7 +1,7 @@
 /**
  * Enhanced Combat HUD — RMU extension
  *
- * Central module definition and initialization for the Rolemaster Unified (RMU)
+ * Central module definition and initialisation for the Rolemaster Unified (RMU)
  * system extension of the Argon Combat HUD. This file handles environment
  * setup and coordinates feature loading.
  */
@@ -12,6 +12,7 @@ import "./src/RMUData.js"; // Imports RMUData for its side effects (attaching to
 import { defineAttacksMain } from "./src/RMUFeatures/RMUAttacks.js";
 import { defineSkillsMain } from "./src/RMUFeatures/RMUSkills.js";
 import { defineSpellsMain } from "./src/RMUFeatures/RMUSpells.js";
+import { defineMagicItemsMain } from "./src/RMUFeatures/RMUItems.js";
 import {
     defineResistancesMain,
     defineSpecialChecksMain,
@@ -42,9 +43,10 @@ function initConfig(CoreHUD) {
     defineMovementHud(CoreHUD);
     defineWeaponSets(CoreHUD);
 
-    // C. Main Panels (Attacks, Spells, Skills)
+    // C. Main Panels (Attacks, Spells, Items, Skills)
     defineAttacksMain(CoreHUD);
     defineSpellsMain(CoreHUD);
+    defineMagicItemsMain(CoreHUD);
     defineSkillsMain(CoreHUD);
 
     // D. Main Panels (Resistances, Special, Rest, Combat)

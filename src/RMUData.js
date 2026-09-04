@@ -1,6 +1,4 @@
 /**
- * RMUData.js
- *
  * Contains all data fetching, aggregation, transformation, and state management logic
  * for the RMU system extension. Attaches the RMUData object to the window.
  */
@@ -361,8 +359,8 @@ RMUData.getGroupedSpellsForHUD = function () {
     for (const listTypeGroup of sourceData) {
         if (!Array.isArray(listTypeGroup.spellLists)) continue;
 
-        // Skip the system's collated list to prevent HUD duplication
-        if (listTypeGroup.listType === "All Known Spells") continue;
+        // Skip the items with spells and the system's collated list to prevent HUD duplication
+        if (listTypeGroup.listType === "All Known Spells" || listTypeGroup.kind === "item") continue;
 
         const listTypeKey = listTypeGroup.groupName ?? listTypeGroup.listType;
         if (!groups.has(listTypeKey)) groups.set(listTypeKey, new Map());

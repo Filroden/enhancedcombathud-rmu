@@ -1,6 +1,4 @@
 /**
- * RMUCore.js
- *
  * Contains shared utilities, core Argon integration points, UI guards,
  * and the general reusable search logic used by multiple panels.
  * This file also defines and attaches global utilities (ICONS, RMUUtils, etc.)

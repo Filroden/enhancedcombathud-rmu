@@ -1,6 +1,6 @@
 # Argon Combat HUD extension for Rolemaster Unified (RMU)
 
-![Latest Version](https://img.shields.io/badge/Version-2.3.0-blue)
+![Latest Version](https://img.shields.io/badge/Version-2.4.0-blue)
 ![Foundry Version](https://img.shields.io/badge/Foundry_VTT-v13_%7C_v14-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Languages](https://img.shields.io/badge/Languages-1-blueviolet)
@@ -78,17 +78,12 @@ The table below only shows the earliest version where a dependency has changed. 
 
 |Argon Combat HUD<br>(RMU)|RMU System|Argon Combat HUD<br>(CORE)|FoundryVTT|
 |:---:|:---:|:---:|:---:|
+|2.4.0|1.4.0|5.0.0|14|
 |2.3.0|1.3.40|5.0.0|14|
 |2.1.0|1.2.43|5.0.0|14|
 |2.0.0|1.2.5|5.0.0|14|
 |1.0.1|1.0.0|4.1.0|13|
 |1.0.0|1.0.0|4.0.7|13|
-
-## Roadmap
-
-- Using Items with activated effects (waiting on a system dependency)
-
-**If you have suggestions, questions, or requests for additional features, please [let me know](https://github.com/Filroden/enhancedcombathud-rmu/issues).**
 
 ## Disclaimer and IP Notice
 
