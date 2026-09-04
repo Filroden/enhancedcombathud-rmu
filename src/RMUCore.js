@@ -31,6 +31,7 @@ const ICON_CONFIG = {
     skills_muted: { name: "Skill Action (Muted)", default: MOD_ICON("skills-muted.svg") },
     spells: { name: "Spells Category", default: MOD_ICON("spell-book.svg") },
     spells_muted: { name: "Spell Action (Muted)", default: MOD_ICON("spell-book-muted.svg") },
+    items: { name: "Items Category", default: MOD_ICON("ring.svg") },
     combat: { name: "End Turn (Combat)", default: MOD_ICON("skip-next-circle.svg") },
     rest: { name: "Rest Action", default: MOD_ICON("rest.svg") },
     special: { name: "Special Checks", default: MOD_ICON("hazard-sign.svg") },
@@ -537,6 +538,31 @@ const UIGuards = {
             };
             // This list is non-capturing and just stops bubbling.
             ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "touchstart", "touchend", "contextmenu", "wheel", "focusin", "focusout", "blur", "keydown", "keyup"].forEach((type) => {
+                el.addEventListener(type, stop, { capture: false });
+            });
+        };
+        requestAnimationFrame(tryAttach);
+    },
+
+    /**
+     * Attaches targeted event stoppers to an individual button.
+     * Ensures the button intercepts pointer events and prevents
+     * clicks from falling through to the canvas below.
+     * @param {object} component - The Argon button component.
+     */
+    attachButtonInteractionGuards(component) {
+        const tryAttach = () => {
+            const el = component?.element;
+            if (!el) return requestAnimationFrame(tryAttach);
+
+            // 1. Force the element to act as a physical click barrier
+            el.classList.add("rmu-interactive-button");
+            el.style.pointerEvents = "auto";
+            el.style.cursor = "pointer";
+
+            // 2. Prevent the event from bubbling up to the window/canvas
+            const stop = (e) => e.stopPropagation();
+            ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "contextmenu", "touchstart", "touchend"].forEach((type) => {
                 el.addEventListener(type, stop, { capture: false });
             });
         };

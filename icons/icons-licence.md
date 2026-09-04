@@ -31,6 +31,7 @@ The following icons included within this module are from Game-icons.net (<https:
 * meditation.svg
 * mountain-climbing.svg
 * rest.svg
+* ring.svg
 * ringed-beam.svg
 * skills.svg
 * spell-book.svg

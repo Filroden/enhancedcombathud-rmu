@@ -1,5 +1,6 @@
 /**
- * Defines the Items panel for casting spells embedded within physical items.
+ * RMUFeatures/RMUItems.js
+ * Defines the Items panel using a strict 3-tier nested hierarchy to prevent horizontal sprawl.
  */
 
 import { ICONS, RMUUtils, UIGuards } from "../RMUCore.js";
@@ -12,14 +13,14 @@ export function defineMagicItemsMain(CoreHUD) {
     const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
 
     /**
-     * An action button representing a single spell castable from an item.
+     * TIER 3: An action button representing a single spell castable from an item.
      * @augments ActionButton
      */
     class RMUItemSpellActionButton extends ActionButton {
         constructor(spell, itemDoc) {
             super();
             this.spell = spell;
-            this.itemDoc = itemDoc; // Reference to the physical item
+            this.itemDoc = itemDoc;
         }
 
         get isInteractive() {
@@ -27,7 +28,6 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         get disabled() {
-            // Disable the spell if the parent item is not equipped
             return this.itemDoc?.system?.equipped !== "equipped";
         }
 
@@ -36,7 +36,6 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         get icon() {
-            // Fallback to a generic magic icon if the spell has no specific art
             return ICONS.spells;
         }
 
@@ -54,11 +53,9 @@ export function defineMagicItemsMain(CoreHUD) {
             this.element.classList.toggle("disabled", this.disabled);
             this.element.dataset.tooltipDirection = "UP";
 
-            // If charge tracking is added by the system later, we can overlay it here
-            const valueLabel = "SCR";
             const value = this.spell?.scr;
             if (value !== undefined && value !== null) {
-                RMUUtils.applyValueOverlay(this.element, value, valueLabel);
+                RMUUtils.applyValueOverlay(this.element, value, "SCR");
             }
         }
 
@@ -68,7 +65,6 @@ export function defineMagicItemsMain(CoreHUD) {
 
         async getTooltipData() {
             const s = this.spell ?? {};
-
             const details = [
                 { label: "Level", value: s.level },
                 { label: "Range", value: s._modifiedRange?.range ?? s.range },
@@ -95,8 +91,6 @@ export function defineMagicItemsMain(CoreHUD) {
             if (!token) return;
 
             await RMUData.ensureExtendedTokenData();
-
-            // Cast the spell using the exact data object provided by the item
             await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenSCRAction", this.spell);
         }
 
@@ -107,17 +101,15 @@ export function defineMagicItemsMain(CoreHUD) {
     }
 
     /**
-     * A category button representing the Physical Item containing the spells.
+     * TIER 2: A category button representing the Physical Item.
+     * Clicking it opens a higher tier containing the spells.
      * @augments ButtonPanelButton
      */
     class RMUMagicItemCategoryButton extends ButtonPanelButton {
         constructor(itemGroup, actor) {
             super();
             this.itemGroup = itemGroup;
-            // groupName is the item ID
             this.itemDoc = actor.items.get(itemGroup.groupName);
-
-            // Flatten all spells from the nested spellLists array
             this._spells = (itemGroup.spellLists || []).flatMap((sl) => sl.spells || []);
         }
 
@@ -126,7 +118,7 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         get icon() {
-            return this.itemDoc?.img || ICONS.inventory;
+            return this.itemDoc?.img || ICONS.items;
         }
 
         get hasContents() {
@@ -145,7 +137,9 @@ export function defineMagicItemsMain(CoreHUD) {
             await super._renderInner();
             if (!this.element) return;
 
-            // Inject the Equip Toggle directly onto the Category Button
+            // Trap the click so it doesn't bleed to the canvas
+            UIGuards.attachButtonInteractionGuards(this);
+
             if (this.itemDoc) {
                 const toggle = document.createElement("div");
                 toggle.className = "rmu-equip-toggle";
@@ -162,7 +156,6 @@ export function defineMagicItemsMain(CoreHUD) {
                     this._onToggleEquip(e);
                 });
 
-                // Position the toggle appropriately within the Argon button structure
                 const nameContainer = this.element.querySelector(".name");
                 if (nameContainer) {
                     nameContainer.appendChild(toggle);
@@ -193,12 +186,53 @@ export function defineMagicItemsMain(CoreHUD) {
     }
 
     /**
-     * The main "Items" panel for the HUD.
+     * TIER 1: The single master "Items" category button on the main HUD row.
+     * Clicking it opens the tier containing the physical items.
+     * @augments ButtonPanelButton
+     */
+    class RMUItemsMasterCategoryButton extends ButtonPanelButton {
+        constructor(itemSpells, actor) {
+            super();
+            this.title = "ITEMS";
+            this._icon = ICONS.items;
+            this.itemSpells = itemSpells;
+            this._actor = actor;
+        }
+
+        get label() {
+            return this.title;
+        }
+        get icon() {
+            return this._icon;
+        }
+        get hasContents() {
+            return this.itemSpells.length > 0;
+        }
+        get isInteractive() {
+            return true;
+        }
+
+        async _renderInner() {
+            await super._renderInner();
+            UIGuards.attachButtonInteractionGuards(this);
+        }
+
+        async _getPanel() {
+            const buttons = this.itemSpells.map((group) => new RMUMagicItemCategoryButton(group, this._actor)).filter((b) => b.hasContents);
+
+            const panel = new ButtonPanel({ id: "rmu-magicitems-master", buttons });
+            UIGuards.attachPanelInteractionGuards(panel);
+            return panel;
+        }
+    }
+
+    /**
+     * TIER 0: The main panel definition mounted to CoreHUD.
      * @augments ActionPanel
      */
     class RMUMagicItemsActionPanel extends ActionPanel {
         get label() {
-            return "Items";
+            return "ITEMS";
         }
         get maxActions() {
             return null;
@@ -213,12 +247,10 @@ export function defineMagicItemsMain(CoreHUD) {
 
             await RMUData.ensureRMUReady();
 
-            // Extract only the spell blocks flagged as items
             const itemSpells = (actor.system._spells || []).filter((s) => s.kind === "item");
+            if (itemSpells.length === 0) return [];
 
-            const buttons = itemSpells.map((group) => new RMUMagicItemCategoryButton(group, actor)).filter((b) => b.hasContents);
-
-            return buttons;
+            return [new RMUItemsMasterCategoryButton(itemSpells, actor)];
         }
     }
 
