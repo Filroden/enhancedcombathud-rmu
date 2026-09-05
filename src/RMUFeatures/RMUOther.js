@@ -1,6 +1,5 @@
 /**
- * RMUFeatures/RMUOther.js
- *
+
  * Defines utility panels for the Enhanced Combat HUD (Rolemaster Unified):
  * - Portrait
  * - WeaponSets (Hidden stub)

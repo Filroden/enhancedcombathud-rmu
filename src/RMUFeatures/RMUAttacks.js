@@ -1,5 +1,4 @@
 /**
- * RMUFeatures/RMUAttacks.js
  * Defines the main Attacks panel, including Melee, Ranged, Natural, and Shield.
  * Spell attacks have been moved to the Spells panel (RMUSpells.js).
  */
