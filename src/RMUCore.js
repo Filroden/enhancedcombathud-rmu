@@ -280,7 +280,7 @@ const RMUUtils = {
      * @returns {Array<object>} The formatted array.
      */
     formatTooltipDetails(details) {
-        const excludedLabels = new Set(["Ranks", "Total ranks", "Culture ranks", "Fumble", "Level"]);
+        const excludedLabels = new Set(["Ranks", "Total ranks", "Culture ranks", "Fumble", "Level", "Spells", "Charges"]);
         return details.map((detail) => {
             if (excludedLabels.has(detail.label)) {
                 return detail;

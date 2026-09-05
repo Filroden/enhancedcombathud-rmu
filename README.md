@@ -32,6 +32,10 @@ Please install the correct version of the module:
 
 ![Skills](/images/skills.png)
 
+## Magic Items Panel
+
+![Items](/images/items.png)
+
 ## Resistance Rolls
 
 ![Resistance](/images/resistances.png)

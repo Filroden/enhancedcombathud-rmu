@@ -47,9 +47,10 @@ export function defineMagicItemsMain(CoreHUD) {
      * TIER 2 (Top Row): The Spell Action Button
      */
     class RMUItemSpellActionButton extends ActionButton {
-        constructor(spell, itemGroup, itemDoc) {
+        constructor(spell, sl, itemGroup, itemDoc) {
             super();
             this.spell = spell;
+            this.sl = sl; // Store the spell list wrapper
             this.itemGroup = itemGroup;
             this.itemDoc = itemDoc;
         }
@@ -58,11 +59,11 @@ export function defineMagicItemsMain(CoreHUD) {
             return true;
         }
 
-        // Renamed to avoid being overwritten by the Argon base constructor
         get _isDisabled() {
             const eq = this.itemDoc?.system?.equipped;
-            // RMU items can be "equipped", "worn", "1h", "2h". Anything other than carried/none is equipped.
-            return !eq || eq === "carried" || eq === "none";
+            const isUnequipped = !eq || eq === "carried" || eq === "none";
+            // Disable if unequipped OR if the system explicitly flags it as uncastable
+            return isUnequipped || this.sl?.castable === false;
         }
 
         get label() {
@@ -106,6 +107,14 @@ export function defineMagicItemsMain(CoreHUD) {
 
         async getTooltipData() {
             const s = this.spell ?? {};
+            const sl = this.sl ?? {};
+
+            // Format Charges
+            let charges = game.i18n.localize(sl._usageKey ?? "");
+            if (sl._useMax !== undefined && sl._useMax !== null) {
+                charges = `${sl._useLeft ?? 0} / ${sl._useMax}`;
+            }
+
             const details = [
                 { label: "Level", value: s.level },
                 { label: "Range", value: s._modifiedRange?.range ?? s.range },
@@ -113,6 +122,8 @@ export function defineMagicItemsMain(CoreHUD) {
                 { label: "Duration", value: s._modifiedDuration?.duration ?? s.duration },
                 { label: "Casting Mode", value: s.castingMode },
                 { label: "Total SCR", value: s.scr },
+                { label: "Charges", value: charges },
+                { label: "Castable by Wearer", value: sl.castable === false ? "No" : "Yes" },
             ].filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
 
             return {
@@ -148,6 +159,7 @@ export function defineMagicItemsMain(CoreHUD) {
             super();
             this.itemGroup = itemGroup;
             this.itemDoc = actor.items.get(itemGroup.groupName);
+            this._spells = (itemGroup.spellLists || []).flatMap((sl) => sl.spells || []);
             this._panelEl = null;
         }
 
@@ -234,6 +246,27 @@ export function defineMagicItemsMain(CoreHUD) {
             event?.preventDefault?.();
             event?.stopPropagation?.();
         }
+
+        get hasTooltip() {
+            return true;
+        }
+
+        async getTooltipData() {
+            const sys = this.itemDoc?.system ?? {};
+
+            const details = [
+                { label: "Level", value: sys.magic?.level },
+                { label: "Weight", value: `${sys.weight ?? 0} ${sys.weightUnit ?? ""}`.trim() },
+                { label: "Spells", value: this._spells.length },
+            ].filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
+
+            return {
+                title: this.label,
+                subtitle: "Magic Item",
+                description: sys._notes || sys.notes || "",
+                details: RMUUtils.formatTooltipDetails(details),
+            };
+        }
     }
 
     /**
@@ -295,18 +328,18 @@ export function defineMagicItemsMain(CoreHUD) {
             const buttons = [];
             const allItemInstances = [];
 
-            openItemGroupId = null; // Reset state when reopening the panel
+            openItemGroupId = null;
 
             for (const group of this.itemSpells) {
-                // Generate the item button
                 const itemBtn = new RMUItemCategoryButton(group, this._actor);
                 buttons.push(itemBtn);
                 allItemInstances.push(itemBtn);
 
-                // Generate the spell buttons
-                const spells = (group.spellLists || []).flatMap((sl) => sl.spells || []);
-                for (const spell of spells) {
-                    buttons.push(new RMUItemSpellActionButton(spell, group, this._actor.items.get(group.groupName)));
+                for (const sl of group.spellLists || []) {
+                    for (const spell of sl.spells || []) {
+                        // Pass 'sl' as the second argument
+                        buttons.push(new RMUItemSpellActionButton(spell, sl, group, this._actor.items.get(group.groupName)));
+                    }
                 }
             }
 
@@ -315,7 +348,6 @@ export function defineMagicItemsMain(CoreHUD) {
             const panel = new ButtonPanel({ id: "rmu-magicitems-master", buttons });
             UIGuards.attachPanelInteractionGuards(panel);
 
-            // Bind the panel reference to the items so they can trigger DOM updates
             const panelEl = panel.element;
             allItemInstances.forEach((h) => h._bindPanel(panelEl));
 
