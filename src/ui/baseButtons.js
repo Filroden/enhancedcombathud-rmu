@@ -8,6 +8,7 @@
  */
 
 import { UIGuards } from "./guards.js";
+import { escapeHTML } from "../format.js";
 
 /** Mouse button number of the primary (usually left) button in MouseEvent.button. */
 const PRIMARY_BUTTON = 0;
@@ -68,6 +69,18 @@ export function createBaseClasses(ARGON) {
         /** Whether the button is disabled; disabled buttons ignore clicks and show the disabled style. */
         get disabled() {
             return false;
+        }
+
+        /**
+         * CORE's template inserts the label as raw HTML, and these labels are often names
+         * from the actor, its items or the system (a skill, spell, attack or item name), so
+         * the label is escaped here. Tooltips escape their own title, so this.label itself
+         * stays plain text.
+         * @override
+         */
+        async getData() {
+            const data = await super.getData();
+            return { ...data, label: escapeHTML(data.label) };
         }
 
         async _renderInner() {

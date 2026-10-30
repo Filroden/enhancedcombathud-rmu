@@ -17,50 +17,8 @@ import { applyValueOverlay, buildChipContainer } from "./ui/dom.js";
  * @global
  */
 const RMUUtils = {
-    /**
-     * Formats tooltip detail values, applying bonus formatting to most.
-     * @param {Array<object>} details - Array of {label, value} objects.
-     * @returns {Array<object>} The formatted array.
-     */
-    formatTooltipDetails(details) {
-        const excludedLabels = new Set(["Ranks", "Total ranks", "Culture ranks", "Fumble", "Level", "Spells", "Charges"]);
-        return details.map((detail) => {
-            if (excludedLabels.has(detail.label)) {
-                return detail;
-            }
-            return { ...detail, value: formatBonus(detail.value) };
-        });
-    },
-
     /** Mounts the value overlay on a button (see ui/dom.js). */
     applyValueOverlay,
-
-    /**
-     * Builds a standardized tooltip data object for a skill.
-     * @param {object} skill - The raw skill object.
-     * @param {string} title - The main title for the tooltip.
-     * @param {string} subtitle - The subtitle for the tooltip.
-     * @returns {object} The tooltip data object.
-     */
-    buildSkillTooltip: function (skill, title, subtitle) {
-        const sys = skill?.system ?? {};
-        const details = [
-            { label: "Total ranks", value: sys._totalRanks },
-            { label: "Rank bonus", value: sys._rankBonus },
-            { label: "Culture ranks", value: sys.cultureRanks },
-            { label: "Stat", value: sys.stat },
-            { label: "Stat bonus", value: sys._statBonus },
-            { label: "Prof bonus", value: sys._professionalBonus },
-            { label: "Knack", value: sys._knack },
-            { label: "Total bonus", value: sys._bonus },
-        ].filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
-
-        return {
-            title: title,
-            subtitle: subtitle,
-            details: RMUUtils.formatTooltipDetails(details),
-        };
-    },
 
     /** Creates or refreshes the chip row on a button (see ui/dom.js). */
     buildChipContainer,
@@ -83,10 +41,14 @@ function defineTooltip(CoreHUD) {
         return;
     }
 
-    /** @augments BaseTooltip */
+    /**
+     * CORE's tooltip with the module's class added, so the module CSS can adjust our
+     * tooltips without touching those of other Argon extensions.
+     * @augments BaseTooltip
+     */
     class RMUTooltip extends BaseTooltip {
         get classes() {
-            return [...super.classes, "ech-rmu"];
+            return [...super.classes, "ech-rmu-tooltip"];
         }
     }
 

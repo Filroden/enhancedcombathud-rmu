@@ -13,11 +13,13 @@
 
 import { ICONS, RMUUtils } from "../RMUCore.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
+import { DETAIL_FORMAT, buildTooltip } from "../ui/tooltip.js";
+import { escapeHTML } from "../format.js";
 import { hudActor, hudToken } from "../system/context.js";
 import { callHudTokenAction, callTokenAction } from "../system/api.js";
 import { ensureRMUReady } from "../system/derive.js";
 import { getActorResistances } from "../system/resistances.js";
-import { getEnduranceValues, getSkillByName } from "../system/skills.js";
+import { getEnduranceValues, getSkillByName, skillTooltipDetails } from "../system/skills.js";
 import { getPortraitData } from "../system/portrait.js";
 
 // -----------------------------------------------------------------------------
@@ -165,22 +167,21 @@ export function defineResistancesMain(CoreHUD) {
 
         async getTooltipData() {
             const r = this.resist ?? {};
-            const details = [
-                { label: "Stat Bonus", value: r.statBonus },
-                { label: "Level Bonus", value: r.levelBonus },
-                { label: "Racial Bonus", value: r.racialBonus },
-                { label: "Special Bonus", value: r.specialBonus },
-                { label: "Armour Bonus", value: r.armorBonus },
-                { label: "Helmet Bonus", value: r.helmetBonus },
-                { label: "Same Realm", value: r.sameRealmBonus },
-                { label: "Total", value: r.total },
-            ].filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
-
-            return {
+            const { BONUS } = DETAIL_FORMAT;
+            return buildTooltip({
                 title: this.label,
                 subtitle: r.statShortName,
-                details: RMUUtils.formatTooltipDetails(details),
-            };
+                details: [
+                    { label: "Stat Bonus", value: r.statBonus, format: BONUS },
+                    { label: "Level Bonus", value: r.levelBonus, format: BONUS },
+                    { label: "Racial Bonus", value: r.racialBonus, format: BONUS },
+                    { label: "Special Bonus", value: r.specialBonus, format: BONUS },
+                    { label: "Armour Bonus", value: r.armorBonus, format: BONUS },
+                    { label: "Helmet Bonus", value: r.helmetBonus, format: BONUS },
+                    { label: "Same Realm", value: r.sameRealmBonus, format: BONUS },
+                    { label: "Total", value: r.total, format: BONUS },
+                ],
+            });
         }
 
         async _renderInner() {
@@ -275,18 +276,22 @@ export function defineSpecialChecksMain(CoreHUD) {
          * total matches the character sheet's Physical or Mental Endurance.
          */
         async getTooltipData() {
-            const title = this.label;
-            const subtitle = this._skill?.system?.name ?? `${this._config.rollOption} Check`;
-            const tooltip = RMUUtils.buildSkillTooltip(this._skill, title, subtitle);
             const { total, skillBonus, racial } = this._values ?? {};
-            if (!racial) return tooltip;
-            const withoutTotal = tooltip.details.filter((d) => d.label !== "Total bonus");
-            const totals = RMUUtils.formatTooltipDetails([
-                { label: "Skill bonus", value: skillBonus },
-                { label: "Racial bonus", value: racial },
-                { label: "Total bonus", value: total },
-            ]);
-            return { ...tooltip, details: [...withoutTotal, ...totals] };
+            const { BONUS } = DETAIL_FORMAT;
+            let details = skillTooltipDetails(this._skill);
+            if (racial) {
+                details = [
+                    ...details.filter((d) => d.label !== "Total bonus"),
+                    { label: "Skill bonus", value: skillBonus, format: BONUS },
+                    { label: "Racial bonus", value: racial, format: BONUS },
+                    { label: "Total bonus", value: total, format: BONUS },
+                ];
+            }
+            return buildTooltip({
+                title: this.label,
+                subtitle: this._skill?.system?.name ?? `${this._config.rollOption} Check`,
+                details,
+            });
         }
 
         async _renderInner() {
@@ -382,7 +387,7 @@ export function defineRestMain(CoreHUD) {
             return true;
         }
         async getTooltipData() {
-            return { title: "Rest", subtitle: "Recover resources", details: [{ label: "Info", value: "Open the rest dialog." }] };
+            return buildTooltip({ title: "Rest", subtitle: "Recover resources", details: [{ label: "Info", value: "Open the rest dialog." }] });
         }
         async _onActivate() {
             await callHudTokenAction("rmuTokenRestAction");
@@ -478,7 +483,7 @@ export function defineDrawerPanel(CoreHUD) {
         constructor(macro) {
             const buttonParts = [
                 {
-                    label: macro.name,
+                    label: escapeHTML(macro.name),
                     onClick: (e) => {
                         if (this.interceptDialogs) ui.ARGON.interceptNextDialog(e.currentTarget.closest(".ability"));
                         macro.execute();
@@ -493,7 +498,8 @@ export function defineDrawerPanel(CoreHUD) {
             const data = await super.getData();
             const part = data.buttons[0];
             if (part) {
-                part.label = this.macro.name;
+                // Macro names are typed by users and CORE inserts them as raw HTML.
+                part.label = escapeHTML(this.macro.name);
             }
             return data;
         }

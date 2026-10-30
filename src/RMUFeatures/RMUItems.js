@@ -8,6 +8,7 @@ import { ICONS, RMUUtils, UIGuards } from "../RMUCore.js";
 import { createEquipToggle } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
+import { DETAIL_FORMAT, buildTooltip } from "../ui/tooltip.js";
 import { hudToken } from "../system/context.js";
 import { callTokenAction } from "../system/api.js";
 import { ensureExtendedTokenData, ensureRMUReady } from "../system/derive.js";
@@ -110,23 +111,22 @@ export function defineMagicItemsMain(CoreHUD) {
                 charges = `${sl._useLeft ?? 0} / ${sl._useMax}`;
             }
 
-            const details = [
-                { label: "Level", value: s.level },
-                { label: "Range", value: s._modifiedRange?.range ?? s.range },
-                { label: "Area of Effect", value: s._modifiedAoE?.aoe ?? s.aoe },
-                { label: "Duration", value: s._modifiedDuration?.duration ?? s.duration },
-                { label: "Casting Mode", value: s.castingMode },
-                { label: "Total SCR", value: s.scr },
-                { label: "Charges", value: charges },
-                { label: "Castable by Wearer", value: sl.castable === false ? "No" : "Yes" },
-            ].filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
-
-            return {
+            const { TEXT, NUMBER, BONUS } = DETAIL_FORMAT;
+            return buildTooltip({
                 title: this.label,
                 subtitle: this.itemDoc?.name ?? s.spellList ?? "Item Spell",
                 description: s._translatedDescription ?? s.description ?? "",
-                details: RMUUtils.formatTooltipDetails(details),
-            };
+                details: [
+                    { label: "Level", value: s.level, format: NUMBER },
+                    { label: "Range", value: s._modifiedRange?.range ?? s.range, format: TEXT },
+                    { label: "Area of Effect", value: s._modifiedAoE?.aoe ?? s.aoe, format: TEXT },
+                    { label: "Duration", value: s._modifiedDuration?.duration ?? s.duration, format: TEXT },
+                    { label: "Casting Mode", value: s.castingMode, format: TEXT },
+                    { label: "Total SCR", value: s.scr, format: BONUS },
+                    { label: "Charges", value: charges, format: TEXT },
+                    { label: "Castable by Wearer", value: sl.castable === false ? "No" : "Yes", format: TEXT },
+                ],
+            });
         }
 
         async _onActivate() {
@@ -212,18 +212,17 @@ export function defineMagicItemsMain(CoreHUD) {
         async getTooltipData() {
             const sys = this.itemDoc?.system ?? {};
 
-            const details = [
-                { label: "Level", value: sys.magic?.level },
-                { label: "Weight", value: `${sys.weight ?? 0} ${sys.weightUnit ?? ""}`.trim() },
-                { label: "Spells", value: this._spells.length },
-            ].filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
-
-            return {
+            const { TEXT, NUMBER } = DETAIL_FORMAT;
+            return buildTooltip({
                 title: this.label,
                 subtitle: "Magic Item",
                 description: sys._notes || sys.notes || "",
-                details: RMUUtils.formatTooltipDetails(details),
-            };
+                details: [
+                    { label: "Level", value: sys.magic?.level, format: NUMBER },
+                    { label: "Weight", value: `${sys.weight ?? 0} ${sys.weightUnit ?? ""}`.trim(), format: TEXT },
+                    { label: "Spells", value: this._spells.length, format: NUMBER },
+                ],
+            });
         }
     }
 

@@ -6,6 +6,7 @@
 import { ICONS, RMUUtils } from "../RMUCore.js";
 import { createEquipToggle } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
+import { buildTooltip } from "../ui/tooltip.js";
 import { hudToken } from "../system/context.js";
 import { callTokenAction } from "../system/api.js";
 import { ensureExtendedTokenData, ensureRMUReady } from "../system/derive.js";
@@ -138,15 +139,11 @@ export function defineAttacksMain(CoreHUD) {
 
         async getTooltipData() {
             const a = this.attack ?? {};
-
-            // Physical Attack Tooltip
-            const details = attackTooltipDetails(a, this._catKey).filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
-
-            return {
+            return buildTooltip({
                 title: this.label,
-                subtitle: a.skill?.name ?? "",
-                details: RMUUtils.formatTooltipDetails(details),
-            };
+                subtitle: a.skill?.name,
+                details: attackTooltipDetails(a, this._catKey),
+            });
         }
 
         /* ───────── Clicks ───────── */

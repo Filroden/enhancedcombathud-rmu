@@ -4,11 +4,12 @@
 
 import { ICONS, getUserIcon, RMUUtils } from "../RMUCore.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
+import { buildTooltip } from "../ui/tooltip.js";
 import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
 import { ListSearch } from "../ui/search.js";
 import { callHudTokenAction, getSkillDescription } from "../system/api.js";
 import { ensureRMUReady } from "../system/derive.js";
-import { getGroupedSkills } from "../system/skills.js";
+import { getGroupedSkills, skillTooltipDetails } from "../system/skills.js";
 
 /**
  * Normalizes a category string into a key.
@@ -111,31 +112,13 @@ export function defineSkillsMain(CoreHUD) {
             return true;
         }
         async getTooltipData() {
-            const sys = this.entry?.raw?.system ?? {};
             const skill = this.entry?.raw;
-
-            // 1. Get the standard details
-            const details = [
-                { label: "Total ranks", value: sys._totalRanks },
-                { label: "Rank bonus", value: sys._rankBonus },
-                { label: "Culture ranks", value: sys.cultureRanks },
-                { label: "Stat", value: sys.stat },
-                { label: "Stat bonus", value: sys._statBonus },
-                { label: "Prof bonus", value: sys._professionalBonus },
-                { label: "Knack", value: sys._knack },
-                { label: "Total bonus", value: sys._bonus },
-            ].filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
-
-            // 2. Skill description from the system
-            const description = await getSkillDescription(skill);
-
-            // 3. Return the tooltip data
-            return {
+            return buildTooltip({
                 title: this.label,
-                subtitle: sys.category ?? "",
-                description: description,
-                details: RMUUtils.formatTooltipDetails(details),
-            };
+                subtitle: skill?.system?.category,
+                description: await getSkillDescription(skill),
+                details: skillTooltipDetails(skill),
+            });
         }
 
         async _renderInner() {

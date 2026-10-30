@@ -3,6 +3,7 @@
  * the Endurance panel shows.
  */
 
+import { DETAIL_FORMAT } from "../format.js";
 import { hudActor } from "./context.js";
 
 /**
@@ -97,4 +98,24 @@ export function getEnduranceValues(actor, injuryKey, skill) {
     const total = block?._bonusWithRacial ?? skillBonus;
     const racial = Number.isFinite(total) && Number.isFinite(skillBonus) ? total - skillBonus : undefined;
     return { total, skillBonus, racial };
+}
+
+/**
+ * A skill's bonus breakdown for its tooltip, in the order the character sheet shows it.
+ * @param {object} skill - A skill from the actor's skill list ({system: {...}}).
+ * @returns {Array<{label: string, value: *, format: string}>}
+ */
+export function skillTooltipDetails(skill) {
+    const sys = skill?.system ?? {};
+    const { NUMBER, BONUS, TEXT } = DETAIL_FORMAT;
+    return [
+        { label: "Total ranks", value: sys._totalRanks, format: NUMBER },
+        { label: "Rank bonus", value: sys._rankBonus, format: BONUS },
+        { label: "Culture ranks", value: sys.cultureRanks, format: NUMBER },
+        { label: "Stat", value: sys.stat, format: TEXT },
+        { label: "Stat bonus", value: sys._statBonus, format: BONUS },
+        { label: "Prof bonus", value: sys._professionalBonus, format: BONUS },
+        { label: "Knack", value: sys._knack, format: BONUS },
+        { label: "Total bonus", value: sys._bonus, format: BONUS },
+    ];
 }

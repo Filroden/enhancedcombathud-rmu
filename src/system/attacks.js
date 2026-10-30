@@ -7,6 +7,7 @@
  * are translated.
  */
 
+import { DETAIL_FORMAT } from "../format.js";
 import { hudActor } from "./context.js";
 
 /** Display order and keys of the attack categories. */
@@ -87,25 +88,28 @@ export function attackShortRange(att) {
 }
 
 /**
- * Facts shown in an attack's tooltip, in display order. Values may be undefined; the
- * tooltip drops empty entries.
+ * Facts shown in an attack's tooltip, in display order, each with its display format
+ * (see DETAIL_FORMAT). Values may be undefined; the tooltip drops empty entries.
  * @param {object} a - The attack.
  * @param {string} category - Its category key.
- * @returns {Array<{label: string, value: *}>}
+ * @returns {Array<{label: string, value: *, format: string}>}
  */
 export function attackTooltipDetails(a, category) {
     const meleeReach = a.meleeRange ? Number.parseFloat(Number(a.meleeRange).toFixed(1)) : null;
+    const { TEXT, NUMBER, BONUS } = DETAIL_FORMAT;
     return [
-        { label: "Specialization", value: a.specialization || a.skill?.specialization },
-        { label: "Size", value: a.usage?.size },
-        { label: "Chart", value: a.chart?.name },
-        { label: "Fumble", value: a.fumble },
-        ...(category === "ranged" ? [{ label: "Range (short)", value: attackShortRange(a) }] : [{ label: "Melee reach", value: meleeReach }]),
-        { label: "Item Strength", value: a.itemStrength },
-        { label: "Ranks", value: a.skill?.ranks },
-        { label: "Combat Training", value: a.skill?.name },
-        { label: "2H", value: Number(a.twoHandedBonus) === TWO_HANDED_BONUS ? "Yes" : "No" },
-        { label: "Bonus OB", value: a.itemBonus },
-        { label: "Total OB", value: a.totalBonus },
+        { label: "Specialization", value: a.specialization || a.skill?.specialization, format: TEXT },
+        { label: "Size", value: a.usage?.size, format: BONUS },
+        { label: "Chart", value: a.chart?.name, format: TEXT },
+        { label: "Fumble", value: a.fumble, format: NUMBER },
+        category === "ranged"
+            ? { label: "Range (short)", value: attackShortRange(a), format: TEXT }
+            : { label: "Melee reach", value: meleeReach, format: NUMBER },
+        { label: "Item Strength", value: a.itemStrength, format: NUMBER },
+        { label: "Ranks", value: a.skill?.ranks, format: NUMBER },
+        { label: "Combat Training", value: a.skill?.name, format: TEXT },
+        { label: "2H", value: Number(a.twoHandedBonus) === TWO_HANDED_BONUS ? "Yes" : "No", format: TEXT },
+        { label: "Bonus OB", value: a.itemBonus, format: BONUS },
+        { label: "Total OB", value: a.totalBonus, format: BONUS },
     ];
 }

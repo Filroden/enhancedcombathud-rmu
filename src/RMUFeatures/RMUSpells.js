@@ -7,6 +7,7 @@ import { ICONS, getUserIcon, RMUUtils, formatBonus } from "../RMUCore.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
 import { ListSearch } from "../ui/search.js";
+import { DETAIL_FORMAT, buildTooltip } from "../ui/tooltip.js";
 import { callHudTokenAction } from "../system/api.js";
 import { ensureRMUReady } from "../system/derive.js";
 import { compareListTypes, getGroupedSpells, spellAttackBonus, spellRealmsText } from "../system/spells.js";
@@ -77,6 +78,7 @@ export function defineSpellsMain(CoreHUD) {
 
         async getTooltipData() {
             const s = this.spell;
+            const { TEXT, NUMBER, BONUS } = DETAIL_FORMAT;
 
             // --- 1. BASE SPELL DETAILS (SCR) ---
             const duration = s._modifiedDuration?.duration || s._modifiedDuration?.dur?.duration || s.duration;
@@ -84,39 +86,39 @@ export function defineSpellsMain(CoreHUD) {
             const range = s._modifiedRange?.range || s.range;
 
             const details = [
-                { label: "List type", value: s.listType },
-                { label: "Realm(s)", value: spellRealmsText(s) },
-                { label: "AoE", value: aoe },
-                { label: "Duration", value: duration },
-                { label: "Range", value: range },
-                { label: "Spell type", value: s.spellType },
-                { label: "SCR", value: s.scr },
-                { label: "Level", value: s.level },
+                { label: "List type", value: s.listType, format: TEXT },
+                { label: "Realm(s)", value: spellRealmsText(s), format: TEXT },
+                { label: "AoE", value: aoe, format: TEXT },
+                { label: "Duration", value: duration, format: TEXT },
+                { label: "Range", value: range, format: TEXT },
+                { label: "Spell type", value: s.spellType, format: TEXT },
+                { label: "SCR", value: s.scr, format: BONUS },
+                { label: "Level", value: s.level, format: NUMBER },
             ];
 
             // --- 2. ATTACK DETAILS (spells with an attack roll) ---
             if (this._hasAttack) {
                 const attackDetails = [
-                    { label: "Attack Type", value: s.attack },
-                    { label: "Specialization", value: s.spellAttack?.specialization },
-                    { label: "Size", value: s.spellAttack?.size },
-                    { label: "Chart", value: s.spellAttack?.chart?.name },
-                    { label: "Fumble", value: s.spellAttack?.fumble },
-                    { label: "Range (interval)", value: s._modifiedRange?.range || s.range },
-                    { label: "Targets", value: s._modifiedAoE?.targets },
-                    { label: "Total OB", value: spellAttackBonus(s) },
+                    { label: "Attack Type", value: s.attack, format: TEXT },
+                    { label: "Specialization", value: s.spellAttack?.specialization, format: TEXT },
+                    { label: "Size", value: s.spellAttack?.size, format: BONUS },
+                    { label: "Chart", value: s.spellAttack?.chart?.name, format: TEXT },
+                    { label: "Fumble", value: s.spellAttack?.fumble, format: NUMBER },
+                    { label: "Range (interval)", value: s._modifiedRange?.range || s.range, format: TEXT },
+                    { label: "Targets", value: s._modifiedAoE?.targets, format: NUMBER },
+                    { label: "Total OB", value: spellAttackBonus(s), format: BONUS },
                 ];
                 details.push(...attackDetails);
             }
 
             const helpText = "<br><br><b>Left-Click:</b> Cast Spell (SCR)";
 
-            return {
+            return buildTooltip({
                 title: this.label,
                 subtitle: `Lvl ${s.level} - ${s.spellList}`,
                 description: (s.description || "") + helpText,
-                details: RMUUtils.formatTooltipDetails(details.filter((x) => x.value !== undefined && x.value !== null && x.value !== "")),
-            };
+                details,
+            });
         }
 
         async _renderInner() {

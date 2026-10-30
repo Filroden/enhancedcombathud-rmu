@@ -537,3 +537,21 @@ position: absolute;
 .enhancedcombathud-rmu .ech-rmu-accordion-dimmed {
   opacity: 0.6;
 }
+
+/* ==================================================================
+   --- Tooltips ---
+   CORE limits the whole tooltip to 50vh and, separately, the description
+   to 200px, so a long tooltip shows two scrollbars. Our tooltips drop the
+   description limit so only the tooltip itself scrolls.
+   CORE shows detail values at 1.3rem without setting a line height, so a
+   value that wraps (for example two realms) overlaps itself; a line height
+   relative to the font size keeps wrapped lines apart.
+================================================================== */
+.enhancedcombathud-rmu .ech-tooltip.ech-rmu-tooltip .ech-tooltip-body .ech-tooltip-description {
+  max-height: none;
+  overflow: visible;
+}
+
+.enhancedcombathud-rmu .ech-tooltip.ech-rmu-tooltip .ech-tooltip-body .ech-tooltip-details > div > span {
+  line-height: 1.2;
+}
