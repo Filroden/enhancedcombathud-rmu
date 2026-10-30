@@ -7,7 +7,7 @@
  * match the old string parsing on every captured spell and do not depend on English text.
  */
 
-import { hudActor } from "./context.js";
+import { hudActor } from "../argon.js";
 
 /**
  * Order of the spell list types (the untranslated identifiers). Any type not listed, for

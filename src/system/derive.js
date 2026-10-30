@@ -6,7 +6,7 @@
  * that has run gives incomplete lists.
  */
 
-import { hudActor, hudToken } from "./context.js";
+import { hudActor, hudToken } from "../argon.js";
 
 /**
  * Asks the system to (re)derive the HUD token's extended data. Used after anything that

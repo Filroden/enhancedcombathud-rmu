@@ -4,12 +4,13 @@
  * CSS ordering places on a row above the items.
  */
 
-import { ICONS, RMUUtils, UIGuards } from "../RMUCore.js";
-import { createEquipToggle } from "../ui/dom.js";
+import { ICONS } from "../icons.js";
+import { UIGuards } from "../ui/guards.js";
+import { applyValueOverlay, createEquipToggle } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
 import { DETAIL_FORMAT, buildTooltip } from "../ui/tooltip.js";
-import { hudToken } from "../system/context.js";
+import { hudToken } from "../argon.js";
 import { callTokenAction } from "../system/api.js";
 import { ensureExtendedTokenData, ensureRMUReady } from "../system/derive.js";
 import { getItemSpellGroups } from "../system/spells.js";
@@ -93,7 +94,7 @@ export function defineMagicItemsMain(CoreHUD) {
 
             const value = this.spell?.scr;
             if (value !== undefined && value !== null) {
-                RMUUtils.applyValueOverlay(this.element, value, "SCR");
+                applyValueOverlay(this.element, value, "SCR");
             }
         }
 

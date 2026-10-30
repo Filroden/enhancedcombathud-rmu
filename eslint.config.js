@@ -18,6 +18,7 @@ export default [
                 game: "readonly",
                 canvas: "readonly",
                 ui: "readonly",
+                Actor: "readonly",
                 Hooks: "readonly",
                 CONFIG: "readonly",
                 Handlebars: "readonly",

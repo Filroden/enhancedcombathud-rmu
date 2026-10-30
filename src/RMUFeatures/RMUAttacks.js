@@ -3,11 +3,11 @@
  * Spell attacks have been moved to the Spells panel (RMUSpells.js).
  */
 
-import { ICONS, RMUUtils } from "../RMUCore.js";
-import { createEquipToggle } from "../ui/dom.js";
+import { ICONS } from "../icons.js";
+import { applyValueOverlay, createEquipToggle } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { buildTooltip } from "../ui/tooltip.js";
-import { hudToken } from "../system/context.js";
+import { hudToken } from "../argon.js";
 import { callTokenAction } from "../system/api.js";
 import { ensureExtendedTokenData, ensureRMUReady } from "../system/derive.js";
 import { attackCategory, attackTooltipDetails, getActorAttacks, getLiveAttack, isAttackEquipped } from "../system/attacks.js";
@@ -92,7 +92,7 @@ export function defineAttacksMain(CoreHUD) {
             await super._renderInner();
             if (!this.element) return;
 
-            RMUUtils.applyValueOverlay(this.element, this.attack?.totalBonus ?? "", "Total");
+            applyValueOverlay(this.element, this.attack?.totalBonus ?? "", "Total");
 
             if (this._isPhysicalWeapon && this.attack.itemId) {
                 this._renderEquipToggle();

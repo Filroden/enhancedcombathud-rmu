@@ -4,7 +4,7 @@
  */
 
 import { DETAIL_FORMAT } from "../format.js";
-import { hudActor } from "./context.js";
+import { hudActor } from "../argon.js";
 
 /**
  * Flattens the actor's skill list into skill entries (objects with a system property).

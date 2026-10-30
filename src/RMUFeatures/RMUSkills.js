@@ -2,7 +2,8 @@
  * Defines the main Skills panel, using the shared accordion and search bar.
  */
 
-import { ICONS, getUserIcon, RMUUtils } from "../RMUCore.js";
+import { ICONS, getUserIcon } from "../icons.js";
+import { applyValueOverlay, buildChipContainer } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { buildTooltip } from "../ui/tooltip.js";
 import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
@@ -126,7 +127,7 @@ export function defineSkillsMain(CoreHUD) {
             if (!this.element) return;
 
             // Apply total bonus overlay
-            RMUUtils.applyValueOverlay(this.element, this.entry?.total ?? "", "Total");
+            applyValueOverlay(this.element, this.entry?.total ?? "", "Total");
 
             // Add data-attributes for searching and filtering
             const label = this.label || "";
@@ -153,7 +154,7 @@ export function defineSkillsMain(CoreHUD) {
                     title: "Favorite",
                 });
             }
-            RMUUtils.buildChipContainer(this.element, chips);
+            buildChipContainer(this.element, chips);
 
             this.accordion.register(this.element, ACCORDION_ROLE.ITEM, [catKeyOf(cat)]);
         }

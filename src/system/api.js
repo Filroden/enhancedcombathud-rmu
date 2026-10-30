@@ -2,7 +2,7 @@
  * The only module that calls the RMU system's API (game.system.api).
  */
 
-import { hudToken } from "./context.js";
+import { hudToken } from "../argon.js";
 
 /**
  * Calls an RMU token action (a roll, an equip toggle, the rest dialogue).

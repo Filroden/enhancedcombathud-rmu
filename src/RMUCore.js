@@ -1,40 +1,19 @@
 /**
- * Contains shared utilities and the core Argon integration points used by multiple panels.
+ * Registrations with Argon CORE that are not tied to one panel: the tooltip class and the
+ * supported actor types. Called from main.js in the argonInit hook.
+ *
+ * Shared helpers live in their own modules and are imported from there directly:
+ * icons.js (ICONS, getUserIcon), format.js, ui/dom.js, ui/guards.js and ui/tooltip.js.
  */
 
 import { SUPPORTED_ACTOR_TYPES } from "./constants.js";
-import { ICONS, getUserIcon } from "./icons.js";
-import { formatBonus } from "./format.js";
-import { UIGuards } from "./ui/guards.js";
-import { applyValueOverlay, buildChipContainer } from "./ui/dom.js";
-
-// -----------------------------------------------------------------------------
-// I. Core Utilities (Reusable logic, API wrappers, Formatting)
-// -----------------------------------------------------------------------------
-
-/**
- * A collection of shared utility functions for the RMU HUD.
- * @global
- */
-const RMUUtils = {
-    /** Mounts the value overlay on a button (see ui/dom.js). */
-    applyValueOverlay,
-
-    /** Creates or refreshes the chip row on a button (see ui/dom.js). */
-    buildChipContainer,
-};
-
-// -----------------------------------------------------------------------------
-// II. Core Argon Definitions (Non-feature logic)
-// -----------------------------------------------------------------------------
 
 /**
  * Defines a custom tooltip class for the RMU HUD.
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
-function defineTooltip(CoreHUD) {
-    const ARGON = CoreHUD.ARGON;
-    const BaseTooltip = ARGON?.CORE?.Tooltip || ARGON?.HUD?.Tooltip || ARGON?.Tooltip;
+export function defineTooltip(CoreHUD) {
+    const BaseTooltip = CoreHUD.ARGON?.CORE?.Tooltip;
 
     if (!BaseTooltip) {
         console.warn("[ECH-RMU] Argon CORE.Tooltip base class not found; skipping custom tooltip.");
@@ -59,14 +38,6 @@ function defineTooltip(CoreHUD) {
  * Defines the actor types that the RMU HUD will activate for.
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
-function defineSupportedActorTypes(CoreHUD) {
+export function defineSupportedActorTypes(CoreHUD) {
     CoreHUD.defineSupportedActorTypes([...SUPPORTED_ACTOR_TYPES]);
 }
-
-// -----------------------------------------------------------------------------
-// III. Export
-// -----------------------------------------------------------------------------
-
-// ICONS, getUserIcon, formatBonus and UIGuards are defined in their own modules and
-// re-exported here so the feature files can keep importing all shared helpers from one place.
-export { ICONS, getUserIcon, RMUUtils, UIGuards, formatBonus, defineTooltip, defineSupportedActorTypes };

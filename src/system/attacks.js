@@ -8,7 +8,7 @@
  */
 
 import { DETAIL_FORMAT } from "../format.js";
-import { hudActor } from "./context.js";
+import { hudActor } from "../argon.js";
 
 /** Display order and keys of the attack categories. */
 export const ATTACK_CATEGORIES = Object.freeze(["melee", "ranged", "natural", "shield"]);

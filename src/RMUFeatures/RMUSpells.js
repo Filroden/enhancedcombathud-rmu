@@ -3,7 +3,9 @@
  * spell buttons, with the shared search bar. Implements standard Spell Casting Rolls (SCR).
  */
 
-import { ICONS, getUserIcon, RMUUtils, formatBonus } from "../RMUCore.js";
+import { ICONS, getUserIcon } from "../icons.js";
+import { formatBonus } from "../format.js";
+import { applyValueOverlay, buildChipContainer } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
 import { ListSearch } from "../ui/search.js";
@@ -141,18 +143,18 @@ export function defineSpellsMain(CoreHUD) {
             if (isFav) chips.push({ class: "ech-rmu-spell-fav-chip", title: "Favorite" });
             if (isInstant) chips.push({ class: "ech-rmu-instant-chip", title: "Instantaneous" });
             if (isSubconscious) chips.push({ class: "ech-rmu-subconscious-chip", title: "Sub-conscious" });
-            RMUUtils.buildChipContainer(this.element, chips);
+            buildChipContainer(this.element, chips);
 
             // --- SCR / OB OVERLAY ---
             const scrVal = formatBonus(this.spell.scr);
             if (this._hasAttack) {
                 const obVal = formatBonus(spellAttackBonus(this.spell));
 
-                RMUUtils.applyValueOverlay(this.element, `${scrVal} / ${obVal}`, "SCR / OB");
+                applyValueOverlay(this.element, `${scrVal} / ${obVal}`, "SCR / OB");
                 // Ensures custom CSS font-size reduction for dual values is applied
                 this.element.classList.add("ech-rmu-combo-spell");
             } else {
-                RMUUtils.applyValueOverlay(this.element, scrVal ?? "", "SCR");
+                applyValueOverlay(this.element, scrVal ?? "", "SCR");
             }
 
             // Search text and accordion position.

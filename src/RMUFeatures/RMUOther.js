@@ -11,11 +11,12 @@
  * @module RMUOther
  */
 
-import { ICONS, RMUUtils } from "../RMUCore.js";
+import { ICONS } from "../icons.js";
+import { applyValueOverlay } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { DETAIL_FORMAT, buildTooltip } from "../ui/tooltip.js";
 import { escapeHTML } from "../format.js";
-import { hudActor, hudToken } from "../system/context.js";
+import { hudActor, hudToken } from "../argon.js";
 import { callHudTokenAction, callTokenAction } from "../system/api.js";
 import { ensureRMUReady } from "../system/derive.js";
 import { getActorResistances } from "../system/resistances.js";
@@ -28,7 +29,7 @@ import { getPortraitData } from "../system/portrait.js";
 
 export function definePortraitPanel(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
-    const Base = ARGON?.PORTRAIT?.PortraitPanel || ARGON?.HUD?.PortraitPanel || ARGON?.PortraitPanel;
+    const Base = ARGON?.PORTRAIT?.PortraitPanel;
 
     if (!Base) {
         console.warn("[ECH-RMU] PortraitPanel base not found; skipping.");
@@ -91,7 +92,7 @@ export function definePortraitPanel(CoreHUD) {
 
 export function defineMovementHud(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
-    const Base = ARGON?.HUD?.MovementHud || ARGON?.MovementHud;
+    const Base = ARGON?.MovementHud;
 
     if (!Base) return;
 
@@ -118,7 +119,7 @@ export function defineMovementHud(CoreHUD) {
 
 export function defineWeaponSets(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
-    const Base = ARGON?.WEAPONS?.WeaponSets || ARGON?.WeaponSets || ARGON?.HUD?.WeaponSets;
+    const Base = ARGON?.WeaponSets;
     if (!Base) {
         console.warn("[ECH-RMU] WeaponSets base not found; skipping.");
         return;
@@ -187,7 +188,7 @@ export function defineResistancesMain(CoreHUD) {
         async _renderInner() {
             await super._renderInner();
             if (!this.element) return;
-            RMUUtils.applyValueOverlay(this.element, this.resist?.total ?? "", "Total");
+            applyValueOverlay(this.element, this.resist?.total ?? "", "Total");
         }
 
         async _onActivate() {
@@ -300,7 +301,7 @@ export function defineSpecialChecksMain(CoreHUD) {
             const actor = hudActor();
             this._skill = actor ? getSkillByName(actor, this._config.skillName) : null;
             this._values = getEnduranceValues(actor, this._config.injuryKey, this._skill);
-            RMUUtils.applyValueOverlay(this.element, this._values.total ?? "", "Total");
+            applyValueOverlay(this.element, this._values.total ?? "", "Total");
         }
 
         async _onActivate() {
@@ -471,46 +472,24 @@ export function defineCombatMain(CoreHUD) {
  */
 export function defineDrawerPanel(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
-    const BaseDrawer = ARGON?.DRAWER?.DrawerPanel || ARGON?.HUD?.DrawerPanel || ARGON?.DrawerPanel;
-    const BaseDrawerButton = ARGON?.DRAWER?.DrawerButton || ARGON?.HUD?.DrawerButton || ARGON?.DrawerButton;
+    const BaseDrawer = ARGON?.DRAWER?.DrawerPanel;
+    const BaseDrawerButton = ARGON?.DRAWER?.DrawerButton;
 
     if (!BaseDrawer || !BaseDrawerButton) {
         console.warn("[ECH-RMU] DrawerPanel or DrawerButton base not found; skipping macro drawer.");
         return;
     }
 
+    /**
+     * One hotbar macro. CORE's drawer button handles the click (including positioning any
+     * dialog the macro opens next to the drawer) and applies the category's column and
+     * alignment settings.
+     */
     class RMUMacroDrawerButton extends BaseDrawerButton {
         constructor(macro) {
-            const buttonParts = [
-                {
-                    label: escapeHTML(macro.name),
-                    onClick: (e) => {
-                        if (this.interceptDialogs) ui.ARGON.interceptNextDialog(e.currentTarget.closest(".ability"));
-                        macro.execute();
-                    },
-                },
-            ];
-            super(buttonParts);
+            // Macro names are typed by users and CORE inserts them as raw HTML.
+            super([{ label: escapeHTML(macro.name), onClick: () => macro.execute() }]);
             this.macro = macro;
-        }
-
-        async getData() {
-            const data = await super.getData();
-            const part = data.buttons[0];
-            if (part) {
-                // Macro names are typed by users and CORE inserts them as raw HTML.
-                part.label = escapeHTML(this.macro.name);
-            }
-            return data;
-        }
-
-        setGrid(gridCols) {
-            this.element.style.gridTemplateColumns = "1fr";
-        }
-
-        setAlign(align) {
-            this._textAlign = ["left"];
-            this.setTextAlign();
         }
     }
 
@@ -536,7 +515,6 @@ export function defineDrawerPanel(CoreHUD) {
                 {
                     gridCols: "1fr",
                     captions: [{ label: "Hotbar Macros", align: "left" }],
-                    align: ["left"],
                     buttons: macroButtons,
                 },
             ];

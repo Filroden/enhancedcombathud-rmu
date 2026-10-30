@@ -2,7 +2,7 @@
  * Resistance rolls: reading the actor's resistance list.
  */
 
-import { hudActor } from "./context.js";
+import { hudActor } from "../argon.js";
 
 /**
  * Turns a list-like value into an array. The system has held the resistances as a plain
