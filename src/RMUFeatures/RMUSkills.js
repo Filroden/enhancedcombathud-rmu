@@ -1,9 +1,11 @@
 /**
- * Defines the main Skills panel, using an accordion and the shared search filter.
+ * Defines the main Skills panel, using the shared accordion and search bar.
  */
 
-import { ICONS, getUserIcon, RMUUtils, installListSearch } from "../RMUCore.js";
+import { ICONS, getUserIcon, RMUUtils } from "../RMUCore.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
+import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
+import { ListSearch } from "../ui/search.js";
 import { RMUData } from "../RMUData.js";
 
 /**
@@ -20,35 +22,6 @@ function catKeyOf(s) {
 }
 
 /**
- * MASTER VISIBILITY FUNCTION:
- * Updates the visibility of all skill headers and tiles based on the accordion state.
- * Resets search-hidden headers.
- */
-function applySkillsAccordionVisibility(panelEl) {
-    if (!panelEl) return;
-    const openKey = getOpenSkillsCategory();
-
-    // 1. Restore and update Headers
-    panelEl.querySelectorAll(".ech-rmu-skill-header").forEach((header) => {
-        const key = header.dataset.catKey || "";
-        header.style.display = "";
-        header.classList.toggle("open", key === openKey);
-        header.classList.toggle("closed", key !== openKey);
-    });
-
-    // 2. Update Skill Tiles
-    panelEl.querySelectorAll(".ech-rmu-skill-tile").forEach((tile) => {
-        const key = tile.dataset.catKey || "";
-        // Only show tiles if their category is currently open
-        tile.style.display = openKey && key === openKey ? "" : "none";
-    });
-}
-
-// Global state helpers retrieved from RMUData
-const getOpenSkillsCategory = () => RMUData.getOpenSkillsCategory();
-const setOpenSkillsCategory = (catOrNull) => RMUData.setOpenSkillsCategory(catOrNull);
-
-/**
  * Defines and registers the main Skills panel with Argon.
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
@@ -61,11 +34,15 @@ export function defineSkillsMain(CoreHUD) {
      * @augments RMUActionButton
      */
     class RMUSkillHeaderButton extends RMUActionButton {
-        constructor(title) {
+        /**
+         * @param {string} title - The category name.
+         * @param {Accordion} accordion - The panel's accordion.
+         */
+        constructor(title, accordion) {
             super();
             this._title = title;
             this._catKey = catKeyOf(title);
-            this._panelEl = null; // Reference to the parent panel's element
+            this.accordion = accordion;
         }
         get label() {
             return this._title;
@@ -74,75 +51,21 @@ export function defineSkillsMain(CoreHUD) {
             return "";
         }
         get classes() {
-            const open = getOpenSkillsCategory() === this._catKey;
-            return [...super.classes, "ech-rmu-skill-header", open ? "open" : "closed"];
+            return [...super.classes, "ech-rmu-skill-header"];
         }
         get hasTooltip() {
             return false;
         }
 
-        /**
-         * Binds the parent panel's element to this button for accordion logic.
-         * @param {ButtonPanel} panel - The parent panel.
-         */
-        _bindPanel(panel) {
-            const tryBind = () => {
-                const el = panel?.element;
-                if (!el) return requestAnimationFrame(tryBind);
-                this._panelEl = el;
-                this._applyVisibility();
-            };
-            requestAnimationFrame(tryBind);
-        }
-
-        /**
-         * Applies visibility to all headers and tiles in the panel
-         * based on the currently open category.
-         */
-        _applyVisibility() {
-            if (!this._panelEl) return;
-            const openKey = getOpenSkillsCategory();
-
-            // Toggle 'open'/'closed' classes on all headers
-            const headers = this._panelEl.querySelectorAll(".ech-rmu-skill-header");
-            headers.forEach((h) => {
-                const key = h.dataset.catKey || "";
-                h.classList.toggle("open", key === openKey);
-                h.classList.toggle("closed", key !== openKey);
-            });
-
-            // Show/hide skill tiles
-            const tiles = this._panelEl.querySelectorAll(".ech-rmu-skill-tile");
-            tiles.forEach((t) => {
-                const key = t.dataset.catKey || "";
-                // Only show if it's not hidden by search AND its category is open
-                const isSearchHidden = t.style.display === "none" && key !== openKey;
-                const visible = !!openKey && key === openKey && !isSearchHidden;
-                t.style.display = visible ? "" : "none";
-            });
-        }
-
         async _renderInner() {
             await super._renderInner();
-            if (this.element) {
-                this.element.dataset.catKey = this._catKey;
-                // Add data for search filtering
-                this.element.dataset.nameNorm = this.label.toLowerCase();
-                this.element.dataset.favorite = "false";
-            }
+            if (!this.element) return;
+            this.accordion.register(this.element, ACCORDION_ROLE.HEADER, [this._catKey]);
         }
 
         /** Opens this category, or closes it if it is already open. */
         async _onActivate() {
-            const currentOpen = getOpenSkillsCategory();
-            const myKey = this._catKey;
-
-            // Toggle: if clicking the open one, close it; otherwise open this one.
-            const newKey = currentOpen === myKey ? null : myKey;
-            setOpenSkillsCategory(newKey);
-
-            // Refresh the UI
-            applySkillsAccordionVisibility(this._panelEl);
+            this.accordion.toggle([this._catKey]);
         }
     }
 
@@ -153,12 +76,12 @@ export function defineSkillsMain(CoreHUD) {
     class RMUSkillActionButton extends RMUActionButton {
         /**
          * @param {object} entry - The display-ready skill object from RMUData.
-         * @param {boolean} [startHidden=false] - Whether the tile should start hidden.
+         * @param {Accordion} accordion - The panel's accordion.
          */
-        constructor(entry, startHidden = false) {
+        constructor(entry, accordion) {
             super();
             this.entry = entry;
-            this._startHidden = !!startHidden;
+            this.accordion = accordion;
         }
         get label() {
             const e = this.entry;
@@ -235,7 +158,6 @@ export function defineSkillsMain(CoreHUD) {
             const spec = this.entry?.spec || "";
             const norm = (label + " " + cat + " " + spec).toLowerCase();
 
-            this.element.dataset.catKey = catKeyOf(cat);
             this.element.dataset.name = label;
             this.element.dataset.nameNorm = norm;
 
@@ -257,7 +179,7 @@ export function defineSkillsMain(CoreHUD) {
             }
             RMUUtils.buildChipContainer(this.element, chips);
 
-            if (this._startHidden) this.element.style.display = "none";
+            this.accordion.register(this.element, ACCORDION_ROLE.ITEM, [catKeyOf(cat)]);
         }
 
         /**
@@ -306,19 +228,15 @@ export function defineSkillsMain(CoreHUD) {
             }
 
             const cats = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b));
+            const accordion = new Accordion();
 
-            // Build headers and tiles
-            const headerInstances = [];
+            // Headers and tiles; every category starts closed.
             for (const cat of cats) {
-                const header = new RMUSkillHeaderButton(cat);
-                headerInstances.push(header);
-                buttons.push(header);
+                buttons.push(new RMUSkillHeaderButton(cat, accordion));
                 for (const entry of groups.get(cat)) {
-                    buttons.push(new RMUSkillActionButton(entry, true)); // Start hidden
+                    buttons.push(new RMUSkillActionButton(entry, accordion));
                 }
             }
-
-            const panel = createGuardedPanel("ech-rmu-skills", buttons);
 
             // Install the search/filter bar
             const skillFilters = [
@@ -336,30 +254,9 @@ export function defineSkillsMain(CoreHUD) {
                 },
             ];
 
-            installListSearch(panel, ".ech-rmu-skill-tile", ".ech-rmu-skill-header", "skill", {
-                filters: skillFilters,
-                onClear: (panelEl) => {
-                    if (!panelEl) return;
-
-                    applySkillsAccordionVisibility(panelEl);
-
-                    const summaryEl = panelEl.querySelector(".ech-rmu-search-summary");
-                    if (summaryEl) summaryEl.style.display = "none";
-                },
-            });
-
-            // Bind all headers to the panel
-            headerInstances.forEach((h) => h._bindPanel(panel));
-
-            // Start with all categories closed
-            setOpenSkillsCategory(null);
-            requestAnimationFrame(() => {
-                const el = panel.element;
-                if (!el) return;
-                el.querySelectorAll(".ech-rmu-skill-tile").forEach((t) => (t.style.display = "none"));
-            });
-
-            return panel;
+            // Clearing the search returns to the category that was open before it.
+            const search = new ListSearch({ filters: skillFilters, resetOnClear: false });
+            return createGuardedPanel("ech-rmu-skills", buttons, { accordion, search });
         }
     }
 

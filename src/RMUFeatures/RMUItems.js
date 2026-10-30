@@ -1,11 +1,13 @@
 /**
  * RMUFeatures/RMUItems.js
- * Defines the Items panel using CSS ordering to display spells above items.
+ * Defines the Items panel. Items are accordion headers; opening one shows its spells, which
+ * CSS ordering places on a row above the items.
  */
 
 import { ICONS, RMUUtils, UIGuards } from "../RMUCore.js";
 import { createEquipToggle } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
+import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
 import { RMUData } from "../RMUData.js";
 
 /** Equipment states the system uses for an item that is owned but not in use. */
@@ -21,35 +23,25 @@ function isItemEquipped(itemDoc) {
     return Boolean(eq) && !NOT_IN_USE_STATES.has(eq);
 }
 
-// Global state for the magic items panel
-let openItemGroupId = null;
+/**
+ * While an item's spells are open, the other items are dimmed so the open one stands out.
+ * @param {string[]} headerPath - [itemId].
+ * @param {string[]} openPath - The accordion's open path.
+ * @returns {boolean}
+ */
+function isItemDimmed(headerPath, openPath) {
+    return openPath.length > 0 && headerPath[0] !== openPath[0];
+}
 
 /**
- * Applies visibility to the spells and the flex-break based on the open item.
+ * Shows the full-width spacer only while a spell row is open, so the spells wrap onto their
+ * own row above the items.
+ * @param {HTMLElement} panelEl
+ * @param {boolean} anySpellShown
  */
-function applyItemAccordionVisibility(panelEl) {
-    if (!panelEl) return;
-
-    let anySpellVisible = false;
-
-    // 1. Toggle Spell Visibility
-    panelEl.querySelectorAll(".ech-rmu-item-spell-button").forEach((el) => {
-        const isVisible = el.dataset.groupId === openItemGroupId;
-        el.style.display = isVisible ? "" : "none";
-        if (isVisible) anySpellVisible = true;
-    });
-
-    // 2. Toggle Flex Break
-    const flexBreak = panelEl.querySelector(".ech-rmu-items-flex-break");
-    if (flexBreak) {
-        flexBreak.style.display = anySpellVisible ? "" : "none";
-    }
-
-    // 3. Highlight Active Item
-    panelEl.querySelectorAll(".ech-rmu-item-category-button").forEach((el) => {
-        const isActive = el.dataset.groupId === openItemGroupId;
-        el.style.opacity = openItemGroupId && !isActive ? "0.6" : "1";
-    });
+function showSpacerWhenOpen(panelEl, anySpellShown) {
+    const spacer = panelEl.querySelector(".ech-rmu-items-flex-break");
+    if (spacer) spacer.style.display = anySpellShown ? "" : "none";
 }
 
 export function defineMagicItemsMain(CoreHUD) {
@@ -60,12 +52,13 @@ export function defineMagicItemsMain(CoreHUD) {
      * TIER 2 (Top Row): The Spell Action Button
      */
     class RMUItemSpellActionButton extends RMUActionButton {
-        constructor(spell, sl, itemGroup, itemDoc) {
+        constructor(spell, sl, itemGroup, itemDoc, accordion) {
             super();
             this.spell = spell;
             this.sl = sl; // Store the spell list wrapper
             this.itemGroup = itemGroup;
             this.itemDoc = itemDoc;
+            this.accordion = accordion;
         }
 
         /**
@@ -92,11 +85,7 @@ export function defineMagicItemsMain(CoreHUD) {
             if (!this.element) return;
 
             UIGuards.attachButtonInteractionGuards(this);
-
-            this.element.dataset.groupId = this.itemGroup.groupName;
-
-            const isVisible = this.itemGroup.groupName === openItemGroupId;
-            this.element.style.display = isVisible ? "" : "none";
+            this.accordion.register(this.element, ACCORDION_ROLE.ITEM, [this.itemGroup.groupName]);
 
             const value = this.spell?.scr;
             if (value !== undefined && value !== null) {
@@ -149,12 +138,12 @@ export function defineMagicItemsMain(CoreHUD) {
      * TIER 2 (Bottom Row): The Physical Item Button
      */
     class RMUItemCategoryButton extends RMUActionButton {
-        constructor(itemGroup, actor) {
+        constructor(itemGroup, actor, accordion) {
             super();
             this.itemGroup = itemGroup;
             this.itemDoc = actor.items.get(itemGroup.groupName);
             this._spells = (itemGroup.spellLists || []).flatMap((sl) => sl.spells || []);
-            this._panelEl = null;
+            this.accordion = accordion;
             /** This item's spell buttons, re-rendered with it after an equip toggle. */
             this.spellButtons = [];
         }
@@ -173,19 +162,12 @@ export function defineMagicItemsMain(CoreHUD) {
             return [...super.classes, "ech-rmu-item-category-button"];
         }
 
-        _bindPanel(panelEl) {
-            this._panelEl = panelEl;
-        }
-
         async _renderInner() {
             await super._renderInner();
             if (!this.element) return;
 
             UIGuards.attachButtonInteractionGuards(this);
-            this.element.dataset.groupId = this.itemGroup.groupName;
-
-            const isActive = this.itemGroup.groupName === openItemGroupId;
-            this.element.style.opacity = openItemGroupId && !isActive ? "0.6" : "1";
+            this.accordion.register(this.element, ACCORDION_ROLE.HEADER, [this.itemGroup.groupName]);
 
             if (this.itemDoc) {
                 const toggle = createEquipToggle({
@@ -217,8 +199,7 @@ export function defineMagicItemsMain(CoreHUD) {
 
         /** Opens this item's spells, or closes them if they are already open. */
         async _onActivate() {
-            openItemGroupId = openItemGroupId === this.itemGroup.groupName ? null : this.itemGroup.groupName;
-            applyItemAccordionVisibility(this._panelEl);
+            this.accordion.toggle([this.itemGroup.groupName]);
         }
 
         get hasTooltip() {
@@ -257,12 +238,12 @@ export function defineMagicItemsMain(CoreHUD) {
             return [...super.classes, "ech-rmu-items-flex-break"];
         }
         /**
-         * Renders no template: the element is an empty full-width spacer (sized in CSS) that
-         * is only displayed while an item's spells are open.
+         * Renders no template: the element is an empty full-width spacer (sized in CSS). It
+         * starts hidden; the panel's accordion shows it while an item's spells are open.
          */
         async _renderInner() {
             if (!this.element) return;
-            this.element.style.display = openItemGroupId ? "" : "none";
+            this.element.style.display = "none";
         }
     }
 
@@ -298,18 +279,16 @@ export function defineMagicItemsMain(CoreHUD) {
 
         async _getPanel() {
             const buttons = [];
-            const allItemInstances = [];
-
-            openItemGroupId = null;
+            // Item buttons only toggle their own spells; "open"/"closed" classes are not used here.
+            const accordion = new Accordion({ isDimmed: isItemDimmed, afterApply: showSpacerWhenOpen, headerStateClasses: false });
 
             for (const group of this.itemSpells) {
-                const itemBtn = new RMUItemCategoryButton(group, this._actor);
+                const itemBtn = new RMUItemCategoryButton(group, this._actor, accordion);
                 buttons.push(itemBtn);
-                allItemInstances.push(itemBtn);
 
                 for (const sl of group.spellLists || []) {
                     for (const spell of sl.spells || []) {
-                        const spellBtn = new RMUItemSpellActionButton(spell, sl, group, itemBtn.itemDoc);
+                        const spellBtn = new RMUItemSpellActionButton(spell, sl, group, itemBtn.itemDoc, accordion);
                         itemBtn.spellButtons.push(spellBtn);
                         buttons.push(spellBtn);
                     }
@@ -318,12 +297,7 @@ export function defineMagicItemsMain(CoreHUD) {
 
             buttons.push(new RMUFlexBreakButton());
 
-            const panel = createGuardedPanel("ech-rmu-magicitems-master", buttons);
-
-            const panelEl = panel.element;
-            allItemInstances.forEach((h) => h._bindPanel(panelEl));
-
-            return panel;
+            return createGuardedPanel("ech-rmu-magicitems-master", buttons, { accordion });
         }
     }
 

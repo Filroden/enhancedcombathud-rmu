@@ -143,15 +143,43 @@ export function createBaseClasses(ARGON) {
     }
 
     /**
-     * Creates a ButtonPanel with the click-through guard attached.
-     * @param {string} id - Panel id. CORE uses it to remember whether the panel is open.
-     * @param {Array<object>} buttons - The panel's buttons.
-     * @returns {object} The ButtonPanel.
+     * A ButtonPanel with the click-through guard attached and, optionally, an accordion and a
+     * search bar. CORE renders the panel's buttons in ButtonPanel._renderInner, so once that
+     * finishes every button is in place: the accordion state is applied and the search bar
+     * mounted then, with no waiting for elements to appear.
      */
-    function createGuardedPanel(id, buttons) {
-        const panel = new ButtonPanel({ id, buttons });
-        UIGuards.attachPanelInteractionGuards(panel);
-        return panel;
+    class RMUButtonPanel extends ButtonPanel {
+        /**
+         * @param {object} options
+         * @param {string} options.id - Panel id. CORE uses it to remember whether the panel is open.
+         * @param {Array<object>} options.buttons - The panel's buttons.
+         * @param {object} [options.accordion] - An Accordion from ui/accordion.js.
+         * @param {object} [options.search] - A ListSearch from ui/search.js (needs an accordion).
+         */
+        constructor({ id, buttons, accordion = null, search = null }) {
+            super({ id, buttons });
+            this.accordion = accordion;
+            this.search = search;
+            accordion?.bind(this.element);
+            UIGuards.attachPanelInteractionGuards(this);
+        }
+
+        async _renderInner() {
+            await super._renderInner();
+            this.accordion?.apply();
+            this.search?.mount(this);
+        }
+    }
+
+    /**
+     * Creates an RMU button panel.
+     * @param {string} id - Panel id.
+     * @param {Array<object>} buttons - The panel's buttons.
+     * @param {{accordion?: object, search?: object}} [extras] - Optional accordion and search.
+     * @returns {RMUButtonPanel}
+     */
+    function createGuardedPanel(id, buttons, extras = {}) {
+        return new RMUButtonPanel({ id, buttons, ...extras });
     }
 
     cachedClasses = { RMUActionButton, RMUEmptyButton, RMUActionPanel, createGuardedPanel };

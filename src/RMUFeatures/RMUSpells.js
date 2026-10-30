@@ -1,52 +1,23 @@
 /**
- * Defines the main Spellcasting panel (3-Level Nested Accordion)
- * Implements standard Spell Casting Rolls (SCR).
+ * Defines the main Spellcasting panel: a two-level accordion (list type, then list) over the
+ * spell buttons, with the shared search bar. Implements standard Spell Casting Rolls (SCR).
  */
 
-import { ICONS, getUserIcon, RMUUtils, installListSearch, formatBonus } from "../RMUCore.js";
+import { ICONS, getUserIcon, RMUUtils, formatBonus } from "../RMUCore.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
+import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
+import { ListSearch } from "../ui/search.js";
 import { RMUData } from "../RMUData.js";
 
-// Global state helpers
-const getOpenSpellState = RMUData.getOpenSpellState;
-const setOpenSpellState = RMUData.setOpenSpellState;
-
 /**
- * Applies visibility to the 3-level accordion based on global state.
+ * Spell list type headers dim their list headers while another list type is open, so the
+ * lists of the open type stand out. Top-level headers are never dimmed.
+ * @param {string[]} headerPath - [listType] or [listType, listName].
+ * @param {string[]} openPath - The accordion's open path.
+ * @returns {boolean}
  */
-function applyAccordionVisibility(panelEl) {
-    if (!panelEl) return;
-    const { type: openType, name: openName } = getOpenSpellState();
-
-    // L1 Headers
-    panelEl.querySelectorAll(`.ech-rmu-spell-type-header`).forEach((h) => {
-        const hType = h.dataset.listTypeKey || "";
-        const isOpen = hType === openType;
-        h.classList.toggle("open", isOpen);
-        h.classList.toggle("closed", !isOpen);
-    });
-
-    // L2 Headers
-    panelEl.querySelectorAll(`.ech-rmu-spell-list-header`).forEach((h) => {
-        const hType = h.dataset.listTypeKey || "";
-        const hName = h.dataset.listNameKey || "";
-        const isMyParentOpen = hType === openType;
-        const isMeOpen = isMyParentOpen && hName === openName;
-
-        h.style.display = "";
-        h.classList.toggle("open", isMeOpen);
-        h.classList.toggle("closed", !isMeOpen);
-        h.style.opacity = isMyParentOpen ? "1" : "0.6";
-    });
-
-    // L3 Tiles
-    panelEl.querySelectorAll(`.ech-rmu-spell-tile`).forEach((t) => {
-        const tType = t.dataset.listTypeKey || "";
-        const tName = t.dataset.listNameKey || "";
-        const isSearchHidden = t.classList.contains("hidden");
-        const visible = tType === openType && tName === openName && !isSearchHidden;
-        t.style.display = visible ? "" : "none";
-    });
+function isSpellHeaderDimmed(headerPath, openPath) {
+    return headerPath.length === 2 && headerPath[0] !== openPath[0];
 }
 
 export function defineSpellsMain(CoreHUD) {
@@ -58,9 +29,14 @@ export function defineSpellsMain(CoreHUD) {
      * Handles standard SCR (Casting).
      */
     class RMUSpellActionButton extends RMUActionButton {
-        constructor(spell) {
+        /**
+         * @param {object} spell - The spell, with its _rawListInfo (from RMUData).
+         * @param {Accordion} accordion - The panel's accordion.
+         */
+        constructor(spell, accordion) {
             super();
             this.spell = spell;
+            this.accordion = accordion;
             if (spell) {
                 this._listKey = spell._rawListInfo.listKey;
                 this._listTypeKey = spell._rawListInfo.groupName ?? spell._rawListInfo.listType;
@@ -184,18 +160,11 @@ export function defineSpellsMain(CoreHUD) {
                 RMUUtils.applyValueOverlay(this.element, scrVal ?? "", "SCR");
             }
 
-            // Attributes
+            // Search text and accordion position.
             const listInfo = this.spell._rawListInfo || {};
             const nameNorm = `${this.spell.name} ${listInfo.listName} ${listInfo.realm} ${listInfo.listType} Lvl ${this.spell.level}`.toLowerCase();
-
-            this.element.dataset.listTypeKey = this._listTypeKey;
-            this.element.dataset.listNameKey = this._listKey;
             this.element.dataset.nameNorm = nameNorm;
-            this.element.dataset.catKey = this._listKey;
-
-            const { type: openType, name: openName } = getOpenSpellState();
-            const isVisible = this._listTypeKey === openType && this._listKey === openName;
-            this.element.style.display = isVisible ? "" : "none";
+            this.accordion.register(this.element, ACCORDION_ROLE.ITEM, [this._listTypeKey, this._listKey]);
         }
 
         /** Casts the spell (Spell Casting Roll). */
@@ -205,12 +174,15 @@ export function defineSpellsMain(CoreHUD) {
     }
 
     // --- Accordion Headers (Standard) ---
+    /**
+     * Level 2 accordion header: one spell list (for example "Hiding").
+     */
     class RMUSpellListButton extends RMUActionButton {
-        constructor(listName, listTypeKey) {
+        constructor(listName, listTypeKey, accordion) {
             super();
             this._listName = listName;
             this._listTypeKey = listTypeKey;
-            this._panelEl = null;
+            this.accordion = accordion;
         }
         get label() {
             return this._listName;
@@ -222,36 +194,27 @@ export function defineSpellsMain(CoreHUD) {
             return false;
         }
         get classes() {
-            const { type: openType, name: openName } = getOpenSpellState();
-            const isOpen = openType === this._listTypeKey && openName === this._listName;
-            return [...super.classes, "ech-rmu-skill-header", "ech-rmu-spell-list-header", isOpen ? "open" : "closed"];
-        }
-        _bindPanel(panelEl) {
-            this._panelEl = panelEl;
+            return [...super.classes, "ech-rmu-skill-header", "ech-rmu-spell-list-header"];
         }
         async _renderInner() {
             await super._renderInner();
-            if (this.element) {
-                this.element.dataset.listTypeKey = this._listTypeKey;
-                this.element.dataset.listNameKey = this._listName;
-                this.element.dataset.nameNorm = this.label.toLowerCase();
-                this.element.dataset.catKey = this._listName;
-            }
+            if (!this.element) return;
+            this.accordion.register(this.element, ACCORDION_ROLE.HEADER, [this._listTypeKey, this._listName]);
         }
         /** Opens this list's spells, or closes them if already open. */
         async _onActivate() {
-            const { name: openName } = getOpenSpellState();
-            const isOpen = openName === this._listName;
-            setOpenSpellState(this._listTypeKey, isOpen ? null : this._listName);
-            applyAccordionVisibility(this._panelEl);
+            this.accordion.toggle([this._listTypeKey, this._listName]);
         }
     }
 
+    /**
+     * Level 1 accordion header: one spell list type (for example "Base").
+     */
     class RMUSpellListTypeButton extends RMUActionButton {
-        constructor(listType) {
+        constructor(listType, accordion) {
             super();
             this._listType = listType;
-            this._panelEl = null;
+            this.accordion = accordion;
         }
         get label() {
             return this._listType;
@@ -263,27 +226,16 @@ export function defineSpellsMain(CoreHUD) {
             return false;
         }
         get classes() {
-            const { type: openType } = getOpenSpellState();
-            const isOpen = openType === this._listType;
-            return [...super.classes, "ech-rmu-skill-header", "ech-rmu-spell-type-header", isOpen ? "open" : "closed"];
-        }
-        _bindPanel(panelEl) {
-            this._panelEl = panelEl;
+            return [...super.classes, "ech-rmu-skill-header", "ech-rmu-spell-type-header"];
         }
         async _renderInner() {
             await super._renderInner();
-            if (this.element) {
-                this.element.dataset.listTypeKey = this._listType;
-                this.element.dataset.nameNorm = this.label.toLowerCase();
-                this.element.dataset.catKey = this._listType;
-            }
+            if (!this.element) return;
+            this.accordion.register(this.element, ACCORDION_ROLE.HEADER, [this._listType]);
         }
         /** Opens this list type, or closes it (and any open list) if already open. */
         async _onActivate() {
-            const { type: openType } = getOpenSpellState();
-            const isOpen = openType === this._listType;
-            setOpenSpellState(isOpen ? null : this._listType, null);
-            applyAccordionVisibility(this._panelEl);
+            this.accordion.toggle([this._listType]);
         }
     }
 
@@ -307,7 +259,6 @@ export function defineSpellsMain(CoreHUD) {
         }
 
         async _getPanel() {
-            setOpenSpellState(null, null);
             await RMUData.ensureRMUReady();
             const allSpellsByListType = RMUData.getGroupedSpellsForHUD();
 
@@ -330,29 +281,23 @@ export function defineSpellsMain(CoreHUD) {
             });
 
             const allButtons = [];
-            const allHeaderInstances = [];
+            const accordion = new Accordion({ isDimmed: isSpellHeaderDimmed });
 
             for (const listType of sortedListTypes) {
                 const listMap = allSpellsByListType.get(listType);
-                const l1Button = new RMUSpellListTypeButton(listType);
-                allButtons.push(l1Button);
-                allHeaderInstances.push(l1Button);
+                allButtons.push(new RMUSpellListTypeButton(listType, accordion));
 
                 const sortedListNames = Array.from(listMap.keys()).sort((a, b) => a.localeCompare(b));
 
                 for (const listName of sortedListNames) {
                     const spells = listMap.get(listName);
-                    const l2Button = new RMUSpellListButton(listName, listType);
-                    allButtons.push(l2Button);
-                    allHeaderInstances.push(l2Button);
+                    allButtons.push(new RMUSpellListButton(listName, listType, accordion));
 
                     for (const spell of spells) {
-                        allButtons.push(new RMUSpellActionButton(spell));
+                        allButtons.push(new RMUSpellActionButton(spell, accordion));
                     }
                 }
             }
-
-            const panel = createGuardedPanel("ech-rmu-spells-all", allButtons);
 
             const spellFilters = [
                 {
@@ -375,22 +320,9 @@ export function defineSpellsMain(CoreHUD) {
                 },
             ];
 
-            installListSearch(panel, ".ech-rmu-spell-tile", ".ech-rmu-spell-type-header, .ech-rmu-spell-list-header", "spell", {
-                filters: spellFilters,
-                onClear: (panelEl) => {
-                    if (!panelEl) return;
-                    setOpenSpellState(null, null);
-                    applyAccordionVisibility(panelEl);
-                    const summaryEl = panelEl.querySelector(".ech-rmu-search-summary");
-                    if (summaryEl) summaryEl.style.display = "none";
-                },
-            });
-
-            const panelEl = panel.element;
-            allHeaderInstances.forEach((h) => h._bindPanel(panelEl));
-            applyAccordionVisibility(panelEl);
-
-            return panel;
+            // Clearing the search closes every list type.
+            const search = new ListSearch({ filters: spellFilters, resetOnClear: true });
+            return createGuardedPanel("ech-rmu-spells-all", allButtons, { accordion, search });
         }
     }
 

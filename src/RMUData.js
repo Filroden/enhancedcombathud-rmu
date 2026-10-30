@@ -1,124 +1,16 @@
 /**
- * Contains all data fetching, aggregation, transformation, and state management logic
- * for the RMU system extension.
+ * Contains all data fetching, aggregation and transformation logic for the RMU system
+ * extension.
  */
 
-// ----------------------------------------------------------------------------
-// I. State Management (for search and accordion persistence)
-// ----------------------------------------------------------------------------
-
-/** @type {Map<string, string>} Map(tokenId, categoryKey) */
-const SKILLS_OPEN_CAT = new Map();
-/** @type {Map<string, string>} Map(tokenId, listTypeKey) */
-const SPELLS_OPEN_LIST_TYPE = new Map();
-/** @type {Map<string, string>} Map(tokenId, listNameKey) */
-const SPELLS_OPEN_LIST_NAME = new Map();
-
 /**
- * Stores filter states (e.g., 'favorites') for all panels.
- * @type {Map<string, Object<string, boolean>>} Map(tokenId::panelId, { filterId: isActive })
- */
-const FILTER_STATES = new Map();
-
-/**
- * Gets the active token's ID or a fallback string.
- * @returns {string} The active token ID or "no-token".
- */
-function getActiveTokenId() {
-    return ui.ARGON?._token?.id ?? "no-token";
-}
-
-/**
- * Main data access and state management object for the RMU HUD.
+ * Main data access object for the RMU HUD.
  * @global
  */
 const RMUData = {};
 
-// --- Generic Filter State Functions ---
-
-/**
- * Gets the active state of a specific filter for the current token and panel.
- * @param {string} panelId - The panel ID (e.g., "ech-rmu-skills").
- * @param {string} filterId - The filter ID (e.g., "fav", "instant").
- * @returns {boolean} True if the filter is active.
- */
-RMUData.getFilterActive = (panelId, filterId) => {
-    const key = `${getActiveTokenId()}::${panelId}`;
-    const panelFilters = FILTER_STATES.get(key);
-    return panelFilters?.[filterId] === true;
-};
-
-/**
- * Sets the active state of a specific filter.
- * @param {string} panelId - The panel ID.
- * @param {string} filterId - The filter ID.
- * @param {boolean} isActive - The new state.
- */
-RMUData.setFilterActive = (panelId, filterId, isActive) => {
-    const key = `${getActiveTokenId()}::${panelId}`;
-    if (!FILTER_STATES.has(key)) {
-        FILTER_STATES.set(key, {});
-    }
-    const panelFilters = FILTER_STATES.get(key);
-
-    if (isActive) {
-        panelFilters[filterId] = true;
-    } else {
-        delete panelFilters[filterId];
-    }
-};
-
-/**
- * Clears all active filters for a specific panel for the current token.
- * @param {string} panelId - The panel ID.
- */
-RMUData.clearAllFilters = (panelId) => {
-    const key = `${getActiveTokenId()}::${panelId}`;
-    FILTER_STATES.delete(key);
-};
-
-// --- Accordion State Functions ---
-
-/**
- * Gets the open skills category for the current token.
- * @returns {string|null} The key of the open category, or null.
- */
-RMUData.getOpenSkillsCategory = () => SKILLS_OPEN_CAT.get(getActiveTokenId()) ?? null;
-
-/**
- * Sets the open skills category for the current token.
- * @param {string|null} catOrNull - The key of the category to open, or null to close all.
- */
-RMUData.setOpenSkillsCategory = (catOrNull) => {
-    const id = getActiveTokenId();
-    if (catOrNull) SKILLS_OPEN_CAT.set(id, String(catOrNull));
-    else SKILLS_OPEN_CAT.delete(id);
-};
-
-/**
- * Gets the open spell list state (type and name) for the current token.
- * @returns {{type: string|null, name: string|null}}
- */
-RMUData.getOpenSpellState = () => ({
-    type: SPELLS_OPEN_LIST_TYPE.get(getActiveTokenId()) ?? null,
-    name: SPELLS_OPEN_LIST_NAME.get(getActiveTokenId()) ?? null,
-});
-
-/**
- * Sets the open spell list state for the current token.
- * @param {string|null} typeOrNull - The list type (e.g., "Base") or null.
- * @param {string|null} nameOrNull - The list name (e.g., "Blood Mastery") or null.
- */
-RMUData.setOpenSpellState = (typeOrNull, nameOrNull) => {
-    const id = getActiveTokenId();
-    if (typeOrNull) SPELLS_OPEN_LIST_TYPE.set(id, typeOrNull);
-    else SPELLS_OPEN_LIST_TYPE.delete(id);
-    if (nameOrNull) SPELLS_OPEN_LIST_NAME.set(id, nameOrNull);
-    else SPELLS_OPEN_LIST_NAME.delete(id);
-};
-
 // -----------------------------------------------------------------------------
-// II. Data Access and Processing
+// I. Data Access and Processing
 // -----------------------------------------------------------------------------
 
 /**
