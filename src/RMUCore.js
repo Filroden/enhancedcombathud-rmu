@@ -1,45 +1,18 @@
 /**
- * Contains shared utilities, core Argon integration points, UI guards,
- * and the general reusable search logic used by multiple panels.
+ * Contains shared utilities, core Argon integration points and the general reusable
+ * search logic used by multiple panels.
  */
 
 import { RMUData } from "./RMUData.js";
 import { SUPPORTED_ACTOR_TYPES } from "./constants.js";
 import { ICONS, getUserIcon } from "./icons.js";
+import { formatBonus } from "./format.js";
+import { UIGuards } from "./ui/guards.js";
+import { applyValueOverlay, buildChipContainer } from "./ui/dom.js";
 
 // -----------------------------------------------------------------------------
 // I. Core Utilities (Reusable logic, API wrappers, Formatting)
 // -----------------------------------------------------------------------------
-
-/**
- * Debounce utility to prevent a function from firing too rapidly.
- * @param {function} func - The function to debounce.
- * @param {number} [delay=150] - The delay in milliseconds.
- * @returns {function} The debounced function.
- */
-function debounce(func, delay = 150) {
-    let timer;
-    return function (...args) {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-            func.apply(this, args);
-        }, delay);
-    };
-}
-
-/**
- * Formats a number as a string with a leading plus sign for positive values.
- * @param {*} n - The number or string to format.
- * @returns {string|*} The formatted string, or the original value if not a number.
- */
-function formatBonus(n) {
-    if (n === null || n === undefined) return n;
-    const s = String(n).trim();
-    if (s === "") return s;
-    const num = Number(s);
-    if (Number.isNaN(num)) return n;
-    return num > 0 ? `+${num}` : String(num);
-}
 
 /**
  * A collection of shared utility functions for the RMU HUD.
@@ -61,41 +34,8 @@ const RMUUtils = {
         });
     },
 
-    /**
-     * Mounts a translucent value overlay onto an action button.
-     * @param {HTMLElement} buttonEl - The button's DOM element.
-     * @param {string|number} [number=""] - The main number to display (e.g., "+10").
-     * @param {string} [labelText="Total"] - The small label (e.g., "Total", "SCR").
-     */
-    applyValueOverlay(buttonEl, number = "", labelText = "Total") {
-        if (!buttonEl) return;
-        const host = buttonEl.querySelector(".image, .ech-image, .icon, .thumbnail, .main-button__image, .argon-image") || buttonEl;
-        host.classList.add("rmu-button-relative", "rmu-overflow-hidden");
-        host.querySelector(".rmu-value-overlay")?.remove();
-
-        const root = document.createElement("div");
-        root.className = "rmu-value-overlay";
-        const txt = document.createElement("div");
-        txt.className = "rmu-value-overlay-text";
-
-        if (labelText) {
-            const t = document.createElement("div");
-            t.className = "rmu-value-overlay-label";
-            t.textContent = labelText;
-            txt.appendChild(t);
-        }
-
-        if (number !== "" && number !== null && number !== undefined) {
-            const n = document.createElement("div");
-            n.className = "rmu-value-overlay-number";
-            const formattedNumber = formatBonus(number);
-            n.textContent = formattedNumber;
-            txt.appendChild(n);
-        }
-
-        root.appendChild(txt);
-        host.appendChild(root);
-    },
+    /** Mounts the value overlay on a button (see ui/dom.js). */
+    applyValueOverlay,
 
     /**
      * Centralized utility to call an RMU system API function robustly.
@@ -163,193 +103,18 @@ const RMUUtils = {
         };
     },
 
-    /**
-     * Creates and manages the chip container on an action button.
-     * @param {HTMLElement} element - The button's DOM element.
-     * @param {Array<object>} chips - An array of chip objects to add.
-     * E.g., [{ id: "fav", title: "Favorite", icon: ICONS.star, class: "rmu-fav-chip" }]
-     * @returns {HTMLElement|null} The chip container element, or null.
-     */
-    buildChipContainer: function (element, chips = []) {
-        if (!element || !chips || chips.length === 0) {
-            element.querySelector(".rmu-chip-container")?.remove();
-            return null;
-        }
-
-        element.classList.add("rmu-button-relative");
-        let chipContainer = element.querySelector(".rmu-chip-container");
-        if (chipContainer) {
-            chipContainer.innerHTML = "";
-        } else {
-            chipContainer = document.createElement("div");
-            chipContainer.className = "rmu-chip-container";
-            element.appendChild(chipContainer);
-        }
-
-        for (const chipData of chips) {
-            const chip = document.createElement("div");
-            chip.className = `rmu-chip ${chipData.class}`;
-            chip.title = chipData.title;
-
-            // Map the icon dynamically so we don't have to alter other files
-            let iconUrl = chipData.icon;
-            if (!iconUrl) {
-                if (chipData.class.includes("fav-chip")) iconUrl = ICONS.star;
-                else if (chipData.class.includes("instant-chip")) iconUrl = ICONS.instant;
-                else if (chipData.class.includes("subconscious-chip")) iconUrl = ICONS.subconscious;
-            }
-
-            // Mimic the old CSS ::before pseudo-element inline
-            if (iconUrl) {
-                const iconInner = document.createElement("div");
-                iconInner.style.width = "100%";
-                iconInner.style.height = "100%";
-                iconInner.style.backgroundColor = "var(--filroden-color-success)";
-                iconInner.style.maskImage = `url('${iconUrl}')`;
-                iconInner.style.webkitMaskImage = `url('${iconUrl}')`;
-                iconInner.style.maskSize = "contain";
-                iconInner.style.webkitMaskSize = "contain";
-                iconInner.style.maskRepeat = "no-repeat";
-                iconInner.style.webkitMaskRepeat = "no-repeat";
-                iconInner.style.maskPosition = "center";
-                iconInner.style.webkitMaskPosition = "center";
-                chip.appendChild(iconInner);
-            }
-
-            chipContainer.appendChild(chip);
-        }
-        return chipContainer;
-    },
+    /** Creates or refreshes the chip row on a button (see ui/dom.js). */
+    buildChipContainer,
 };
 
 // -----------------------------------------------------------------------------
-// II. UI Guards (Interaction Protection)
-// -----------------------------------------------------------------------------
-
-/**
- * A collection of utilities to manage user input focus and
- * prevent unwanted event propagation (e.g., hotkeys firing).
- * @global
- */
-const UIGuards = {
-    /**
-     * Attaches aggressive event stoppers to a panel to prevent
-     * focus/click/key events from bubbling *out* of the panel.
-     * This is used for panels that contain interactive inputs like search bars.
-     * @param {ButtonPanel} panel - The Argon ButtonPanel instance.
-     */
-    attachPanelInputGuards(panel) {
-        const arm = () => {
-            const el = panel?.element;
-            if (!el) return requestAnimationFrame(arm);
-
-            const cap = { capture: true };
-            const stopIfControl = (ev) => {
-                const t = ev.target;
-                if (t?.closest?.(".rmu-skill-search__fav, .rmu-skill-search__clear")) return;
-                if (ev.type === "input") return;
-                if (!t) return;
-
-                // This guard is designed to *stop* interaction.
-                // It is now only used where we explicitly want to block inputs.
-                if (t.closest("input, textarea, select, .rmu-skill-search, .rmu-skill-search__input, .rmu-skill-search__clear")) {
-                    if (ev.type === "pointerdown" || ev.type === "mousedown" || ev.type === "touchstart") {
-                        ev.preventDefault();
-                    }
-                    ev.stopImmediatePropagation();
-                    ev.stopPropagation();
-                }
-            };
-            ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "touchstart", "touchend", "contextmenu", "wheel", "focus", "focusin", "focusout", "blur", "keydown", "keyup"].forEach(
-                (type) => el.addEventListener(type, stopIfControl, cap),
-            );
-        };
-        requestAnimationFrame(arm);
-    },
-
-    /**
-     * Installs a global, aggressive keydown guard to prevent
-     * canvas hotkeys (like WSAD) from firing while the HUD is open
-     * AND the user is not interacting with a designated input field.
-     */
-    installGlobalHudInputGuard: () => {
-        const guardHandler = (event) => {
-            // Only run if Argon is open
-            if (!ui.ARGON?.isOpen) return;
-
-            const target = event.target;
-            const targetTag = target.tagName;
-
-            // Check for standard form elements OR our manual guard attribute
-            if (targetTag === "INPUT" || targetTag === "SELECT" || targetTag === "TEXTAREA" || target.closest('[data-argon-input-guard="true"]')) {
-                return; // Let the key event proceed to the input
-            }
-
-            // Block the keypress to prevent token movement, etc.
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-        };
-
-        document.body.addEventListener("keydown", guardHandler, true);
-        console.log("[ECH-RMU] Global HUD input guard installed.");
-    },
-
-    /**
-     * Attaches simple event stoppers to a panel to prevent
-     * events from propagating *through* it to the canvas.
-     * This is a "lighter" guard for non-interactive panels.
-     * @param {ButtonPanel} panel - The Argon ButtonPanel instance.
-     */
-    attachPanelInteractionGuards(panel) {
-        const tryAttach = () => {
-            const el = panel?.element;
-            if (!el) return requestAnimationFrame(tryAttach);
-            const stop = (e) => {
-                e.stopPropagation();
-            };
-            // This list is non-capturing and just stops bubbling.
-            ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "touchstart", "touchend", "contextmenu", "wheel", "focusin", "focusout", "blur", "keydown", "keyup"].forEach((type) => {
-                el.addEventListener(type, stop, { capture: false });
-            });
-        };
-        requestAnimationFrame(tryAttach);
-    },
-
-    /**
-     * Attaches targeted event stoppers to an individual button.
-     * Ensures the button intercepts pointer events and prevents
-     * clicks from falling through to the canvas below.
-     * @param {object} component - The Argon button component.
-     */
-    attachButtonInteractionGuards(component) {
-        const tryAttach = () => {
-            const el = component?.element;
-            if (!el) return requestAnimationFrame(tryAttach);
-
-            // 1. Force the element to act as a physical click barrier
-            el.classList.add("rmu-interactive-button");
-            el.style.pointerEvents = "auto";
-            el.style.cursor = "pointer";
-
-            // 2. Prevent the event from bubbling up to the window/canvas
-            const stop = (e) => e.stopPropagation();
-            ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "contextmenu", "touchstart", "touchend"].forEach((type) => {
-                el.addEventListener(type, stop, { capture: false });
-            });
-        };
-        requestAnimationFrame(tryAttach);
-    },
-};
-
-// -----------------------------------------------------------------------------
-// III. General Search Feature (Reusable)
+// II. General Search Feature (Reusable)
 // -----------------------------------------------------------------------------
 
 /**
  * Installs a general-purpose search/filter bar onto a panel.
  * @param {ButtonPanel} panel - The Argon panel instance.
- * @param {string} tileSelector - CSS selector for filterable items (e.g., ".rmu-skill-tile").
+ * @param {string} tileSelector - CSS selector for filterable items (e.g., ".ech-rmu-skill-tile").
  * @param {string} headerSelector - CSS selector for headers to hide when empty.
  * @param {string} logPrefix - Logging prefix (e.g., "skill", "spell").
  * @param {object} [options={}] - Configuration options.
@@ -374,14 +139,14 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
     // 3. Main Filter Logic
     const filter = (text) => {
         const terms = text.normalize("NFKC").trim().toLowerCase().split(" ").filter(Boolean);
-        const bar = panel?.element?.querySelector(".rmu-search-bar");
+        const bar = panel?.element?.querySelector(".ech-rmu-search-bar");
         if (!bar) return;
 
         // Find the summary element
-        const summaryEl = bar.querySelector(".rmu-search-summary");
+        const summaryEl = bar.querySelector(".ech-rmu-search-summary");
 
         const activeFilters = filters.filter((f) => {
-            return bar.querySelector(`#rmu-filter-${panelId}-${f.id}`)?.classList.contains("active");
+            return bar.querySelector(`#ech-rmu-filter-${panelId}-${f.id}`)?.classList.contains("active");
         });
 
         // Check if this is a "clear" event (no text, no active filters)
@@ -450,18 +215,18 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
         if (!tiles.length) {
             return requestAnimationFrame(waitAndMount);
         }
-        if (el.querySelector(".rmu-search-bar")) return;
+        if (el.querySelector(".ech-rmu-search-bar")) return;
 
         log("Mounting search bar...");
         headers = Array.from(el.querySelectorAll(headerSelector));
 
         // A. Create Search Bar container
         const searchBar = document.createElement("div");
-        searchBar.className = "rmu-search-bar";
+        searchBar.className = "ech-rmu-search-bar";
 
         // B. Create Text Input
         const search = document.createElement("input");
-        search.className = "rmu-search-input";
+        search.className = "ech-rmu-search-input";
         search.type = "text";
         search.placeholder = "Filter...";
         search.dataset.argonInputGuard = "true"; // For global guard
@@ -489,7 +254,7 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
 
         // C. Create Search Icon
         const searchIcon = document.createElement("a");
-        searchIcon.className = "rmu-search-icon";
+        searchIcon.className = "ech-rmu-search-icon";
         searchIcon.innerHTML = `<img src="${ICONS.search}" alt="Search" style="-webkit-mask-image: url('${ICONS.search}'); mask-image: url('${ICONS.search}');">`;
         searchIcon.addEventListener("click", (e) => {
             e.preventDefault();
@@ -498,19 +263,19 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
 
         // D. Create "Clear" Button
         const clearBtn = document.createElement("a");
-        clearBtn.className = "rmu-search-clear rmu-filter-button";
+        clearBtn.className = "ech-rmu-search-clear ech-rmu-filter-button";
         clearBtn.title = "Clear search and filters";
         clearBtn.innerHTML = `<img src="${ICONS.close}" alt="Clear" style="-webkit-mask-image: url('${ICONS.close}'); mask-image: url('${ICONS.close}');">`;
 
         // E. Create Filter Button Container
         const filterContainer = document.createElement("div");
-        filterContainer.className = "rmu-search-filters";
+        filterContainer.className = "ech-rmu-search-filters";
 
         // F. Create all filter buttons
         for (const f of filters) {
             const btn = document.createElement("a");
-            const btnId = `rmu-filter-${panelId}-${f.id}`;
-            btn.className = "rmu-filter-button";
+            const btnId = `ech-rmu-filter-${panelId}-${f.id}`;
+            btn.className = "ech-rmu-filter-button";
             btn.id = btnId;
             btn.title = f.tooltip;
             btn.innerHTML = `<img src="${f.icon}" alt="${f.tooltip}" style="-webkit-mask-image: url('${f.icon}'); mask-image: url('${f.icon}');">`;
@@ -528,7 +293,7 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
             e.preventDefault();
             search.value = "";
             RMUData.clearAllFilters(panelId);
-            filterContainer.querySelectorAll(".rmu-filter-button").forEach((b) => {
+            filterContainer.querySelectorAll(".ech-rmu-filter-button").forEach((b) => {
                 b.classList.remove("active");
             });
             filter(""); // Re-run filter (will be caught by the new logic in filter())
@@ -536,7 +301,7 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
 
         // H. Create Summary Text Element
         const summaryText = document.createElement("div");
-        summaryText.className = "rmu-search-summary";
+        summaryText.className = "ech-rmu-search-summary";
         summaryText.style.display = "none"; // Hide it by default
 
         // I. Append elements
@@ -553,7 +318,7 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
 }
 
 // -----------------------------------------------------------------------------
-// IV. Core Argon Definitions (Non-feature logic)
+// III. Core Argon Definitions (Non-feature logic)
 // -----------------------------------------------------------------------------
 
 /**
@@ -572,7 +337,7 @@ function defineTooltip(CoreHUD) {
     /** @augments BaseTooltip */
     class RMUTooltip extends BaseTooltip {
         get classes() {
-            return [...super.classes, "rmu"];
+            return [...super.classes, "ech-rmu"];
         }
     }
 
@@ -588,9 +353,9 @@ function defineSupportedActorTypes(CoreHUD) {
 }
 
 // -----------------------------------------------------------------------------
-// V. Export
+// IV. Export
 // -----------------------------------------------------------------------------
 
-// ICONS and getUserIcon are defined in icons.js and re-exported here so the feature files
-// can keep importing all shared helpers from one place.
+// ICONS, getUserIcon, formatBonus and UIGuards are defined in their own modules and
+// re-exported here so the feature files can keep importing all shared helpers from one place.
 export { ICONS, getUserIcon, RMUUtils, UIGuards, installListSearch, formatBonus, defineTooltip, defineSupportedActorTypes };

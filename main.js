@@ -9,7 +9,7 @@
 // Import modular logic
 import { SUPPORTED_ACTOR_TYPES } from "./src/constants.js";
 import { registerIconSettings } from "./src/settings.js";
-import { UIGuards, defineTooltip, defineSupportedActorTypes } from "./src/RMUCore.js";
+import { defineTooltip, defineSupportedActorTypes } from "./src/RMUCore.js";
 import { defineAttacksMain } from "./src/RMUFeatures/RMUAttacks.js";
 import { defineSkillsMain } from "./src/RMUFeatures/RMUSkills.js";
 import { defineSpellsMain } from "./src/RMUFeatures/RMUSpells.js";
@@ -67,12 +67,6 @@ function initConfig(CoreHUD) {
 Hooks.once("init", () => {
     console.info(`[ECH-RMU] Initializing RMU extension`);
     registerIconSettings();
-});
-
-Hooks.once("setup", () => {
-    console.info(`[ECH-RMU] Setting up RMU extension hooks`);
-    // Install the aggressive, global guard to prevent keydown conflicts.
-    UIGuards.installGlobalHudInputGuard();
 });
 
 // Register the main configuration function with Argon

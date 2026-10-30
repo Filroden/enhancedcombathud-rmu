@@ -1,11 +1,11 @@
 /* ────────────────────────────────────────────────
    Utility Classes (New Migrated Styles)
 ──────────────────────────────────────────────── */
-.enhancedcombathud-rmu .rmu-button-relative { position: relative !important; }
+.enhancedcombathud-rmu .ech-rmu-button-relative { position: relative !important; }
 
-.enhancedcombathud-rmu .rmu-overflow-hidden { overflow: hidden !important; }
+.enhancedcombathud-rmu .ech-rmu-overflow-hidden { overflow: hidden !important; }
 
-.enhancedcombathud-rmu .rmu-interactive-button {
+.enhancedcombathud-rmu .ech-rmu-interactive-button {
   cursor: pointer !important;
   pointer-events: auto !important;
 }
@@ -14,7 +14,7 @@
 /* ────────────────────────────────────────────────
    HUD Value Overlay (Attacks + Resistances)
 ──────────────────────────────────────────────── */
-.enhancedcombathud-rmu .rmu-value-overlay {
+.enhancedcombathud-rmu .ech-rmu-value-overlay {
   position: absolute;
   inset: 0;
   z-index: 3;
@@ -25,7 +25,7 @@
   text-align: center;
 }
 
-.enhancedcombathud-rmu .rmu-value-overlay-text {
+.enhancedcombathud-rmu .ech-rmu-value-overlay-text {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -42,8 +42,8 @@
   mix-blend-mode: multiply;
 }
 
-.enhancedcombathud-rmu .rmu-value-overlay-label,
-.enhancedcombathud-rmu .rmu-value-overlay-number {
+.enhancedcombathud-rmu .ech-rmu-value-overlay-label,
+.enhancedcombathud-rmu .ech-rmu-value-overlay-number {
   color: var(--filroden-color-text-main-solid);
   text-shadow:
     0 0 0.1em rgba(0, 0, 0, 0.9),
@@ -56,7 +56,7 @@
     drop-shadow(0 0 14px rgba(0,0,0,0.7));
 }
 
-.enhancedcombathud-rmu .rmu-value-overlay-label {
+.enhancedcombathud-rmu .ech-rmu-value-overlay-label {
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -64,14 +64,14 @@
   margin-bottom: 2px;
 }
 
-.enhancedcombathud-rmu .rmu-value-overlay-number {
+.enhancedcombathud-rmu .ech-rmu-value-overlay-number {
   font-size: 2.5rem;
   font-weight: 900;
   line-height: 3rem;
 }
 
 /* --- Reduced font size for Combo Spells (SCR / OB) --- */
-.enhancedcombathud-rmu .rmu-combo-spell .rmu-value-overlay-number {
+.enhancedcombathud-rmu .ech-rmu-combo-spell .ech-rmu-value-overlay-number {
   font-size: 1.75rem; /* Reduced from 2.5rem to fit two numbers */
   line-height: 2rem;
 }
@@ -80,7 +80,7 @@
 /* ────────────────────────────────────────────────
    Category count badge (RESISTANCE ROLLS tile)
 ──────────────────────────────────────────────── */
-.enhancedcombathud-rmu .rmu-count-badge {
+.enhancedcombathud-rmu .ech-rmu-count-badge {
   position: absolute;
   top: 4px;
   right: 6px;
@@ -120,7 +120,7 @@
 }
 
 /* Favorite chip on tiles */
-.enhancedcombathud-rmu .rmu-skill-fav-chip {
+.enhancedcombathud-rmu .ech-rmu-skill-fav-chip {
   position: absolute;
   top: 4px;
   left: 6px;
@@ -154,7 +154,7 @@
    WEAPON EQUIP TOGGLE (SVG ICON)
    ============================================= */
 
-.enhancedcombathud-rmu .rmu-equip-toggle {
+.enhancedcombathud-rmu .ech-rmu-equip-toggle {
   position: absolute;
   top: 6px;
   left: 6px;
@@ -172,13 +172,13 @@
   transition: all 0.2s ease;
 }
 
-.enhancedcombathud-rmu .rmu-equip-toggle:hover {
+.enhancedcombathud-rmu .ech-rmu-equip-toggle:hover {
   /* Slightly lighter background on hover to indicate interactivity */
   background: var(--filroden-color-bg-medium-solid);
   transform: scale(1.1);
 }
 
-.enhancedcombathud-rmu .rmu-equip-toggle .rmu-equip-icon {
+.enhancedcombathud-rmu .ech-rmu-equip-toggle .ech-rmu-equip-icon {
   width: 20px;
   height: 20px;
 }
@@ -188,8 +188,8 @@
    --- RMU HUD ACCORDION THEME ---
 ================================================================== */
 
-.enhancedcombathud-rmu .action-hud .action-element.rmu-skill-header,
-.enhancedcombathud-rmu .action-hud .action-element-container .action-element.rmu-skill-header {
+.enhancedcombathud-rmu .action-hud .action-element.ech-rmu-skill-header,
+.enhancedcombathud-rmu .action-hud .action-element-container .action-element.ech-rmu-skill-header {
   min-width: 0;
   padding: 1rem 0.2rem;
   width: 3rem;
@@ -205,7 +205,7 @@
 }
 
 /* Neutralise Argon’s absolute footer title so vertical text shows */
-.enhancedcombathud-rmu .rmu-skill-header .action-element-title {
+.enhancedcombathud-rmu .ech-rmu-skill-header .action-element-title {
   position: static !important;
   bottom: auto !important;
   left: auto !important;
@@ -226,7 +226,7 @@
 }
 
 /* --- LEVEL 1 HEADERS --- */
-.enhancedcombathud-rmu .rmu-spell-type-header {
+.enhancedcombathud-rmu .ech-rmu-spell-type-header {
   background-color: var(--filroden-color-text-accent) !important;
   color: var(--filroden-color-text-on-accent) !important;
   border: var(--filroden-border-main);
@@ -234,8 +234,8 @@
 }
 
 /* --- LEVEL 2 HEADERS --- */
-.enhancedcombathud-rmu .rmu-spell-list-header,
-.enhancedcombathud-rmu .rmu-skill-header:not(.rmu-spell-type-header) {
+.enhancedcombathud-rmu .ech-rmu-spell-list-header,
+.enhancedcombathud-rmu .ech-rmu-skill-header:not(.ech-rmu-spell-type-header) {
   background-color: var(--filroden-color-bg-medium-solid) !important;
   color: var(--filroden-color-text-main-solid) !important;
   border: var(--filroden-border-main);
@@ -243,9 +243,9 @@
 }
 
 /* --- HOVER STATE --- */
-.enhancedcombathud-rmu .rmu-spell-type-header:hover,
-.enhancedcombathud-rmu .rmu-skill-header:hover,
-.enhancedcombathud-rmu .rmu-spell-list-header:hover {
+.enhancedcombathud-rmu .ech-rmu-spell-type-header:hover,
+.enhancedcombathud-rmu .ech-rmu-skill-header:hover,
+.enhancedcombathud-rmu .ech-rmu-spell-list-header:hover {
   cursor: pointer;
 }
 
@@ -255,7 +255,7 @@
 ================================================================== */
 
 /* --- The main bar container --- */
-.enhancedcombathud-rmu .rmu-search-bar {
+.enhancedcombathud-rmu .ech-rmu-search-bar {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -270,7 +270,7 @@
 }
 
 /* --- Text input --- */
-.enhancedcombathud-rmu .rmu-search-input {
+.enhancedcombathud-rmu .ech-rmu-search-input {
   flex: 1;
   width: 100%;
   background: transparent;
@@ -281,22 +281,22 @@
   font-size: var(--filroden-font-size-l);
   pointer-events: auto; /* Clicks MUST work on the input */
 }
-.enhancedcombathud-rmu .rmu-search-input:focus {
+.enhancedcombathud-rmu .ech-rmu-search-input:focus {
   outline: none;
   box-shadow: none;
 }
 
 /* --- Container for all filter buttons --- */
-.enhancedcombathud-rmu .rmu-search-filters {
+.enhancedcombathud-rmu .ech-rmu-search-filters {
   display: flex;
   flex-direction: row;
   gap: 0.5rem;
 }
 
 /* --- Shared Button Style (Search, Clear, Filters) --- */
-.enhancedcombathud-rmu .rmu-search-icon,
-.enhancedcombathud-rmu .rmu-search-clear,
-.enhancedcombathud-rmu .rmu-filter-button {
+.enhancedcombathud-rmu .ech-rmu-search-icon,
+.enhancedcombathud-rmu .ech-rmu-search-clear,
+.enhancedcombathud-rmu .ech-rmu-filter-button {
   width: 2rem;
   height: 2rem;
   flex-shrink: 0;
@@ -310,9 +310,9 @@
 }
 
 /* --- Icon Image Styling (using mask-image) --- */
-.enhancedcombathud-rmu .rmu-search-icon img,
-.enhancedcombathud-rmu .rmu-search-clear img,
-.enhancedcombathud-rmu .rmu-filter-button img {
+.enhancedcombathud-rmu .ech-rmu-search-icon img,
+.enhancedcombathud-rmu .ech-rmu-search-clear img,
+.enhancedcombathud-rmu .ech-rmu-filter-button img {
   width: 100%;
   height: 100%;
   border: none;
@@ -323,22 +323,22 @@
 }
 
 /* --- Button States (Hover, Active) --- */
-.enhancedcombathud-rmu .rmu-search-clear:hover,
-.enhancedcombathud-rmu .rmu-filter-button:hover {
+.enhancedcombathud-rmu .ech-rmu-search-clear:hover,
+.enhancedcombathud-rmu .ech-rmu-filter-button:hover {
   opacity: 1;
 }
-.enhancedcombathud-rmu .rmu-filter-button:not(.active):hover img {
+.enhancedcombathud-rmu .ech-rmu-filter-button:not(.active):hover img {
   background-color: var(--filroden-color-text-main-solid);
 }
-.enhancedcombathud-rmu .rmu-filter-button.active {
+.enhancedcombathud-rmu .ech-rmu-filter-button.active {
   opacity: 1;
   box-shadow: none;
 }
-.enhancedcombathud-rmu .rmu-filter-button.active img,
-.enhancedcombathud-rmu .rmu-filter-button.active:hover img {
+.enhancedcombathud-rmu .ech-rmu-filter-button.active img,
+.enhancedcombathud-rmu .ech-rmu-filter-button.active:hover img {
   background-color: var(--filroden-color-success);
 }
-.enhancedcombathud-rmu .rmu-search-icon {
+.enhancedcombathud-rmu .ech-rmu-search-icon {
   opacity: 0.8; 
 }
 
@@ -348,7 +348,7 @@
 ================================================================== */
 
 /* --- This is the new container for all chips --- */
-.enhancedcombathud-rmu .rmu-chip-container {
+.enhancedcombathud-rmu .ech-rmu-chip-container {
 position: absolute;
   top: 50%;
   left: var(--filroden-space-m);
@@ -361,7 +361,7 @@ position: absolute;
 }
 
 /* --- This is the style for an individual chip --- */
-.enhancedcombathud-rmu .rmu-chip {
+.enhancedcombathud-rmu .ech-rmu-chip {
   width: 2rem;
   height: 2rem;
   padding: var(--filroden-space-xs);
@@ -371,29 +371,45 @@ position: absolute;
   box-sizing: border-box;
 }
 
+/* --- Chip icon: drawn as a mask in the success colour. The icon URL comes from
+   the GM's icon settings, so it is set inline as --ech-rmu-chip-icon-url. --- */
+.enhancedcombathud-rmu .ech-rmu-chip-icon {
+  width: 100%;
+  height: 100%;
+  background-color: var(--filroden-color-success);
+  -webkit-mask-image: var(--ech-rmu-chip-icon-url);
+  mask-image: var(--ech-rmu-chip-icon-url);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
 
 /* ==================================================================
    --- Magic Items Two-Tier Layout ---
 ================================================================== */
 /* Enable flex wrapping upwards specifically on the master Items panel */
-.enhancedcombathud-rmu .action-hud [id="rmu-magicitems-master"] .features-container {
+.enhancedcombathud-rmu .action-hud [id="ech-rmu-magicitems-master"] .features-container {
     display: flex;
     flex-wrap: wrap-reverse !important; 
 }
 
 /* Order 1: Items appear on the bottom row (the anchor line in wrap-reverse) */
-.enhancedcombathud-rmu .rmu-item-category-button {
+.enhancedcombathud-rmu .ech-rmu-item-category-button {
     order: 1;
     transition: opacity 0.2s ease;
 }
 
 /* Order 2: The invisible break forces the layout to wrap */
-.enhancedcombathud-rmu .rmu-items-flex-break {
+.enhancedcombathud-rmu .ech-rmu-items-flex-break {
     order: 2;
 }
 
 /* Order 3: Spells wrap to the next line UP */
-.enhancedcombathud-rmu .rmu-item-spell-button {
+.enhancedcombathud-rmu .ech-rmu-item-spell-button {
     order: 3;
 }
 
@@ -425,18 +441,18 @@ position: absolute;
    Values match the previous inline styles exactly, so the menu looks
    the same. Scoped to the menu's own wrapper class.
 ================================================================== */
-.enhancedcombathud-rmu .rmu-custom-icons {
+.enhancedcombathud-rmu .ech-rmu-custom-icons {
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.enhancedcombathud-rmu .rmu-custom-icons__intro {
+.enhancedcombathud-rmu .ech-rmu-custom-icons__intro {
   margin-bottom: 10px;
 }
 
-.enhancedcombathud-rmu .rmu-custom-icons__rows {
+.enhancedcombathud-rmu .ech-rmu-custom-icons__rows {
   max-height: 400px;
   overflow-y: auto;
   padding-inline-end: 5px;
@@ -445,51 +461,51 @@ position: absolute;
   gap: 5px;
 }
 
-.enhancedcombathud-rmu .rmu-custom-icons__row {
+.enhancedcombathud-rmu .ech-rmu-custom-icons__row {
   display: flex;
   gap: 5px;
   align-items: center;
   margin: 0;
 }
 
-.enhancedcombathud-rmu .rmu-custom-icons__name {
+.enhancedcombathud-rmu .ech-rmu-custom-icons__name {
   flex: 2;
   height: 28px;
 }
 
-.enhancedcombathud-rmu .rmu-custom-icons__path-group {
+.enhancedcombathud-rmu .ech-rmu-custom-icons__path-group {
   display: flex;
   flex: 3;
   gap: 5px;
   align-items: center;
 }
 
-.enhancedcombathud-rmu .rmu-custom-icons__path {
+.enhancedcombathud-rmu .ech-rmu-custom-icons__path {
   flex: 1;
   height: 28px;
 }
 
-.enhancedcombathud-rmu .rmu-custom-icons__icon-button {
+.enhancedcombathud-rmu .ech-rmu-custom-icons__icon-button {
   flex: 0 0 32px;
   height: 28px;
   padding: 0;
   line-height: 1;
 }
 
-.enhancedcombathud-rmu .rmu-custom-icons__delete {
+.enhancedcombathud-rmu .ech-rmu-custom-icons__delete {
   color: darkred;
 }
 
-.enhancedcombathud-rmu .rmu-custom-icons__add {
+.enhancedcombathud-rmu .ech-rmu-custom-icons__add {
   margin-top: 5px;
 }
 
-.enhancedcombathud-rmu .rmu-custom-icons__text-button {
+.enhancedcombathud-rmu .ech-rmu-custom-icons__text-button {
   width: auto;
   padding: 0 15px;
 }
 
-.enhancedcombathud-rmu .rmu-custom-icons__footer {
+.enhancedcombathud-rmu .ech-rmu-custom-icons__footer {
   display: flex;
   justify-content: flex-end;
   gap: 10px;

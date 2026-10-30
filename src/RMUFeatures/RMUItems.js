@@ -4,6 +4,7 @@
  */
 
 import { ICONS, RMUUtils, UIGuards } from "../RMUCore.js";
+import { createEquipToggle } from "../ui/dom.js";
 import { RMUData } from "../RMUData.js";
 
 // Global state for the magic items panel
@@ -18,20 +19,20 @@ function applyItemAccordionVisibility(panelEl) {
     let anySpellVisible = false;
 
     // 1. Toggle Spell Visibility
-    panelEl.querySelectorAll(".rmu-item-spell-button").forEach((el) => {
+    panelEl.querySelectorAll(".ech-rmu-item-spell-button").forEach((el) => {
         const isVisible = el.dataset.groupId === openItemGroupId;
         el.style.display = isVisible ? "" : "none";
         if (isVisible) anySpellVisible = true;
     });
 
     // 2. Toggle Flex Break
-    const flexBreak = panelEl.querySelector(".rmu-items-flex-break");
+    const flexBreak = panelEl.querySelector(".ech-rmu-items-flex-break");
     if (flexBreak) {
         flexBreak.style.display = anySpellVisible ? "" : "none";
     }
 
     // 3. Highlight Active Item
-    panelEl.querySelectorAll(".rmu-item-category-button").forEach((el) => {
+    panelEl.querySelectorAll(".ech-rmu-item-category-button").forEach((el) => {
         const isActive = el.dataset.groupId === openItemGroupId;
         el.style.opacity = openItemGroupId && !isActive ? "0.6" : "1";
     });
@@ -76,7 +77,7 @@ export function defineMagicItemsMain(CoreHUD) {
         get classes() {
             const c = super.classes.slice().filter((cls) => cls !== "disabled");
             if (this._isDisabled) c.push("disabled");
-            c.push("rmu-item-spell-button");
+            c.push("ech-rmu-item-spell-button");
             return c;
         }
 
@@ -179,7 +180,7 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         get classes() {
-            return [...super.classes, "rmu-item-category-button"];
+            return [...super.classes, "ech-rmu-item-category-button"];
         }
 
         _bindPanel(panelEl) {
@@ -197,19 +198,9 @@ export function defineMagicItemsMain(CoreHUD) {
             this.element.style.opacity = openItemGroupId && !isActive ? "0.6" : "1";
 
             if (this.itemDoc) {
-                const toggle = document.createElement("div");
-                toggle.className = "rmu-equip-toggle";
-
-                const iconSrc = this._equipped ? ICONS.equip_closed : ICONS.equip_open;
-                toggle.innerHTML = `<img src="${iconSrc}" class="rmu-equip-icon" alt="Toggle Equip"/>`;
-
-                toggle.classList.toggle("equipped", this._equipped);
-                toggle.title = this._equipped ? "Click to Unequip" : "Click to Equip";
-
-                toggle.addEventListener("pointerdown", (e) => e.stopImmediatePropagation());
-                toggle.addEventListener("click", (e) => {
-                    e.stopImmediatePropagation();
-                    this._onToggleEquip(e);
+                const toggle = createEquipToggle({
+                    equipped: this._equipped,
+                    onToggle: (e) => this._onToggleEquip(e),
                 });
 
                 const nameContainer = this.element.querySelector(".name");
@@ -280,7 +271,7 @@ export function defineMagicItemsMain(CoreHUD) {
             return "";
         }
         get classes() {
-            return [...super.classes, "rmu-items-flex-break"];
+            return [...super.classes, "ech-rmu-items-flex-break"];
         }
         async _renderInner() {
             if (!this.element) return;
@@ -345,7 +336,7 @@ export function defineMagicItemsMain(CoreHUD) {
 
             buttons.push(new RMUFlexBreakButton());
 
-            const panel = new ButtonPanel({ id: "rmu-magicitems-master", buttons });
+            const panel = new ButtonPanel({ id: "ech-rmu-magicitems-master", buttons });
             UIGuards.attachPanelInteractionGuards(panel);
 
             const panelEl = panel.element;

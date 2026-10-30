@@ -28,7 +28,7 @@ function applySkillsAccordionVisibility(panelEl) {
     const openKey = getOpenSkillsCategory();
 
     // 1. Restore and update Headers
-    panelEl.querySelectorAll(".rmu-skill-header").forEach((header) => {
+    panelEl.querySelectorAll(".ech-rmu-skill-header").forEach((header) => {
         const key = header.dataset.catKey || "";
         header.style.display = "";
         header.classList.toggle("open", key === openKey);
@@ -36,7 +36,7 @@ function applySkillsAccordionVisibility(panelEl) {
     });
 
     // 2. Update Skill Tiles
-    panelEl.querySelectorAll(".rmu-skill-tile").forEach((tile) => {
+    panelEl.querySelectorAll(".ech-rmu-skill-tile").forEach((tile) => {
         const key = tile.dataset.catKey || "";
         // Only show tiles if their category is currently open
         tile.style.display = openKey && key === openKey ? "" : "none";
@@ -79,7 +79,7 @@ export function defineSkillsMain(CoreHUD) {
         }
         get classes() {
             const open = getOpenSkillsCategory() === this._catKey;
-            return [...super.classes, "rmu-skill-header", open ? "open" : "closed"];
+            return [...super.classes, "ech-rmu-skill-header", open ? "open" : "closed"];
         }
         get hasTooltip() {
             return false;
@@ -108,7 +108,7 @@ export function defineSkillsMain(CoreHUD) {
             const openKey = getOpenSkillsCategory();
 
             // Toggle 'open'/'closed' classes on all headers
-            const headers = this._panelEl.querySelectorAll(".rmu-skill-header");
+            const headers = this._panelEl.querySelectorAll(".ech-rmu-skill-header");
             headers.forEach((h) => {
                 const key = h.dataset.catKey || "";
                 h.classList.toggle("open", key === openKey);
@@ -116,7 +116,7 @@ export function defineSkillsMain(CoreHUD) {
             });
 
             // Show/hide skill tiles
-            const tiles = this._panelEl.querySelectorAll(".rmu-skill-tile");
+            const tiles = this._panelEl.querySelectorAll(".ech-rmu-skill-tile");
             tiles.forEach((t) => {
                 const key = t.dataset.catKey || "";
                 // Only show if it's not hidden by search AND its category is open
@@ -206,7 +206,7 @@ export function defineSkillsMain(CoreHUD) {
         get classes() {
             const c = super.classes.slice().filter((cls) => cls !== "disabled");
             if (this.disabled) c.push("disabled");
-            c.push("rmu-skill-tile");
+            c.push("ech-rmu-skill-tile");
             return c;
         }
 
@@ -283,7 +283,7 @@ export function defineSkillsMain(CoreHUD) {
             const chips = [];
             if (isFav) {
                 chips.push({
-                    class: "rmu-skill-fav-chip",
+                    class: "ech-rmu-skill-fav-chip",
                     title: "Favorite",
                 });
             }
@@ -357,7 +357,7 @@ export function defineSkillsMain(CoreHUD) {
                         return [...super.classes, "disabled"];
                     }
                 })();
-                const panel = new ButtonPanel({ id: "rmu-skills", buttons: [empty] });
+                const panel = new ButtonPanel({ id: "ech-rmu-skills", buttons: [empty] });
                 UIGuards.attachPanelInteractionGuards(panel);
                 return panel;
             }
@@ -375,7 +375,7 @@ export function defineSkillsMain(CoreHUD) {
                 }
             }
 
-            const panel = new ButtonPanel({ id: "rmu-skills", buttons });
+            const panel = new ButtonPanel({ id: "ech-rmu-skills", buttons });
             UIGuards.attachPanelInteractionGuards(panel);
 
             // Install the search/filter bar
@@ -394,14 +394,14 @@ export function defineSkillsMain(CoreHUD) {
                 },
             ];
 
-            installListSearch(panel, ".rmu-skill-tile", ".rmu-skill-header", "skill", {
+            installListSearch(panel, ".ech-rmu-skill-tile", ".ech-rmu-skill-header", "skill", {
                 filters: skillFilters,
                 onClear: (panelEl) => {
                     if (!panelEl) return;
 
                     applySkillsAccordionVisibility(panelEl);
 
-                    const summaryEl = panelEl.querySelector(".rmu-search-summary");
+                    const summaryEl = panelEl.querySelector(".ech-rmu-search-summary");
                     if (summaryEl) summaryEl.style.display = "none";
                 },
             });
@@ -414,7 +414,7 @@ export function defineSkillsMain(CoreHUD) {
             requestAnimationFrame(() => {
                 const el = panel.element;
                 if (!el) return;
-                el.querySelectorAll(".rmu-skill-tile").forEach((t) => (t.style.display = "none"));
+                el.querySelectorAll(".ech-rmu-skill-tile").forEach((t) => (t.style.display = "none"));
             });
 
             return panel;

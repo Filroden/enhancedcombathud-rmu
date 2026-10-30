@@ -23,7 +23,7 @@ export class RMUCustomIconsMenu extends HandlebarsApplicationMixin(ApplicationV2
     }
 
     static DEFAULT_OPTIONS = {
-        id: "rmu-custom-icons",
+        id: "ech-rmu-custom-icons",
         // The application element is the form itself, so Foundry handles submission (the
         // Save button is type="submit") and calls the handler below.
         tag: "form",

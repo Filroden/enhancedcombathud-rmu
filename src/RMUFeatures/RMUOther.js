@@ -227,10 +227,10 @@ export function defineResistancesMain(CoreHUD) {
                         return [...super.classes, "disabled"];
                     }
                 })();
-                return new ButtonPanel({ id: "rmu-resistances", buttons: [empty] });
+                return new ButtonPanel({ id: "ech-rmu-resistances", buttons: [empty] });
             }
             const buttons = list.map((r) => new RMUResistanceActionButton(r));
-            const panel = new ButtonPanel({ id: "rmu-resistances", buttons });
+            const panel = new ButtonPanel({ id: "ech-rmu-resistances", buttons });
             UIGuards.attachPanelInteractionGuards(panel);
             return panel;
         }
@@ -367,7 +367,7 @@ export function defineSpecialChecksMain(CoreHUD) {
         async _getPanel() {
             await RMUData.ensureRMUReady();
             const buttons = [new RMUSpecialCheckEndurance(), new RMUSpecialCheckConcentration()];
-            const panel = new ButtonPanel({ id: "rmu-special-checks", buttons });
+            const panel = new ButtonPanel({ id: "ech-rmu-special-checks", buttons });
             UIGuards.attachPanelInteractionGuards(panel);
             return panel;
         }

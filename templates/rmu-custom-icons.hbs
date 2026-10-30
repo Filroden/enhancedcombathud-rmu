@@ -4,22 +4,22 @@
     template's root is a plain wrapper. Each row's inputs are named by the row's random id
     (name_<id>, path_<id>) so rows stay distinct while names are blank or duplicated.
 --}}
-<div class="rmu-custom-icons">
-    <p class="notes rmu-custom-icons__intro">
+<div class="ech-rmu-custom-icons">
+    <p class="notes ech-rmu-custom-icons__intro">
         Map specific skill or spell names to an icon. Enter the exact name (e.g. "Fire Bolt" or "Perception").
     </p>
 
-    <div class="rmu-custom-icons__rows">
+    <div class="ech-rmu-custom-icons__rows">
         {{#each icons}}
-            <div class="form-group rmu-custom-icons__row" data-row-id="{{this.id}}">
-                <input type="text" class="rmu-custom-icons__name" name="name_{{this.id}}" value="{{this.name}}" placeholder="Name (e.g., Perception)" />
+            <div class="form-group ech-rmu-custom-icons__row" data-row-id="{{this.id}}">
+                <input type="text" class="ech-rmu-custom-icons__name" name="name_{{this.id}}" value="{{this.name}}" placeholder="Name (e.g., Perception)" />
 
-                <div class="rmu-custom-icons__path-group">
-                    <input type="text" class="rmu-custom-icons__path" name="path_{{this.id}}" value="{{this.path}}" placeholder="Icon Path" />
-                    <button type="button" class="rmu-custom-icons__icon-button" data-action="pickFile" data-target="path_{{this.id}}" title="Browse Files">
+                <div class="ech-rmu-custom-icons__path-group">
+                    <input type="text" class="ech-rmu-custom-icons__path" name="path_{{this.id}}" value="{{this.path}}" placeholder="Icon Path" />
+                    <button type="button" class="ech-rmu-custom-icons__icon-button" data-action="pickFile" data-target="path_{{this.id}}" title="Browse Files">
                         <i class="fas fa-file-import fa-fw"></i>
                     </button>
-                    <button type="button" class="rmu-custom-icons__icon-button rmu-custom-icons__delete" data-action="deleteRow" title="Remove">
+                    <button type="button" class="ech-rmu-custom-icons__icon-button ech-rmu-custom-icons__delete" data-action="deleteRow" title="Remove">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -27,19 +27,19 @@
         {{/each}}
     </div>
 
-    <div class="form-group rmu-custom-icons__add">
-        <button type="button" class="rmu-custom-icons__text-button" data-action="addRow">
+    <div class="form-group ech-rmu-custom-icons__add">
+        <button type="button" class="ech-rmu-custom-icons__text-button" data-action="addRow">
             <i class="fas fa-plus"></i>
             Add Icon Map
         </button>
     </div>
 
-    <footer class="form-footer rmu-custom-icons__footer">
-        <button type="button" class="rmu-custom-icons__text-button" data-action="cancel">
+    <footer class="form-footer ech-rmu-custom-icons__footer">
+        <button type="button" class="ech-rmu-custom-icons__text-button" data-action="cancel">
             <i class="fas fa-times"></i>
             Cancel
         </button>
-        <button type="submit" class="rmu-custom-icons__text-button">
+        <button type="submit" class="ech-rmu-custom-icons__text-button">
             <i class="fas fa-save"></i>
             Save Changes
         </button>

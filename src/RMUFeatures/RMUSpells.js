@@ -18,7 +18,7 @@ function applyAccordionVisibility(panelEl) {
     const { type: openType, name: openName } = getOpenSpellState();
 
     // L1 Headers
-    panelEl.querySelectorAll(`.rmu-spell-type-header`).forEach((h) => {
+    panelEl.querySelectorAll(`.ech-rmu-spell-type-header`).forEach((h) => {
         const hType = h.dataset.listTypeKey || "";
         const isOpen = hType === openType;
         h.classList.toggle("open", isOpen);
@@ -26,7 +26,7 @@ function applyAccordionVisibility(panelEl) {
     });
 
     // L2 Headers
-    panelEl.querySelectorAll(`.rmu-spell-list-header`).forEach((h) => {
+    panelEl.querySelectorAll(`.ech-rmu-spell-list-header`).forEach((h) => {
         const hType = h.dataset.listTypeKey || "";
         const hName = h.dataset.listNameKey || "";
         const isMyParentOpen = hType === openType;
@@ -39,7 +39,7 @@ function applyAccordionVisibility(panelEl) {
     });
 
     // L3 Tiles
-    panelEl.querySelectorAll(`.rmu-spell-tile`).forEach((t) => {
+    panelEl.querySelectorAll(`.ech-rmu-spell-tile`).forEach((t) => {
         const tType = t.dataset.listTypeKey || "";
         const tName = t.dataset.listNameKey || "";
         const isSearchHidden = t.classList.contains("hidden");
@@ -100,7 +100,7 @@ export function defineSpellsMain(CoreHUD) {
         }
 
         get classes() {
-            return [...super.classes, "rmu-spell-tile"];
+            return [...super.classes, "ech-rmu-spell-tile"];
         }
 
         get hasTooltip() {
@@ -157,7 +157,7 @@ export function defineSpellsMain(CoreHUD) {
             await super._renderInner();
             if (!this.element) return;
 
-            this.element.classList.add("rmu-button-relative");
+            this.element.classList.add("ech-rmu-button-relative");
             this.element.dataset.tooltipDirection = "UP";
 
             // Chips
@@ -172,9 +172,9 @@ export function defineSpellsMain(CoreHUD) {
             this.element.dataset.isSubconscious = isSubconscious ? "true" : "false";
 
             const chips = [];
-            if (isFav) chips.push({ class: "rmu-spell-fav-chip", title: "Favorite" });
-            if (isInstant) chips.push({ class: "rmu-instant-chip", title: "Instantaneous" });
-            if (isSubconscious) chips.push({ class: "rmu-subconscious-chip", title: "Sub-conscious" });
+            if (isFav) chips.push({ class: "ech-rmu-spell-fav-chip", title: "Favorite" });
+            if (isInstant) chips.push({ class: "ech-rmu-instant-chip", title: "Instantaneous" });
+            if (isSubconscious) chips.push({ class: "ech-rmu-subconscious-chip", title: "Sub-conscious" });
             RMUUtils.buildChipContainer(this.element, chips);
 
             // --- SCR / OB OVERLAY ---
@@ -185,7 +185,7 @@ export function defineSpellsMain(CoreHUD) {
 
                 RMUUtils.applyValueOverlay(this.element, `${scrVal} / ${obVal}`, "SCR / OB");
                 // Ensures custom CSS font-size reduction for dual values is applied
-                this.element.classList.add("rmu-combo-spell");
+                this.element.classList.add("ech-rmu-combo-spell");
             } else {
                 RMUUtils.applyValueOverlay(this.element, scrVal ?? "", "SCR");
             }
@@ -249,7 +249,7 @@ export function defineSpellsMain(CoreHUD) {
         get classes() {
             const { type: openType, name: openName } = getOpenSpellState();
             const isOpen = openType === this._listTypeKey && openName === this._listName;
-            return [...super.classes, "rmu-skill-header", "rmu-spell-list-header", isOpen ? "open" : "closed"];
+            return [...super.classes, "ech-rmu-skill-header", "ech-rmu-spell-list-header", isOpen ? "open" : "closed"];
         }
         _bindPanel(panelEl) {
             this._panelEl = panelEl;
@@ -302,7 +302,7 @@ export function defineSpellsMain(CoreHUD) {
         get classes() {
             const { type: openType } = getOpenSpellState();
             const isOpen = openType === this._listType;
-            return [...super.classes, "rmu-skill-header", "rmu-spell-type-header", isOpen ? "open" : "closed"];
+            return [...super.classes, "ech-rmu-skill-header", "ech-rmu-spell-type-header", isOpen ? "open" : "closed"];
         }
         _bindPanel(panelEl) {
             this._panelEl = panelEl;
@@ -370,7 +370,7 @@ export function defineSpellsMain(CoreHUD) {
                     }
                 })();
                 return new ButtonPanel({
-                    id: "rmu-spells-all",
+                    id: "ech-rmu-spells-all",
                     buttons: [empty],
                 });
             }
@@ -413,7 +413,7 @@ export function defineSpellsMain(CoreHUD) {
             }
 
             const panel = new ButtonPanel({
-                id: "rmu-spells-all",
+                id: "ech-rmu-spells-all",
                 buttons: allButtons,
             });
             UIGuards.attachPanelInteractionGuards(panel);
@@ -439,13 +439,13 @@ export function defineSpellsMain(CoreHUD) {
                 },
             ];
 
-            installListSearch(panel, ".rmu-spell-tile", ".rmu-spell-type-header, .rmu-spell-list-header", "spell", {
+            installListSearch(panel, ".ech-rmu-spell-tile", ".ech-rmu-spell-type-header, .ech-rmu-spell-list-header", "spell", {
                 filters: spellFilters,
                 onClear: (panelEl) => {
                     if (!panelEl) return;
                     setOpenSpellState(null, null);
                     applyAccordionVisibility(panelEl);
-                    const summaryEl = panelEl.querySelector(".rmu-search-summary");
+                    const summaryEl = panelEl.querySelector(".ech-rmu-search-summary");
                     if (summaryEl) summaryEl.style.display = "none";
                 },
             });

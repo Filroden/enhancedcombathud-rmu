@@ -4,6 +4,7 @@
  */
 
 import { ICONS, RMUUtils, UIGuards } from "../RMUCore.js";
+import { createEquipToggle } from "../ui/dom.js";
 import { RMUData } from "../RMUData.js";
 
 /**
@@ -79,7 +80,7 @@ export function defineAttacksMain(CoreHUD) {
             await super._renderInner();
             if (!this.element) return;
 
-            this.element.classList.add("rmu-interactive-button");
+            this.element.classList.add("ech-rmu-interactive-button");
             this.element.classList.toggle("disabled", this.disabled);
             this.element.dataset.tooltipDirection = "UP";
 
@@ -98,23 +99,10 @@ export function defineAttacksMain(CoreHUD) {
          * Creates and appends the equip/unequip toggle button.
          */
         _renderEquipToggle() {
-            const toggle = document.createElement("div");
-            toggle.className = "rmu-equip-toggle";
-
-            const iconSrc = this._equipped ? ICONS.equip_closed : ICONS.equip_open;
-            toggle.innerHTML = `<img src="${iconSrc}" class="rmu-equip-icon" alt="Toggle Equip"/>`;
-
-            toggle.classList.toggle("equipped", this._equipped);
-            toggle.title = this._equipped ? "Click to Unequip" : "Click to Equip";
-
-            toggle.addEventListener("pointerdown", (e) => {
-                e.stopImmediatePropagation();
+            const toggle = createEquipToggle({
+                equipped: this._equipped,
+                onToggle: (e) => this._onToggleEquip(e),
             });
-            toggle.addEventListener("click", (e) => {
-                e.stopImmediatePropagation();
-                this._onToggleEquip(e);
-            });
-
             this.element.appendChild(toggle);
         }
 
@@ -185,7 +173,7 @@ export function defineAttacksMain(CoreHUD) {
             if (event.button !== 0 || this.disabled) return;
 
             // 2. Check if click was on the equip toggle
-            if (event.target.closest(".rmu-equip-toggle")) {
+            if (event.target.closest(".ech-rmu-equip-toggle")) {
                 return; // Handled by the toggle's own click listener
             }
 
@@ -254,7 +242,7 @@ export function defineAttacksMain(CoreHUD) {
 
         async _getPanel() {
             const buttons = (this._attacks || []).map((a) => new RMUAttackActionButton(a, this.key));
-            const panel = new ButtonPanel({ id: `rmu-attacks-${this.key}`, buttons });
+            const panel = new ButtonPanel({ id: `ech-rmu-attacks-${this.key}`, buttons });
             UIGuards.attachPanelInteractionGuards(panel);
             return panel;
         }

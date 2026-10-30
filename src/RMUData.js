@@ -38,7 +38,7 @@ const RMUData = {};
 
 /**
  * Gets the active state of a specific filter for the current token and panel.
- * @param {string} panelId - The panel ID (e.g., "rmu-skills").
+ * @param {string} panelId - The panel ID (e.g., "ech-rmu-skills").
  * @param {string} filterId - The filter ID (e.g., "fav", "instant").
  * @returns {boolean} True if the filter is active.
  */
