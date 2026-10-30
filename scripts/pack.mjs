@@ -1,4 +1,3 @@
-import {compilePack} from '@foundryvtt/foundryvtt-cli';
 import {copyFiles} from './copy.mjs';
 import fs from 'fs';
 
@@ -12,7 +11,7 @@ copyFiles(
   ['js', 'json', 'css', 'hbs', 'svg', 'md'],
   [],
   ['dist', 'node_modules', '.git', '.github', 'scripts', 'design'],
-  ['package.json', 'package-lock.json', 'GEMINI.md', '.DS_Store', '.gitignore', '.gitattributes']
+  ['package.json', 'package-lock.json', 'eslint.config.js', '.DS_Store', '.gitignore', '.gitattributes']
 )  
 .then(() => {
   console.log('File copy operation completed successfully!');
