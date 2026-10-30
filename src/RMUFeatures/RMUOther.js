@@ -514,7 +514,8 @@ export function defineDrawerPanel(CoreHUD) {
             return [
                 {
                     gridCols: "1fr",
-                    captions: [{ label: "Hotbar Macros", align: "left" }],
+                    // CORE applies this as an inline text-align; "start" follows the text direction.
+                    captions: [{ label: "Hotbar Macros", align: "start" }],
                     buttons: macroButtons,
                 },
             ];
