@@ -3,7 +3,8 @@
  * Implements standard Spell Casting Rolls (SCR).
  */
 
-import { ICONS, getUserIcon, RMUUtils, installListSearch, UIGuards, formatBonus } from "../RMUCore.js";
+import { ICONS, getUserIcon, RMUUtils, installListSearch, formatBonus } from "../RMUCore.js";
+import { createBaseClasses } from "../ui/baseButtons.js";
 import { RMUData } from "../RMUData.js";
 
 // Global state helpers
@@ -49,16 +50,14 @@ function applyAccordionVisibility(panelEl) {
 }
 
 export function defineSpellsMain(CoreHUD) {
-    const ARGON = CoreHUD.ARGON;
-    const { ActionPanel } = ARGON.MAIN;
-    const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
-    const { ActionButton, ButtonPanelButton } = ARGON.MAIN.BUTTONS;
+    const { ButtonPanelButton } = CoreHUD.ARGON.MAIN.BUTTONS;
+    const { RMUActionButton, RMUEmptyButton, RMUActionPanel, createGuardedPanel } = createBaseClasses(CoreHUD.ARGON);
 
     /**
      * L3: An action button for a single spell.
      * Handles standard SCR (Casting).
      */
-    class RMUSpellActionButton extends ActionButton {
+    class RMUSpellActionButton extends RMUActionButton {
         constructor(spell) {
             super();
             this.spell = spell;
@@ -93,10 +92,6 @@ export function defineSpellsMain(CoreHUD) {
 
             // Fallback for all spells
             return ICONS.spells_muted;
-        }
-
-        get isInteractive() {
-            return true;
         }
 
         get classes() {
@@ -158,7 +153,6 @@ export function defineSpellsMain(CoreHUD) {
             if (!this.element) return;
 
             this.element.classList.add("ech-rmu-button-relative");
-            this.element.dataset.tooltipDirection = "UP";
 
             // Chips
             const modifiersStr = this.spell.modifiers || "";
@@ -190,9 +184,6 @@ export function defineSpellsMain(CoreHUD) {
                 RMUUtils.applyValueOverlay(this.element, scrVal ?? "", "SCR");
             }
 
-            this.element.style.pointerEvents = "auto";
-            this.element.style.cursor = "pointer";
-
             // Attributes
             const listInfo = this.spell._rawListInfo || {};
             const nameNorm = `${this.spell.name} ${listInfo.listName} ${listInfo.realm} ${listInfo.listType} Lvl ${this.spell.level}`.toLowerCase();
@@ -207,27 +198,14 @@ export function defineSpellsMain(CoreHUD) {
             this.element.style.display = isVisible ? "" : "none";
         }
 
-        async _onMouseDown(event) {
-            // Left Click (Action)
-            if (event.button === 0) {
-                event.preventDefault();
-                event.stopPropagation();
-                await this._roll();
-            }
-        }
-
-        async _onLeftClick(event) {
-            event?.preventDefault?.();
-            event?.stopPropagation?.();
-        }
-
-        async _roll() {
+        /** Casts the spell (Spell Casting Roll). */
+        async _onActivate() {
             await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenSCRAction", this.spell);
         }
     }
 
     // --- Accordion Headers (Standard) ---
-    class RMUSpellListButton extends ActionButton {
+    class RMUSpellListButton extends RMUActionButton {
         constructor(listName, listTypeKey) {
             super();
             this._listName = listName;
@@ -239,9 +217,6 @@ export function defineSpellsMain(CoreHUD) {
         }
         get icon() {
             return "";
-        }
-        get isInteractive() {
-            return true;
         }
         get hasTooltip() {
             return false;
@@ -257,31 +232,22 @@ export function defineSpellsMain(CoreHUD) {
         async _renderInner() {
             await super._renderInner();
             if (this.element) {
-                this.element.style.pointerEvents = "auto";
-                this.element.style.cursor = "pointer";
                 this.element.dataset.listTypeKey = this._listTypeKey;
                 this.element.dataset.listNameKey = this._listName;
                 this.element.dataset.nameNorm = this.label.toLowerCase();
                 this.element.dataset.catKey = this._listName;
             }
         }
-        async _onMouseDown(event) {
-            if (event?.button !== 0) return;
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
+        /** Opens this list's spells, or closes them if already open. */
+        async _onActivate() {
             const { name: openName } = getOpenSpellState();
             const isOpen = openName === this._listName;
             setOpenSpellState(this._listTypeKey, isOpen ? null : this._listName);
             applyAccordionVisibility(this._panelEl);
         }
-        async _onLeftClick(e) {
-            e?.preventDefault?.();
-            e?.stopPropagation?.();
-        }
     }
 
-    class RMUSpellListTypeButton extends ActionButton {
+    class RMUSpellListTypeButton extends RMUActionButton {
         constructor(listType) {
             super();
             this._listType = listType;
@@ -292,9 +258,6 @@ export function defineSpellsMain(CoreHUD) {
         }
         get icon() {
             return "";
-        }
-        get isInteractive() {
-            return true;
         }
         get hasTooltip() {
             return false;
@@ -310,26 +273,17 @@ export function defineSpellsMain(CoreHUD) {
         async _renderInner() {
             await super._renderInner();
             if (this.element) {
-                this.element.style.pointerEvents = "auto";
-                this.element.style.cursor = "pointer";
                 this.element.dataset.listTypeKey = this._listType;
                 this.element.dataset.nameNorm = this.label.toLowerCase();
                 this.element.dataset.catKey = this._listType;
             }
         }
-        async _onMouseDown(event) {
-            if (event?.button !== 0) return;
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
+        /** Opens this list type, or closes it (and any open list) if already open. */
+        async _onActivate() {
             const { type: openType } = getOpenSpellState();
             const isOpen = openType === this._listType;
             setOpenSpellState(isOpen ? null : this._listType, null);
             applyAccordionVisibility(this._panelEl);
-        }
-        async _onLeftClick(e) {
-            e?.preventDefault?.();
-            e?.stopPropagation?.();
         }
     }
 
@@ -358,21 +312,7 @@ export function defineSpellsMain(CoreHUD) {
             const allSpellsByListType = RMUData.getGroupedSpellsForHUD();
 
             if (!allSpellsByListType.size) {
-                const empty = new (class NoSpellsButton extends ActionButton {
-                    get label() {
-                        return "No spells known";
-                    }
-                    get icon() {
-                        return "";
-                    }
-                    get classes() {
-                        return [...super.classes, "disabled"];
-                    }
-                })();
-                return new ButtonPanel({
-                    id: "ech-rmu-spells-all",
-                    buttons: [empty],
-                });
+                return createGuardedPanel("ech-rmu-spells-all", [new RMUEmptyButton("No spells known")]);
             }
 
             const listOrder = {
@@ -412,11 +352,7 @@ export function defineSpellsMain(CoreHUD) {
                 }
             }
 
-            const panel = new ButtonPanel({
-                id: "ech-rmu-spells-all",
-                buttons: allButtons,
-            });
-            UIGuards.attachPanelInteractionGuards(panel);
+            const panel = createGuardedPanel("ech-rmu-spells-all", allButtons);
 
             const spellFilters = [
                 {
@@ -458,15 +394,9 @@ export function defineSpellsMain(CoreHUD) {
         }
     }
 
-    class RMUSpellsActionPanel extends ActionPanel {
+    class RMUSpellsActionPanel extends RMUActionPanel {
         get label() {
             return "SPELLS";
-        }
-        get maxActions() {
-            return null;
-        }
-        get currentActions() {
-            return null;
         }
         async _getButtons() {
             return [new RMUAllSpellsCategoryButton()];
