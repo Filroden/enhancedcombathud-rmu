@@ -419,3 +419,81 @@ position: absolute;
   right: unset !important;
   left: 0px !important;
 }
+
+/* ==================================================================
+   --- Custom Icons Settings Menu ---
+   Values match the previous inline styles exactly, so the menu looks
+   the same. Scoped to the menu's own wrapper class.
+================================================================== */
+.enhancedcombathud-rmu .rmu-custom-icons {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.enhancedcombathud-rmu .rmu-custom-icons__intro {
+  margin-bottom: 10px;
+}
+
+.enhancedcombathud-rmu .rmu-custom-icons__rows {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-inline-end: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.enhancedcombathud-rmu .rmu-custom-icons__row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  margin: 0;
+}
+
+.enhancedcombathud-rmu .rmu-custom-icons__name {
+  flex: 2;
+  height: 28px;
+}
+
+.enhancedcombathud-rmu .rmu-custom-icons__path-group {
+  display: flex;
+  flex: 3;
+  gap: 5px;
+  align-items: center;
+}
+
+.enhancedcombathud-rmu .rmu-custom-icons__path {
+  flex: 1;
+  height: 28px;
+}
+
+.enhancedcombathud-rmu .rmu-custom-icons__icon-button {
+  flex: 0 0 32px;
+  height: 28px;
+  padding: 0;
+  line-height: 1;
+}
+
+.enhancedcombathud-rmu .rmu-custom-icons__delete {
+  color: darkred;
+}
+
+.enhancedcombathud-rmu .rmu-custom-icons__add {
+  margin-top: 5px;
+}
+
+.enhancedcombathud-rmu .rmu-custom-icons__text-button {
+  width: auto;
+  padding: 0 15px;
+}
+
+.enhancedcombathud-rmu .rmu-custom-icons__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+  border-top: 1px solid var(--color-border-light-2);
+  padding-top: 10px;
+}

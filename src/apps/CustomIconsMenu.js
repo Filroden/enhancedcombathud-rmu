@@ -2,15 +2,12 @@
  * Settings menu for mapping individual spells and skills to custom icons.
  *
  * The map is stored in a hidden world setting as { "<name>": "<icon path>" }. Rows are
- * edited in memory (iconRows) and only written to the setting on save. Each row has a
+ * edited in memory (iconRows) and only written to the setting when the form is submitted. Each row has a
  * random id so its inputs can be told apart in the form even when names are blank or
  * duplicated while the GM is still editing.
  */
 
 import { MODULE_ID, MODULE_PATH, SETTING_KEYS } from "../constants.js";
-
-/** Delay before the page reloads after saving, so the "saved" notification can be seen. */
-const RELOAD_DELAY_MS = 500;
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -27,6 +24,14 @@ export class RMUCustomIconsMenu extends HandlebarsApplicationMixin(ApplicationV2
 
     static DEFAULT_OPTIONS = {
         id: "rmu-custom-icons",
+        // The application element is the form itself, so Foundry handles submission (the
+        // Save button is type="submit") and calls the handler below.
+        tag: "form",
+        form: {
+            handler: RMUCustomIconsMenu._onSubmit,
+            submitOnChange: false,
+            closeOnSubmit: true,
+        },
         window: {
             title: "Custom Spell & Skill Icons",
             icon: "fas fa-images",
@@ -38,7 +43,6 @@ export class RMUCustomIconsMenu extends HandlebarsApplicationMixin(ApplicationV2
             deleteRow: RMUCustomIconsMenu._onDeleteRow,
             pickFile: RMUCustomIconsMenu._onPickFile,
             cancel: RMUCustomIconsMenu._onCancel,
-            save: RMUCustomIconsMenu._onSave,
         },
     };
 
@@ -61,10 +65,8 @@ export class RMUCustomIconsMenu extends HandlebarsApplicationMixin(ApplicationV2
      */
     _syncState() {
         if (!this.element) return;
-        const form = this.element.querySelector("form");
-        if (!form) return;
 
-        const formData = new FormData(form);
+        const formData = new FormData(this.element);
         this.iconRows = (this.iconRows || []).map((row) => ({
             id: row.id,
             name: formData.get(`name_${row.id}`)?.trim() || "",
@@ -105,11 +107,13 @@ export class RMUCustomIconsMenu extends HandlebarsApplicationMixin(ApplicationV2
         this.close();
     }
 
-    static async _onSave(event, _target) {
-        // The buttons are type="button", but this guards against a native form submission
-        // reloading the page before the setting is written.
-        event.preventDefault();
-
+    /**
+     * Form submission handler: saves complete rows and offers a reload.
+     * Icons are read when the HUD's buttons are built, so the new map only takes effect
+     * after a reload. Foundry's own prompt is used; with world: true, a GM who accepts also
+     * reloads every connected client, so players see the new icons too.
+     */
+    static async _onSubmit(_event, _form, _formData) {
         this._syncState();
 
         const newIcons = {};
@@ -121,11 +125,6 @@ export class RMUCustomIconsMenu extends HandlebarsApplicationMixin(ApplicationV2
         }
 
         await game.settings.set(MODULE_ID, SETTING_KEYS.customUserIcons, newIcons);
-        ui.notifications.info("Custom icons saved. Reloading...");
-        this.close();
-
-        // Icons are read when the HUD's buttons are built, so a reload is the simplest way to
-        // make every open HUD pick up the new map.
-        setTimeout(() => globalThis.location.reload(), RELOAD_DELAY_MS);
+        await foundry.applications.settings.SettingsConfig.reloadConfirm({ world: true });
     }
 }

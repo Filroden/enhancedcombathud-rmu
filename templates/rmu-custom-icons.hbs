@@ -1,19 +1,25 @@
-<form autocomplete="off" style="padding: 10px; display: flex; flex-direction: column; gap: 10px;">
-    <p class="notes" style="margin-bottom: 10px;">
+{{!--
+    Custom spell and skill icon editor.
+    The application itself is the <form> element (ApplicationV2 with tag "form"), so this
+    template's root is a plain wrapper. Each row's inputs are named by the row's random id
+    (name_<id>, path_<id>) so rows stay distinct while names are blank or duplicated.
+--}}
+<div class="rmu-custom-icons">
+    <p class="notes rmu-custom-icons__intro">
         Map specific skill or spell names to an icon. Enter the exact name (e.g. "Fire Bolt" or "Perception").
     </p>
 
-    <div style="max-height: 400px; overflow-y: auto; padding-right: 5px; display: flex; flex-direction: column; gap: 5px;">
+    <div class="rmu-custom-icons__rows">
         {{#each icons}}
-            <div class="form-group" data-row-id="{{this.id}}" style="display: flex; gap: 5px; align-items: center; margin: 0;">
-                <input type="text" name="name_{{this.id}}" value="{{this.name}}" placeholder="Name (e.g., Perception)" style="flex: 2; height: 28px;" />
+            <div class="form-group rmu-custom-icons__row" data-row-id="{{this.id}}">
+                <input type="text" class="rmu-custom-icons__name" name="name_{{this.id}}" value="{{this.name}}" placeholder="Name (e.g., Perception)" />
 
-                <div style="display: flex; flex: 3; gap: 5px; align-items: center;">
-                    <input type="text" name="path_{{this.id}}" value="{{this.path}}" placeholder="Icon Path" style="flex: 1; height: 28px;" />
-                    <button type="button" data-action="pickFile" data-target="path_{{this.id}}" title="Browse Files" style="flex: 0 0 32px; height: 28px; padding: 0; line-height: 1;">
+                <div class="rmu-custom-icons__path-group">
+                    <input type="text" class="rmu-custom-icons__path" name="path_{{this.id}}" value="{{this.path}}" placeholder="Icon Path" />
+                    <button type="button" class="rmu-custom-icons__icon-button" data-action="pickFile" data-target="path_{{this.id}}" title="Browse Files">
                         <i class="fas fa-file-import fa-fw"></i>
                     </button>
-                    <button type="button" data-action="deleteRow" title="Remove" style="flex: 0 0 32px; height: 28px; padding: 0; line-height: 1; color: darkred;">
+                    <button type="button" class="rmu-custom-icons__icon-button rmu-custom-icons__delete" data-action="deleteRow" title="Remove">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -21,21 +27,21 @@
         {{/each}}
     </div>
 
-    <div class="form-group" style="margin-top: 5px;">
-        <button type="button" data-action="addRow" style="width: auto; padding: 0 15px;">
+    <div class="form-group rmu-custom-icons__add">
+        <button type="button" class="rmu-custom-icons__text-button" data-action="addRow">
             <i class="fas fa-plus"></i>
             Add Icon Map
         </button>
     </div>
 
-    <footer class="form-footer" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; border-top: 1px solid var(--color-border-light-2); padding-top: 10px;">
-        <button type="button" data-action="cancel" style="width: auto; padding: 0 15px;">
+    <footer class="form-footer rmu-custom-icons__footer">
+        <button type="button" class="rmu-custom-icons__text-button" data-action="cancel">
             <i class="fas fa-times"></i>
             Cancel
         </button>
-        <button type="button" data-action="save" style="width: auto; padding: 0 15px;">
+        <button type="submit" class="rmu-custom-icons__text-button">
             <i class="fas fa-save"></i>
             Save Changes
         </button>
     </footer>
-</form>
+</div>
