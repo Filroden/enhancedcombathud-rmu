@@ -6,17 +6,10 @@
 import { ICONS, RMUUtils } from "../RMUCore.js";
 import { createEquipToggle } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
-import { RMUData } from "../RMUData.js";
-
-/**
- * Whether an attack's weapon is ready to use. The system reports isEquipped; readyState is
- * the older name for the same flag.
- * @param {object|undefined} attack - An attack from the actor's attack list.
- * @returns {boolean}
- */
-function isAttackEquipped(attack) {
-    return Boolean(attack?.isEquipped ?? attack?.readyState ?? false);
-}
+import { hudToken } from "../system/context.js";
+import { callTokenAction } from "../system/api.js";
+import { ensureExtendedTokenData, ensureRMUReady } from "../system/derive.js";
+import { attackCategory, attackTooltipDetails, getActorAttacks, getLiveAttack, isAttackEquipped } from "../system/attacks.js";
 
 /**
  * Defines and registers the main Attacks panel with Argon.
@@ -52,7 +45,7 @@ export function defineAttacksMain(CoreHUD) {
      */
     class RMUAttackActionButton extends RMUActionButton {
         /**
-         * @param {object} attack - The attack object (from RMUData).
+         * @param {object} attack - The attack object (from the system's attack list).
          * @param {string} catKey - The category key (e.g., "melee").
          */
         constructor(attack, catKey) {
@@ -73,7 +66,7 @@ export function defineAttacksMain(CoreHUD) {
          * and bonuses.
          */
         _readLiveState() {
-            const live = RMUData.getLiveAttack(this.attack);
+            const live = getLiveAttack(this.attack);
             this.attack = live;
             this._equipped = isAttackEquipped(live);
         }
@@ -125,16 +118,16 @@ export function defineAttacksMain(CoreHUD) {
          * their position until the HUD is next rebuilt; the equipped-first sort applies then.
          */
         async _onToggleEquip() {
-            const token = ui.ARGON?._token;
+            const token = hudToken();
             if (!token || !this.attack.itemId) {
                 console.error("[ECH-RMU] Cannot toggle equip: No token or itemID.");
                 return;
             }
 
-            const toggled = await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenToggleEquippedState", this.attack.itemId);
+            const toggled = await callTokenAction(token, "rmuTokenToggleEquippedState", this.attack.itemId);
             if (!toggled) return; // The wrapper has already reported the failure.
 
-            await RMUData.ensureExtendedTokenData();
+            await ensureExtendedTokenData();
             await refreshAttackButtons();
         }
 
@@ -147,20 +140,7 @@ export function defineAttacksMain(CoreHUD) {
             const a = this.attack ?? {};
 
             // Physical Attack Tooltip
-            const details = [
-                { label: "Specialization", value: a.skill?.specialization },
-                { label: "Size", value: a.size },
-                { label: "Chart", value: a.chart?.name },
-                { label: "Fumble", value: a.fumble },
-                ...(["melee", "natural", "shield"].includes(this._catKey) ? [{ label: "Melee reach", value: a.meleeRange ? Number.parseFloat(Number(a.meleeRange).toFixed(1)) : null }] : []),
-                ...(this._catKey === "ranged" ? [{ label: "Range (short)", value: RMUData.getShortRange(a.rangeInrements ?? a.rangeIncrements ?? a.rangeIntervals ?? a.range) }] : []),
-                { label: "Item Strength", value: a.itemStrength },
-                { label: "Ranks", value: a.skill?.ranks },
-                { label: "Combat Training", value: a.skill?.name },
-                { label: "2H", value: Number(a.twoHandedBonus) === 10 ? "Yes" : "No" },
-                { label: "Bonus OB", value: a.itemBonus },
-                { label: "Total OB", value: a.totalBonus },
-            ].filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
+            const details = attackTooltipDetails(a, this._catKey).filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
 
             return {
                 title: this.label,
@@ -176,7 +156,7 @@ export function defineAttacksMain(CoreHUD) {
          * actor's live data in case it changed since the button was rendered.
          */
         async _onActivate() {
-            const token = ui.ARGON?._token;
+            const token = hudToken();
             const targets = game.user?.targets ?? new Set();
 
             if (!targets.size) {
@@ -184,16 +164,16 @@ export function defineAttacksMain(CoreHUD) {
                 return;
             }
 
-            await RMUData.ensureExtendedTokenData();
+            await ensureExtendedTokenData();
 
-            const live = RMUData.getLiveAttack(this.attack);
+            const live = getLiveAttack(this.attack);
 
             if (!live.isEquipped) {
                 ui.notifications?.warn?.(`${live?.attackName ?? this.label} is not equipped.`);
                 return;
             }
 
-            await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenAttackAction", live);
+            await callTokenAction(token, "rmuTokenAttackAction", live);
         }
     }
 
@@ -255,15 +235,15 @@ export function defineAttacksMain(CoreHUD) {
         async _getButtons() {
             // A new set of attack buttons is about to be built, so forget the previous ones.
             liveAttackButtons.clear();
-            await RMUData.ensureRMUReady();
-            const allNormalAttacks = RMUData.getTokenAttacks();
+            await ensureRMUReady();
+            const allNormalAttacks = getActorAttacks();
 
             // We initialize buckets based ONLY on the filtered CATS array
             const buckets = new Map(CATS.map((c) => [c.key, []]));
 
             // Bucket Normal Attacks
             for (const atk of allNormalAttacks) {
-                const key = RMUData.bucketOf(atk);
+                const key = attackCategory(atk);
                 // Safety check: ensure the bucket exists in our defined categories
                 if (buckets.has(key)) {
                     buckets.get(key).push(atk);
@@ -273,8 +253,8 @@ export function defineAttacksMain(CoreHUD) {
             // Sort attacks within each bucket (Physical logic only)
             for (const list of buckets.values()) {
                 list.sort((a, b) => {
-                    const la = RMUData.getLiveAttack(a);
-                    const lb = RMUData.getLiveAttack(b);
+                    const la = getLiveAttack(a);
+                    const lb = getLiveAttack(b);
                     const ea = isAttackEquipped(la);
                     const eb = isAttackEquipped(lb);
                     if (ea !== eb) return ea ? -1 : 1; // Equipped first

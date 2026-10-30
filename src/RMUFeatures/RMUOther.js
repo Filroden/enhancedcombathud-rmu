@@ -13,7 +13,12 @@
 
 import { ICONS, RMUUtils } from "../RMUCore.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
-import { RMUData } from "../RMUData.js";
+import { hudActor, hudToken } from "../system/context.js";
+import { callHudTokenAction, callTokenAction } from "../system/api.js";
+import { ensureRMUReady } from "../system/derive.js";
+import { getActorResistances } from "../system/resistances.js";
+import { getEnduranceValues, getSkillByName } from "../system/skills.js";
+import { getPortraitData } from "../system/portrait.js";
 
 // -----------------------------------------------------------------------------
 // Portrait
@@ -29,13 +34,24 @@ export function definePortraitPanel(CoreHUD) {
     }
 
     class RMUPortraitPanel extends Base {
+        /**
+         * CORE debounces refresh by 100 ms (its constructor wraps this method), and its
+         * updateActor hook calls it on every actor change. If the HUD is unbound inside that
+         * window (for example the token is deselected straight after its HP is edited), the
+         * delayed render runs with no actor and CORE's own name getter throws. Checking
+         * here runs at the moment the debounced call fires, so a stale refresh is skipped.
+         * @override
+         */
+        refresh() {
+            if (!this.actor) return;
+            super.refresh();
+        }
+
         /** @override */
         get description() {
-            const a = this.actor;
-            if (!a) return "";
-            const level = a.system?.level ?? a.system?.details?.level;
-            const prof = a.system?.profession ?? a.system?.details?.profession;
-            return [level == null ? null : `Lvl ${level}`, prof].filter(Boolean).join(" · ");
+            if (!this.actor) return "";
+            const { level, profession } = getPortraitData(this.actor);
+            return [level == null ? null : `Lvl ${level}`, profession].filter(Boolean).join(" · ");
         }
 
         /** @override */
@@ -45,22 +61,22 @@ export function definePortraitPanel(CoreHUD) {
 
         /** @override */
         get isDying() {
-            const hp = this.actor?.system?.health?.hp;
-            return Number(hp?.value ?? 0) <= 0;
+            return getPortraitData(this.actor).hp.value <= 0;
         }
 
-        /** @override */
+        /**
+         * CORE draws each block as coloured text spans. The HP colours come from the module
+         * theme, because CORE 5 no longer defines success or danger colours; PP and DB use
+         * CORE's own movement colour.
+         * @override
+         */
         async getStatBlocks() {
-            const hpVal = Number(this.actor?.system?.health?.hp?.value ?? 0);
-            const hpMax = Number(this.actor?.system?.health?.hp?.max ?? 0);
-            const ppVal = Number(this.actor?.system?.health?.power?.value ?? 0);
-            const ppMax = Number(this.actor?.system?.health?.power?.max ?? 0);
-            const dbTot = Number(this.actor?.system?._dbBlock?.totalDB ?? 0);
-
+            const { hp, pp, db } = getPortraitData(this.actor);
+            const hpColor = hp.value <= 0 ? "var(--filroden-color-danger)" : "var(--filroden-color-success)";
             return [
-                [{ text: `${hpVal}`, color: hpVal <= 0 ? "var(--ech-danger)" : "var(--ech-success)" }, { text: "/" }, { text: `${hpMax}`, color: "var(--ech-fore)" }, { text: "HP" }],
-                [{ text: "PP" }, { text: `${ppVal}/${ppMax}`, color: "var(--ech-movement-baseMovement-background)" }],
-                [{ text: "DB" }, { text: `${dbTot}`, color: "var(--ech-movement-baseMovement-background)" }],
+                [{ text: `${hp.value}`, color: hpColor }, { text: "/" }, { text: `${hp.max}`, color: "var(--filroden-color-text-main-solid)" }, { text: "HP" }],
+                [{ text: "PP" }, { text: `${pp.value}/${pp.max}`, color: "var(--ech-movement-baseMovement-background)" }],
+                [{ text: "DB" }, { text: `${db}`, color: "var(--ech-movement-baseMovement-background)" }],
             ];
         }
     }
@@ -140,7 +156,8 @@ export function defineResistancesMain(CoreHUD) {
             return this.resist?.name || "Resistance";
         }
         get icon() {
-            return ICONS[this.resist?.name] || ICONS.panel;
+            // Icon settings are keyed by the system's untranslated resistance identifier.
+            return ICONS[this.resist?.value ?? this.resist?.name] || ICONS.panel;
         }
         get hasTooltip() {
             return true;
@@ -173,7 +190,7 @@ export function defineResistancesMain(CoreHUD) {
         }
 
         async _onActivate() {
-            await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenResistanceRollAction", this.resist?.name);
+            await callHudTokenAction("rmuTokenResistanceRollAction", this.resist?.name);
         }
     }
 
@@ -192,8 +209,8 @@ export function defineResistancesMain(CoreHUD) {
         }
 
         async _getPanel() {
-            await RMUData.ensureRMUReady();
-            const list = RMUData.getTokenResistances();
+            await ensureRMUReady();
+            const list = getActorResistances();
             const buttons = list.length ? list.map((r) => new RMUResistanceActionButton(r)) : [new RMUEmptyButton("No resistances", ICONS.panel)];
             return createGuardedPanel("ech-rmu-resistances", buttons);
         }
@@ -221,8 +238,8 @@ export function defineResistancesMain(CoreHUD) {
  * check.
  */
 const SPECIAL_CHECKS = Object.freeze([
-    { label: "PHYSICAL", iconKey: "endurance", skillName: "Body Development", rollOption: "Endurance" },
-    { label: "MENTAL", iconKey: "concentration", skillName: "Mental Focus", rollOption: "Concentration" },
+    { label: "PHYSICAL", iconKey: "endurance", skillName: "Body Development", rollOption: "Endurance", injuryKey: "_endurance" },
+    { label: "MENTAL", iconKey: "concentration", skillName: "Mental Focus", rollOption: "Concentration", injuryKey: "_concentration" },
 ]);
 
 /**
@@ -253,34 +270,48 @@ export function defineSpecialChecksMain(CoreHUD) {
             return true;
         }
 
+        /**
+         * The skill's breakdown, followed by the racial modifier when there is one, so the
+         * total matches the character sheet's Physical or Mental Endurance.
+         */
         async getTooltipData() {
             const title = this.label;
             const subtitle = this._skill?.system?.name ?? `${this._config.rollOption} Check`;
-            return RMUUtils.buildSkillTooltip(this._skill, title, subtitle);
+            const tooltip = RMUUtils.buildSkillTooltip(this._skill, title, subtitle);
+            const { total, skillBonus, racial } = this._values ?? {};
+            if (!racial) return tooltip;
+            const withoutTotal = tooltip.details.filter((d) => d.label !== "Total bonus");
+            const totals = RMUUtils.formatTooltipDetails([
+                { label: "Skill bonus", value: skillBonus },
+                { label: "Racial bonus", value: racial },
+                { label: "Total bonus", value: total },
+            ]);
+            return { ...tooltip, details: [...withoutTotal, ...totals] };
         }
 
         async _renderInner() {
             await super._renderInner();
             if (!this.element) return;
-            const actor = ui.ARGON?._token?.actor;
-            this._skill = actor ? RMUData.getSkillByName(actor, this._config.skillName) : null;
-            RMUUtils.applyValueOverlay(this.element, this._skill?.system?._bonus ?? "", "Total");
+            const actor = hudActor();
+            this._skill = actor ? getSkillByName(actor, this._config.skillName) : null;
+            this._values = getEnduranceValues(actor, this._config.injuryKey, this._skill);
+            RMUUtils.applyValueOverlay(this.element, this._values.total ?? "", "Total");
         }
 
         async _onActivate() {
-            await RMUData.ensureRMUReady();
-            const token = ui.ARGON?._token;
+            await ensureRMUReady();
+            const token = hudToken();
             const actor = token?.actor;
             if (!actor) {
                 ui.notifications?.error?.("No active token for HUD.");
                 return;
             }
-            const skill = this._skill ?? RMUData.getSkillByName(actor, this._config.skillName);
+            const skill = this._skill ?? getSkillByName(actor, this._config.skillName);
             if (!skill) {
                 ui.notifications?.warn?.(`Skill not found: ${this._config.skillName}`);
                 return;
             }
-            await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenSkillAction", skill, { specialManeuver: this._config.rollOption });
+            await callTokenAction(token, "rmuTokenSkillAction", skill, { specialManeuver: this._config.rollOption });
         }
     }
 
@@ -295,7 +326,7 @@ export function defineSpecialChecksMain(CoreHUD) {
             return true;
         }
         async _getPanel() {
-            await RMUData.ensureRMUReady();
+            await ensureRMUReady();
             const buttons = SPECIAL_CHECKS.map((config) => new RMUSpecialCheckButton(config));
             return createGuardedPanel("ech-rmu-special-checks", buttons);
         }
@@ -323,7 +354,7 @@ export function defineSpecialChecksMain(CoreHUD) {
  * @returns {boolean}
  */
 function isHudTokenActiveCombatant() {
-    const tokenId = ui.ARGON?._token?.id;
+    const tokenId = hudToken()?.id;
     const c = game.combat;
     if (!c?.started || !tokenId) return false;
     const activeId = c.combatant?.tokenId ?? c.current?.tokenId ?? null;
@@ -354,7 +385,7 @@ export function defineRestMain(CoreHUD) {
             return { title: "Rest", subtitle: "Recover resources", details: [{ label: "Info", value: "Open the rest dialog." }] };
         }
         async _onActivate() {
-            await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenRestAction");
+            await callHudTokenAction("rmuTokenRestAction");
         }
     }
 
@@ -415,7 +446,7 @@ export function defineCombatMain(CoreHUD) {
          */
         get visible() {
             const c = game.combat;
-            const isActorMatch = c?.started && c.combatant?.actorId && c.combatant.actorId === ui.ARGON?._token?.actor?.id;
+            const isActorMatch = c?.started && c.combatant?.actorId && c.combatant.actorId === hudToken()?.actor?.id;
             return isHudTokenActiveCombatant() || Boolean(isActorMatch);
         }
         async _getButtons() {

@@ -6,7 +6,9 @@ import { ICONS, getUserIcon, RMUUtils } from "../RMUCore.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
 import { ListSearch } from "../ui/search.js";
-import { RMUData } from "../RMUData.js";
+import { callHudTokenAction, getSkillDescription } from "../system/api.js";
+import { ensureRMUReady } from "../system/derive.js";
+import { getGroupedSkills } from "../system/skills.js";
 
 /**
  * Normalizes a category string into a key.
@@ -75,7 +77,7 @@ export function defineSkillsMain(CoreHUD) {
      */
     class RMUSkillActionButton extends RMUActionButton {
         /**
-         * @param {object} entry - The display-ready skill object from RMUData.
+         * @param {object} entry - The display-ready skill object (from system/skills.js).
          * @param {Accordion} accordion - The panel's accordion.
          */
         constructor(entry, accordion) {
@@ -124,17 +126,8 @@ export function defineSkillsMain(CoreHUD) {
                 { label: "Total bonus", value: sys._bonus },
             ].filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
 
-            // 2. Get skill description via RMU API
-            let description = "";
-            const api = game.system?.api?.rmuGetSkillDescription;
-            if (typeof api === "function" && skill) {
-                try {
-                    description = (await api(skill)) ?? "";
-                } catch (err) {
-                    console.error("[ECH-RMU] rmuGetSkillDescription API call FAILED!", err);
-                    description = "Error loading description.";
-                }
-            }
+            // 2. Skill description from the system
+            const description = await getSkillDescription(skill);
 
             // 3. Return the tooltip data
             return {
@@ -186,12 +179,7 @@ export function defineSkillsMain(CoreHUD) {
          * Rolls the skill using the centralized API wrapper.
          */
         async _onActivate() {
-            await RMUUtils.rmuTokenActionWrapper(
-                ui.ARGON?._token,
-                "rmuTokenSkillAction",
-                this.entry?.raw,
-                undefined, // No special options needed
-            );
+            await callHudTokenAction("rmuTokenSkillAction", this.entry?.raw, undefined);
         }
     }
 
@@ -219,8 +207,8 @@ export function defineSkillsMain(CoreHUD) {
         }
 
         async _getPanel() {
-            await RMUData.ensureRMUReady();
-            const groups = RMUData.getGroupedSkillsForHUD_All();
+            await ensureRMUReady();
+            const groups = getGroupedSkills();
             const buttons = [];
 
             if (!groups.size) {

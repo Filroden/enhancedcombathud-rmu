@@ -36,45 +36,6 @@ const RMUUtils = {
     applyValueOverlay,
 
     /**
-     * Centralized utility to call an RMU system API function robustly.
-     * Ensures a token is selected and handles API errors gracefully.
-     * @param {Token} token - The token to perform the action on.
-     * @param {string} apiFunctionName - The name of the function on `game.system.api`.
-     * @param {...*} args - Arguments to pass to the API function.
-     * @returns {Promise<boolean>} True if the API call succeeded, false otherwise.
-     */
-    async rmuTokenActionWrapper(token, apiFunctionName, ...args) {
-        if (!token) {
-            ui.notifications?.error?.("No active token for HUD.");
-            return false;
-        }
-        const api = game.system?.api?.[apiFunctionName];
-        if (typeof api !== "function") {
-            console.warn(`[ECH-RMU] RMU API function not available: ${apiFunctionName}`);
-            ui.notifications?.warn?.(`RMU API function not available: ${apiFunctionName}. Action simulated.`);
-            return false;
-        }
-
-        try {
-            // Ensure the token is controlled before acting, if possible
-            if (!token.controlled && typeof token.control === "function") {
-                await token.control({ releaseOthers: true });
-            }
-        } catch (_) {
-            /* non-fatal if control fails */
-        }
-
-        try {
-            await api(token, ...args);
-            return true;
-        } catch (err) {
-            console.error(`[ECH-RMU] ${apiFunctionName} error:`, err);
-            ui.notifications?.error?.(`${apiFunctionName} failed: ${err?.message ?? err}`);
-            return false;
-        }
-    },
-
-    /**
      * Builds a standardized tooltip data object for a skill.
      * @param {object} skill - The raw skill object.
      * @param {string} title - The main title for the tooltip.

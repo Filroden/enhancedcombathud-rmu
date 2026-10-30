@@ -8,7 +8,10 @@ import { ICONS, RMUUtils, UIGuards } from "../RMUCore.js";
 import { createEquipToggle } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
-import { RMUData } from "../RMUData.js";
+import { hudToken } from "../system/context.js";
+import { callTokenAction } from "../system/api.js";
+import { ensureExtendedTokenData, ensureRMUReady } from "../system/derive.js";
+import { getItemSpellGroups } from "../system/spells.js";
 
 /** Equipment states the system uses for an item that is owned but not in use. */
 const NOT_IN_USE_STATES = new Set(["carried", "none"]);
@@ -127,10 +130,10 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         async _onActivate() {
-            const token = ui.ARGON?._token;
+            const token = hudToken();
             if (!token) return;
-            await RMUData.ensureExtendedTokenData();
-            await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenSCRAction", this.spell);
+            await ensureExtendedTokenData();
+            await callTokenAction(token, "rmuTokenSCRAction", this.spell);
         }
     }
 
@@ -190,9 +193,9 @@ export function defineMagicItemsMain(CoreHUD) {
          * is updated in place by Foundry, so re-rendering reads the new state directly.
          */
         async _onToggleEquip() {
-            const token = ui.ARGON?._token;
+            const token = hudToken();
             if (!token || !this.itemDoc) return;
-            const toggled = await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenToggleEquippedState", this.itemDoc.id);
+            const toggled = await callTokenAction(token, "rmuTokenToggleEquippedState", this.itemDoc.id);
             if (!toggled) return; // The wrapper has already reported the failure.
             await Promise.all([this.render(), ...this.spellButtons.map((b) => b.render())]);
         }
@@ -310,11 +313,11 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         async _getButtons() {
-            const actor = ui.ARGON?._token?.actor;
+            const actor = hudToken()?.actor;
             if (!actor) return [];
 
-            await RMUData.ensureRMUReady();
-            const itemSpells = (actor.system._spells || []).filter((s) => s.kind === "item");
+            await ensureRMUReady();
+            const itemSpells = getItemSpellGroups(actor);
             if (itemSpells.length === 0) return [];
 
             return [new RMUItemsMasterCategoryButton(itemSpells, actor)];

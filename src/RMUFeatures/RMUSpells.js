@@ -7,7 +7,9 @@ import { ICONS, getUserIcon, RMUUtils, formatBonus } from "../RMUCore.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
 import { ListSearch } from "../ui/search.js";
-import { RMUData } from "../RMUData.js";
+import { callHudTokenAction } from "../system/api.js";
+import { ensureRMUReady } from "../system/derive.js";
+import { compareListTypes, getGroupedSpells, spellAttackBonus, spellRealmsText } from "../system/spells.js";
 
 /**
  * Spell list type headers dim their list headers while another list type is open, so the
@@ -30,7 +32,7 @@ export function defineSpellsMain(CoreHUD) {
      */
     class RMUSpellActionButton extends RMUActionButton {
         /**
-         * @param {object} spell - The spell, with its _rawListInfo (from RMUData).
+         * @param {object} spell - The spell, with its _rawListInfo (from system/spells.js).
          * @param {Accordion} accordion - The panel's accordion.
          */
         constructor(spell, accordion) {
@@ -41,16 +43,11 @@ export function defineSpellsMain(CoreHUD) {
                 this._listKey = spell._rawListInfo.listKey;
                 this._listTypeKey = spell._rawListInfo.groupName ?? spell._rawListInfo.listType;
             }
-            this._relatedAttack = this._findRelatedAttack();
         }
 
-        /**
-         * Finds the attack data.
-         */
-        _findRelatedAttack() {
-            if (!this.spell) return null;
-            const attacks = RMUData.getDirectedSpellAttacks();
-            return attacks.find((a) => a.name === this.spell.name);
+        /** Whether the spell also has an attack roll (it then shows its OB beside its SCR). */
+        get _hasAttack() {
+            return spellAttackBonus(this.spell) !== null;
         }
 
         get label() {
@@ -80,7 +77,6 @@ export function defineSpellsMain(CoreHUD) {
 
         async getTooltipData() {
             const s = this.spell;
-            const a = this._relatedAttack;
 
             // --- 1. BASE SPELL DETAILS (SCR) ---
             const duration = s._modifiedDuration?.duration || s._modifiedDuration?.dur?.duration || s.duration;
@@ -89,7 +85,7 @@ export function defineSpellsMain(CoreHUD) {
 
             const details = [
                 { label: "List type", value: s.listType },
-                { label: "Realm(s)", value: s.realms },
+                { label: "Realm(s)", value: spellRealmsText(s) },
                 { label: "AoE", value: aoe },
                 { label: "Duration", value: duration },
                 { label: "Range", value: range },
@@ -98,18 +94,17 @@ export function defineSpellsMain(CoreHUD) {
                 { label: "Level", value: s.level },
             ];
 
-            // --- 2. COMBO ATTACK DETAILS ---
-            if (a) {
+            // --- 2. ATTACK DETAILS (spells with an attack roll) ---
+            if (this._hasAttack) {
                 const attackDetails = [
-                    { label: "Attack Type", value: a.attack },
-                    { label: "Specialization", value: a.spellAttack?.specialization },
-                    { label: "Size", value: a.spellAttack?.size },
-                    { label: "Chart", value: a.spellAttack?.chart?.name },
-                    { label: "Fumble", value: a.spellAttack?.fumble },
-                    { label: "Range (interval)", value: a._modifiedRange?.range || a.range },
-                    { label: "AoE", value: a._modifiedAoE?.range || a.AoE },
-                    { label: "Targets", value: a._modifiedAoE?.targets },
-                    { label: "Total OB", value: a._totalBonus ?? a.totalBonus },
+                    { label: "Attack Type", value: s.attack },
+                    { label: "Specialization", value: s.spellAttack?.specialization },
+                    { label: "Size", value: s.spellAttack?.size },
+                    { label: "Chart", value: s.spellAttack?.chart?.name },
+                    { label: "Fumble", value: s.spellAttack?.fumble },
+                    { label: "Range (interval)", value: s._modifiedRange?.range || s.range },
+                    { label: "Targets", value: s._modifiedAoE?.targets },
+                    { label: "Total OB", value: spellAttackBonus(s) },
                 ];
                 details.push(...attackDetails);
             }
@@ -131,10 +126,9 @@ export function defineSpellsMain(CoreHUD) {
             this.element.classList.add("ech-rmu-button-relative");
 
             // Chips
-            const modifiersStr = this.spell.modifiers || "";
             const isFav = this.spell.isFavorite === true;
-            const isInstant = modifiersStr.includes("*");
-            const isSubconscious = (this.spell.spellType || "").substring(1).includes("s");
+            const isInstant = this.spell.isInstantaneous === true;
+            const isSubconscious = this.spell.isSubconscious === true;
 
             // Apply data attributes so the Search Filter can find them
             this.element.dataset.favorite = isFav ? "true" : "false";
@@ -149,9 +143,8 @@ export function defineSpellsMain(CoreHUD) {
 
             // --- SCR / OB OVERLAY ---
             const scrVal = formatBonus(this.spell.scr);
-            if (this._relatedAttack) {
-                const rawOb = this._relatedAttack._totalBonus ?? this._relatedAttack.totalBonus;
-                const obVal = formatBonus(rawOb);
+            if (this._hasAttack) {
+                const obVal = formatBonus(spellAttackBonus(this.spell));
 
                 RMUUtils.applyValueOverlay(this.element, `${scrVal} / ${obVal}`, "SCR / OB");
                 // Ensures custom CSS font-size reduction for dual values is applied
@@ -169,7 +162,7 @@ export function defineSpellsMain(CoreHUD) {
 
         /** Casts the spell (Spell Casting Roll). */
         async _onActivate() {
-            await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenSCRAction", this.spell);
+            await callHudTokenAction("rmuTokenSCRAction", this.spell);
         }
     }
 
@@ -259,26 +252,14 @@ export function defineSpellsMain(CoreHUD) {
         }
 
         async _getPanel() {
-            await RMUData.ensureRMUReady();
-            const allSpellsByListType = RMUData.getGroupedSpellsForHUD();
+            await ensureRMUReady();
+            const allSpellsByListType = getGroupedSpells();
 
             if (!allSpellsByListType.size) {
                 return createGuardedPanel("ech-rmu-spells-all", [new RMUEmptyButton("No spells known")]);
             }
 
-            const listOrder = {
-                Innate: 0,
-                Base: 1,
-                Open: 2,
-                Closed: 3,
-                Arcane: 4,
-                Restricted: 5,
-            };
-            const sortedListTypes = Array.from(allSpellsByListType.keys()).sort((a, b) => {
-                const rankA = listOrder[a] ?? 99;
-                const rankB = listOrder[b] ?? 99;
-                return rankA - rankB;
-            });
+            const sortedListTypes = Array.from(allSpellsByListType.keys()).sort(compareListTypes);
 
             const allButtons = [];
             const accordion = new Accordion({ isDimmed: isSpellHeaderDimmed });
