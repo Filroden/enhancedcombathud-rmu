@@ -2,7 +2,8 @@
  * Defines the main Skills panel, using an accordion and the shared search filter.
  */
 
-import { ICONS, getUserIcon, RMUUtils, installListSearch, UIGuards } from "../RMUCore.js";
+import { ICONS, getUserIcon, RMUUtils, installListSearch } from "../RMUCore.js";
+import { createBaseClasses } from "../ui/baseButtons.js";
 import { RMUData } from "../RMUData.js";
 
 /**
@@ -52,16 +53,14 @@ const setOpenSkillsCategory = (catOrNull) => RMUData.setOpenSkillsCategory(catOr
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineSkillsMain(CoreHUD) {
-    const ARGON = CoreHUD.ARGON;
-    const { ActionPanel } = ARGON.MAIN;
-    const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
-    const { ActionButton, ButtonPanelButton } = ARGON.MAIN.BUTTONS;
+    const { ButtonPanelButton } = CoreHUD.ARGON.MAIN.BUTTONS;
+    const { RMUActionButton, RMUEmptyButton, RMUActionPanel, createGuardedPanel } = createBaseClasses(CoreHUD.ARGON);
 
     /**
      * An accordion header button for a skill category (e.g., "Awareness").
-     * @augments ActionButton
+     * @augments RMUActionButton
      */
-    class RMUSkillHeaderButton extends ActionButton {
+    class RMUSkillHeaderButton extends RMUActionButton {
         constructor(title) {
             super();
             this._title = title;
@@ -73,9 +72,6 @@ export function defineSkillsMain(CoreHUD) {
         }
         get icon() {
             return "";
-        }
-        get isInteractive() {
-            return true;
         }
         get classes() {
             const open = getOpenSkillsCategory() === this._catKey;
@@ -129,8 +125,6 @@ export function defineSkillsMain(CoreHUD) {
         async _renderInner() {
             await super._renderInner();
             if (this.element) {
-                this.element.style.pointerEvents = "auto";
-                this.element.style.cursor = "pointer";
                 this.element.dataset.catKey = this._catKey;
                 // Add data for search filtering
                 this.element.dataset.nameNorm = this.label.toLowerCase();
@@ -138,20 +132,8 @@ export function defineSkillsMain(CoreHUD) {
             }
         }
 
-        async _onClick() {
-            const currentOpen = getOpenSkillsCategory();
-            const myKey = this.categoryKey; // normalised key
-
-            // Toggle: if clicking the open one, close it; otherwise open this one.
-            const newKey = currentOpen === myKey ? null : myKey;
-            setOpenSkillsCategory(newKey);
-
-            // Trigger the visibility update on the parent panel
-            const panelEl = this.element.closest(".argon-action-panel");
-            applySkillsAccordionVisibility(panelEl);
-        }
-
-        async _onMouseDown() {
+        /** Opens this category, or closes it if it is already open. */
+        async _onActivate() {
             const currentOpen = getOpenSkillsCategory();
             const myKey = this._catKey;
 
@@ -162,18 +144,13 @@ export function defineSkillsMain(CoreHUD) {
             // Refresh the UI
             applySkillsAccordionVisibility(this._panelEl);
         }
-
-        async _onLeftClick(e) {
-            e?.preventDefault?.();
-            e?.stopPropagation?.();
-        }
     }
 
     /**
      * An action button for a single skill (e.g., "Perception").
-     * @augments ActionButton
+     * @augments RMUActionButton
      */
-    class RMUSkillActionButton extends ActionButton {
+    class RMUSkillActionButton extends RMUActionButton {
         /**
          * @param {object} entry - The display-ready skill object from RMUData.
          * @param {boolean} [startHidden=false] - Whether the tile should start hidden.
@@ -197,17 +174,12 @@ export function defineSkillsMain(CoreHUD) {
             // Fallback for all skills
             return ICONS.skills_muted;
         }
-        get isInteractive() {
-            return true;
-        }
+        /** Skills the system marks as not rollable (for example Combat Styles) are disabled. */
         get disabled() {
             return !!this.entry?.disabledBySystem;
         }
         get classes() {
-            const c = super.classes.slice().filter((cls) => cls !== "disabled");
-            if (this.disabled) c.push("disabled");
-            c.push("ech-rmu-skill-tile");
-            return c;
+            return [...super.classes, "ech-rmu-skill-tile"];
         }
 
         get hasTooltip() {
@@ -254,10 +226,6 @@ export function defineSkillsMain(CoreHUD) {
             await super._renderInner();
             if (!this.element) return;
 
-            this.element.style.pointerEvents = "auto";
-            this.element.style.cursor = this.disabled ? "not-allowed" : "pointer";
-            this.element.dataset.tooltipDirection = "UP";
-
             // Apply total bonus overlay
             RMUUtils.applyValueOverlay(this.element, this.entry?.total ?? "", "Total");
 
@@ -292,21 +260,10 @@ export function defineSkillsMain(CoreHUD) {
             if (this._startHidden) this.element.style.display = "none";
         }
 
-        async _onMouseDown(event) {
-            if (event?.button !== 0 || this.disabled) return;
-            event.preventDefault();
-            event.stopPropagation();
-            await this._roll();
-        }
-        async _onLeftClick(event) {
-            event?.preventDefault?.();
-            event?.stopPropagation?.();
-        }
-
         /**
          * Rolls the skill using the centralized API wrapper.
          */
-        async _roll() {
+        async _onActivate() {
             await RMUUtils.rmuTokenActionWrapper(
                 ui.ARGON?._token,
                 "rmuTokenSkillAction",
@@ -344,22 +301,8 @@ export function defineSkillsMain(CoreHUD) {
             const groups = RMUData.getGroupedSkillsForHUD_All();
             const buttons = [];
 
-            // Handle empty state
             if (!groups.size) {
-                const empty = new (class NoSkillsButton extends ActionButton {
-                    get label() {
-                        return "No skills";
-                    }
-                    get icon() {
-                        return "";
-                    }
-                    get classes() {
-                        return [...super.classes, "disabled"];
-                    }
-                })();
-                const panel = new ButtonPanel({ id: "ech-rmu-skills", buttons: [empty] });
-                UIGuards.attachPanelInteractionGuards(panel);
-                return panel;
+                return createGuardedPanel("ech-rmu-skills", [new RMUEmptyButton("No skills")]);
             }
 
             const cats = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b));
@@ -375,8 +318,7 @@ export function defineSkillsMain(CoreHUD) {
                 }
             }
 
-            const panel = new ButtonPanel({ id: "ech-rmu-skills", buttons });
-            UIGuards.attachPanelInteractionGuards(panel);
+            const panel = createGuardedPanel("ech-rmu-skills", buttons);
 
             // Install the search/filter bar
             const skillFilters = [
@@ -423,17 +365,11 @@ export function defineSkillsMain(CoreHUD) {
 
     /**
      * The main "Skills" panel entry point for the HUD.
-     * @augments ActionPanel
+     * @augments RMUActionPanel
      */
-    class RMUSkillsActionPanel extends ActionPanel {
+    class RMUSkillsActionPanel extends RMUActionPanel {
         get label() {
             return "SKILLS";
-        }
-        get maxActions() {
-            return null;
-        }
-        get currentActions() {
-            return null;
         }
         async _getButtons() {
             return [new RMUSkillsCategoryButton()];
