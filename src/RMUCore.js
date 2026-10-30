@@ -1,242 +1,14 @@
 /**
  * Contains shared utilities, core Argon integration points, UI guards,
  * and the general reusable search logic used by multiple panels.
- * This file also defines and attaches global utilities (ICONS, RMUUtils, etc.)
- * to the window object.
  */
 
 import { RMUData } from "./RMUData.js";
+import { SUPPORTED_ACTOR_TYPES } from "./constants.js";
+import { ICONS, getUserIcon } from "./icons.js";
 
 // -----------------------------------------------------------------------------
-// I. Constants & Icon Definitions
-// -----------------------------------------------------------------------------
-
-const MODULE_ID = "enhancedcombathud-rmu";
-
-/**
- * Route helper for module icons.
- */
-const MOD_ICON = (file) => (foundry?.utils?.getRoute ? foundry.utils.getRoute(`modules/${MODULE_ID}/icons/${file}`) : `modules/${MODULE_ID}/icons/${file}`);
-
-/**
- * Configuration map for all user-customizable icons.
- */
-const ICON_CONFIG = {
-    // --- MAIN HUD ICONS ---
-    melee: { name: "Melee Attack", default: MOD_ICON("sword-brandish.svg") },
-    ranged: { name: "Ranged Attack", default: MOD_ICON("high-shot.svg") },
-    natural: { name: "Natural Attack", default: MOD_ICON("fist.svg") },
-    shield: { name: "Shield Attack", default: MOD_ICON("vibrating-shield.svg") },
-    skills: { name: "Skills Category", default: MOD_ICON("skills.svg") },
-    skills_muted: { name: "Skill Action (Muted)", default: MOD_ICON("skills-muted.svg") },
-    spells: { name: "Spells Category", default: MOD_ICON("spell-book.svg") },
-    spells_muted: { name: "Spell Action (Muted)", default: MOD_ICON("spell-book-muted.svg") },
-    items: { name: "Items Category", default: MOD_ICON("ring.svg") },
-    combat: { name: "End Turn (Combat)", default: MOD_ICON("skip-next-circle.svg") },
-    rest: { name: "Rest Action", default: MOD_ICON("rest.svg") },
-    special: { name: "Special Checks", default: MOD_ICON("hazard-sign.svg") },
-    endurance: { name: "Endurance Check", default: MOD_ICON("mountain-climbing.svg") },
-    concentration: { name: "Concentration Check", default: MOD_ICON("meditation.svg") },
-    star: { name: "Favorite Star", default: MOD_ICON("star.svg") },
-    instant: { name: "Instantaneous Asterisk", default: MOD_ICON("asterisk.svg") },
-    subconscious: { name: "Sub-conscious Indicator", default: MOD_ICON("airline_seat_flat.svg") },
-    close: { name: "Close/Clear", default: MOD_ICON("clear-text.svg") },
-    search: { name: "Search Magnifier", default: MOD_ICON("search.svg") },
-    beam: { name: "Directed Attack Beam", default: MOD_ICON("ringed-beam.svg") },
-    scroll: { name: "Scroll/Item", default: MOD_ICON("scroll-unfurled.svg") },
-    explosion: { name: "Area Attack Explosion", default: MOD_ICON("bright-explosion.svg") },
-    equip_closed: { name: "Equipped Shield", default: MOD_ICON("back_hand_closed.svg") },
-    equip_open: { name: "Unequipped Shield", default: MOD_ICON("back_hand_open.svg") },
-    ranked: { name: "Ranked Skill Chip", default: MOD_ICON("voting_chip.svg") },
-    panel: { name: "Generic Panel", default: MOD_ICON("resistance-panel.svg") },
-
-    // --- RESISTANCE ICONS ---
-    Channeling: { name: "Resist: Channeling", default: MOD_ICON("resistance-channeling.svg") },
-    Essence: { name: "Resist: Essence", default: MOD_ICON("resistance-essence.svg") },
-    Mentalism: { name: "Resist: Mentalism", default: MOD_ICON("resistance-mentalism.svg") },
-    Physical: { name: "Resist: Physical", default: MOD_ICON("resistance-physical.svg") },
-    Fear: { name: "Resist: Fear", default: MOD_ICON("resistance-fear.svg") },
-};
-
-/**
- * Global ICONS object using dynamic getters.
- * This ensures backwards compatibility with existing code (e.g., `ICONS.melee`)
- * while pulling live user settings.
- */
-const ICONS = {};
-for (const key of Object.keys(ICON_CONFIG)) {
-    Object.defineProperty(ICONS, key, {
-        get: () => game.settings.get(MODULE_ID, `icon_main_${key}`),
-        enumerable: true,
-    });
-}
-
-/**
- * Safely retrieves a custom icon path defined by the user.
- * @param {string} name - The exact name of the spell or skill.
- */
-function getUserIcon(name) {
-    if (!name) return null;
-    try {
-        const icons = game.settings.get(MODULE_ID, "custom_user_icons") || {};
-        return icons[name] || null;
-    } catch (e) {
-        return null;
-    }
-}
-
-/**
- * Modern ApplicationV2 Settings Menu for Custom Icons.
- */
-const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
-
-class RMUCustomIconsMenu extends HandlebarsApplicationMixin(ApplicationV2) {
-    constructor(options) {
-        super(options);
-        const savedIcons = game.settings.get(MODULE_ID, "custom_user_icons") || {};
-        this.iconRows = Object.entries(savedIcons).map(([name, path]) => ({
-            id: foundry.utils.randomID(),
-            name,
-            path,
-        }));
-    }
-
-    static DEFAULT_OPTIONS = {
-        id: "rmu-custom-icons",
-        window: {
-            title: "Custom Spell & Skill Icons",
-            icon: "fas fa-images",
-            resizable: true,
-        },
-        position: { width: 550, height: "auto" },
-        actions: {
-            addRow: RMUCustomIconsMenu._onAddRow,
-            deleteRow: RMUCustomIconsMenu._onDeleteRow,
-            pickFile: RMUCustomIconsMenu._onPickFile,
-            cancel: RMUCustomIconsMenu._onCancel,
-            save: RMUCustomIconsMenu._onSave,
-        },
-    };
-
-    static PARTS = {
-        form: {
-            template: "modules/enhancedcombathud-rmu/templates/rmu-custom-icons.hbs",
-        },
-    };
-
-    async _prepareContext(options) {
-        return {
-            icons: this.iconRows,
-        };
-    }
-
-    _syncState() {
-        if (!this.element) return;
-        const form = this.element.querySelector("form");
-        if (!form) return;
-
-        const formData = new FormData(form);
-        this.iconRows = (this.iconRows || []).map((row) => ({
-            id: row.id,
-            name: formData.get(`name_${row.id}`)?.trim() || "",
-            path: formData.get(`path_${row.id}`)?.trim() || "",
-        }));
-    }
-
-    // --- Action Handlers ---
-
-    static async _onAddRow(event, target) {
-        this._syncState();
-        this.iconRows.push({ id: foundry.utils.randomID(), name: "", path: "" });
-        this.render();
-    }
-
-    static async _onDeleteRow(event, target) {
-        this._syncState();
-        const rowId = target.closest(".form-group").dataset.rowId;
-        this.iconRows = this.iconRows.filter((r) => r.id !== rowId);
-        this.render();
-    }
-
-    static async _onPickFile(event, target) {
-        const targetName = target.dataset.target;
-        const input = this.element.querySelector(`input[name="${targetName}"]`);
-        if (!input) return;
-
-        new foundry.applications.apps.FilePicker({
-            type: "image",
-            current: input.value,
-            callback: (path) => {
-                input.value = path;
-            },
-        }).render(true);
-    }
-
-    static async _onCancel(event, target) {
-        this.close();
-    }
-
-    static async _onSave(event, target) {
-        event.preventDefault(); // Extra defense against native submission
-
-        // Grab all current inputs directly into our array
-        this._syncState();
-
-        const newIcons = {};
-        for (const row of this.iconRows) {
-            // Only save complete pairs
-            if (row.name && row.path) {
-                newIcons[row.name] = row.path;
-            }
-        }
-
-        await game.settings.set(MODULE_ID, "custom_user_icons", newIcons);
-        ui.notifications.info("Custom icons saved. Reloading...");
-        this.close();
-
-        // Native clean reload
-        setTimeout(() => globalThis.location.reload(), 500);
-    }
-}
-
-/**
- * Registers all icon settings with Foundry VTT.
- */
-function registerIconSettings() {
-    // 1. Register Main Structural Icons (Melee, Shield, etc.)
-    for (const [key, config] of Object.entries(ICON_CONFIG)) {
-        game.settings.register(MODULE_ID, `icon_main_${key}`, {
-            name: config.name,
-            scope: "world",
-            config: true,
-            type: String,
-            filePicker: "image",
-            default: config.default,
-            requiresReload: true,
-        });
-    }
-
-    // 2. Hidden Object Setting to store custom pairs
-    game.settings.register(MODULE_ID, "custom_user_icons", {
-        scope: "world",
-        config: false,
-        type: Object,
-        default: {},
-    });
-
-    // 3. The Settings Menu Button that opens the UI
-    game.settings.registerMenu(MODULE_ID, "custom_icons_menu", {
-        name: "Custom Spell & Skill Icons",
-        label: "Configure Icons",
-        hint: "Map specific spells and skills to custom icons.",
-        icon: "fas fa-images",
-        type: RMUCustomIconsMenu,
-        restricted: true,
-    });
-}
-
-// -----------------------------------------------------------------------------
-// II. Core Utilities (Reusable logic, API wrappers, Formatting)
+// I. Core Utilities (Reusable logic, API wrappers, Formatting)
 // -----------------------------------------------------------------------------
 
 /**
@@ -451,7 +223,7 @@ const RMUUtils = {
 };
 
 // -----------------------------------------------------------------------------
-// III. UI Guards (Interaction Protection)
+// II. UI Guards (Interaction Protection)
 // -----------------------------------------------------------------------------
 
 /**
@@ -571,7 +343,7 @@ const UIGuards = {
 };
 
 // -----------------------------------------------------------------------------
-// IV. General Search Feature (Reusable)
+// III. General Search Feature (Reusable)
 // -----------------------------------------------------------------------------
 
 /**
@@ -781,7 +553,7 @@ function installListSearch(panel, tileSelector, headerSelector, logPrefix, optio
 }
 
 // -----------------------------------------------------------------------------
-// V. Core Argon Definitions (Non-feature logic)
+// IV. Core Argon Definitions (Non-feature logic)
 // -----------------------------------------------------------------------------
 
 /**
@@ -812,11 +584,13 @@ function defineTooltip(CoreHUD) {
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 function defineSupportedActorTypes(CoreHUD) {
-    CoreHUD.defineSupportedActorTypes(["Character", "Creature", "character", "creature"]);
+    CoreHUD.defineSupportedActorTypes([...SUPPORTED_ACTOR_TYPES]);
 }
 
 // -----------------------------------------------------------------------------
-// VI. Export
+// V. Export
 // -----------------------------------------------------------------------------
 
-export { ICONS, getUserIcon, RMUUtils, UIGuards, installListSearch, formatBonus, defineTooltip, defineSupportedActorTypes, registerIconSettings };
+// ICONS and getUserIcon are defined in icons.js and re-exported here so the feature files
+// can keep importing all shared helpers from one place.
+export { ICONS, getUserIcon, RMUUtils, UIGuards, installListSearch, formatBonus, defineTooltip, defineSupportedActorTypes };

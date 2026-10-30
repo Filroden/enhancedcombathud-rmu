@@ -1,6 +1,6 @@
 /**
  * Contains all data fetching, aggregation, transformation, and state management logic
- * for the RMU system extension. Attaches the RMUData object to the window.
+ * for the RMU system extension.
  */
 
 // ----------------------------------------------------------------------------

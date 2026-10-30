@@ -7,8 +7,9 @@
  */
 
 // Import modular logic
-import { UIGuards, defineTooltip, defineSupportedActorTypes, registerIconSettings } from "./src/RMUCore.js";
-import "./src/RMUData.js"; // Imports RMUData for its side effects (attaching to window)
+import { SUPPORTED_ACTOR_TYPES } from "./src/constants.js";
+import { registerIconSettings } from "./src/settings.js";
+import { UIGuards, defineTooltip, defineSupportedActorTypes } from "./src/RMUCore.js";
 import { defineAttacksMain } from "./src/RMUFeatures/RMUAttacks.js";
 import { defineSkillsMain } from "./src/RMUFeatures/RMUSkills.js";
 import { defineSpellsMain } from "./src/RMUFeatures/RMUSpells.js";
@@ -24,7 +25,7 @@ import {
     defineDrawerPanel,
 } from "./src/RMUFeatures/RMUOther.js";
 
-const VALID_ACTOR_TYPES = new Set(["Character", "Creature"]);
+const VALID_ACTOR_TYPES = new Set(SUPPORTED_ACTOR_TYPES);
 
 /**
  * Initializes the RMU-specific configuration for the Argon HUD.
