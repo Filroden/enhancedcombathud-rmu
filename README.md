@@ -1,6 +1,6 @@
 # Argon Combat HUD extension for Rolemaster Unified (RMU)
 
-![Latest Version](https://img.shields.io/badge/Version-2.4.0-blue)
+![Latest Version](https://img.shields.io/badge/Version-2.5.0-blue)
 ![Foundry Version](https://img.shields.io/badge/Foundry_VTT-v13_%7C_v14-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 ![Languages](https://img.shields.io/badge/Languages-1-blueviolet)
@@ -73,8 +73,30 @@ In RMU you potentially need to make three rolls to cast a spell. On the Actor Sh
 
 GMs can configure custom icons for the main HUD panels and buttons via the module's Game Settings. Clicking the **Configure Icons** menu also allows you to map custom icons to specific spells or skills by name.
 
-- **Localisation:** The mapping uses the exact name as it appears on your character sheet, fully supporting localised names.
+- **Localisation:** The mapping uses the exact name as it appears on your character sheet. Both the name shown in your language and the English name work.
 - **Spell Variants:** For spells, the custom icon will automatically apply to any level variant, so you do not need to include Roman numerals or `True` after the name. For example, an icon mapped to `Regeneration` will apply to `Regeneration I`, `Regeneration III`, and `Regeneration True`.
+
+## Languages
+
+The text in the HUD comes from four different places, and each one is translated separately:
+
+1. **This module:** panel names, tooltip labels, the search bar, filters, warnings and the module's settings. This module currently provides English and English (UK). Choose **English (UK)** in Foundry's language setting to see British spellings (for example Favourite, Armour and Specialisation).
+2. **The RMU system:** skill, category, specialisation, spell, spell list, list type, resistance, stat, attack table and profession names, spell descriptions, and many game terms the HUD shares with the character sheet (for example Knack, SCR, Fumble, HP and DB). Wherever the system has its own word for something, the HUD uses the system's translation, so the HUD reads the same as the character sheet.
+3. **Argon Combat HUD (CORE):** CORE's own parts of the HUD, such as the portrait buttons (Open Character Sheet, Roll Initiative and Minimize) and CORE's settings. These follow CORE's own translations; some of them, including the portrait buttons, are currently fixed in English within CORE itself.
+4. **Your world:** item, weapon and macro names, and anything else typed in by a GM or player, appear exactly as entered. Some spell values (area of effect, duration, range and spell type) are stored by the system as plain text and are also shown as stored.
+
+### Why you might see a mix of languages
+
+When you choose a language other than English, each of the four sources above is shown in that language only if it has a translation for it. Anything without a translation falls back to English. As a result:
+
+- This module has no translations other than English (UK) yet, so its own labels stay in English while game terms from the system appear in your language.
+- The RMU system's translations vary by language and are often incomplete. Spell lists are translated one list at a time, so some spells can appear in your language while others are still in English.
+- CORE's buttons and settings depend on CORE's own translations, and some of them are always in English.
+- English (UK) changes only this module's spellings. The RMU system has no British English text, so its terms keep their US spelling.
+
+Where both this module and the RMU system can provide the same word, the HUD always prefers whichever one is translated into your language over English. Rolls, searching and custom icons work the same whatever language is shown: searching finds a skill or spell by its translated or its English name.
+
+If you would like to help translate this module into your language, please open an issue on GitHub.
 
 ## Dependencies
 
@@ -82,6 +104,7 @@ The table below only shows the earliest version where a dependency has changed. 
 
 |Argon Combat HUD<br>(RMU)|RMU System|Argon Combat HUD<br>(CORE)|FoundryVTT|
 |:---:|:---:|:---:|:---:|
+|2.5.0|1.4.xxx|5.0.0|14|
 |2.4.0|1.4.0|5.0.0|14|
 |2.3.0|1.3.40|5.0.0|14|
 |2.1.0|1.2.43|5.0.0|14|

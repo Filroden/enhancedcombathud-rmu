@@ -2,7 +2,7 @@
     "title": "Argon - Combat HUD (RMU)",
     "description": "Argon Combat HUD integration for the Rolemaster Unified (RMU) system",
     "id": "enhancedcombathud-rmu",
-    "version": "2.4.0",
+    "version": "2.5.0",
     "authors": [{ "name": "Ken Dearman" }],
     "esmodules": ["main.js"],
     "styles": ["styles/filroden-theme.css", "styles/enhancedcombathud-rmu.css"],
@@ -20,5 +20,5 @@
     "readme": "https://github.com/Filroden/enhancedcombathud-rmu/blob/main/README.md",
     "license": "https://mit-license.org/",
     "manifest": "https://github.com/Filroden/enhancedcombathud-rmu/releases/latest/download/module.json",
-    "download": " https://github.com/Filroden/enhancedcombathud-rmu/releases/download/v2.4.0/enhancedcombathud-rmu.zip"
+    "download": " https://github.com/Filroden/enhancedcombathud-rmu/releases/download/v2.5.0/enhancedcombathud-rmu.zip"
 }
