@@ -10,6 +10,7 @@ import { createBaseClasses } from "../ui/baseButtons.js";
 import { buildTooltip } from "../ui/tooltip.js";
 import { hudToken } from "../argon.js";
 import { callTokenAction } from "../system/api.js";
+import { onEquipmentChange, refreshEquipment } from "../equipment.js";
 import { ensureExtendedTokenData, ensureRMUReady } from "../system/derive.js";
 import { attackCategory, attackTooltipDetails, getActorAttacks, getLiveAttack, isAttackEquipped } from "../system/attacks.js";
 
@@ -112,7 +113,8 @@ export function defineAttacksMain(CoreHUD) {
         }
 
         /**
-         * Toggles the weapon's equipped state, then refreshes the attack buttons in place.
+         * Toggles the weapon's equipped state, then refreshes the equip-dependent buttons in
+         * place (see equipment.js; the same refresh runs when the sheet changes an item).
          *
          * Only the attack buttons are re-rendered. A full HUD refresh (ui.ARGON.refresh) would
          * rebuild every panel, and CORE then reopens panels from saved open/closed states that
@@ -129,8 +131,7 @@ export function defineAttacksMain(CoreHUD) {
             const toggled = await callTokenAction(token, "rmuTokenToggleEquippedState", this.attack.itemId);
             if (!toggled) return; // The wrapper has already reported the failure.
 
-            await ensureExtendedTokenData();
-            await refreshAttackButtons();
+            await refreshEquipment();
         }
 
         /* ───────── Tooltip ───────── */
@@ -188,6 +189,7 @@ export function defineAttacksMain(CoreHUD) {
         }
         await Promise.all(renders);
     }
+    onEquipmentChange(refreshAttackButtons);
 
     /**
      * A button representing a category of attacks (e.g., "Melee").

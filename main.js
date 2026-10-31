@@ -11,6 +11,7 @@ import { SUPPORTED_ACTOR_TYPES } from "./src/constants.js";
 import { registerIconSettings } from "./src/settings.js";
 import { defineTooltip, defineSupportedActorTypes } from "./src/RMUCore.js";
 import { closeHudForUnsupportedActors, renderDrawer, updateMainPanelVisibility } from "./src/argon.js";
+import { onItemUpdated } from "./src/equipment.js";
 import { defineAttacksMain } from "./src/RMUFeatures/RMUAttacks.js";
 import { defineSkillsMain } from "./src/RMUFeatures/RMUSkills.js";
 import { defineSpellsMain } from "./src/RMUFeatures/RMUSpells.js";
@@ -89,6 +90,10 @@ Hooks.once("ready", () => {
 // Update visibility of REST and COMBAT buttons when combat starts/ends
 Hooks.on("updateCombat", () => updateMainPanelVisibility());
 Hooks.on("deleteCombat", () => updateMainPanelVisibility());
+
+// Keep equip toggles and disabled attacks in step with items changed elsewhere (the
+// character sheet, or another user).
+Hooks.on("updateItem", (item, changes) => onItemUpdated(item, changes));
 
 // Keep the macro drawer in step with the hotbar. CORE builds the drawer only when the whole
 // HUD renders, so a renamed, added or removed macro would otherwise not show until then.

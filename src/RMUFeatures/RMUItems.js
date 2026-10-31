@@ -13,6 +13,7 @@ import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
 import { DETAIL_FORMAT, buildTooltip } from "../ui/tooltip.js";
 import { hudToken } from "../argon.js";
 import { callTokenAction } from "../system/api.js";
+import { onEquipmentChange, refreshEquipment } from "../equipment.js";
 import { ensureExtendedTokenData, ensureRMUReady } from "../system/derive.js";
 import { getItemSpellGroups } from "../system/spells.js";
 
@@ -53,6 +54,17 @@ function showSpacerWhenOpen(panelEl, anySpellShown) {
 export function defineMagicItemsMain(CoreHUD) {
     const { ActionButton, ButtonPanelButton } = CoreHUD.ARGON.MAIN.BUTTONS;
     const { RMUActionButton, RMUActionPanel, createGuardedPanel } = createBaseClasses(CoreHUD.ARGON);
+
+    /**
+     * Item buttons built for the current HUD render, refreshed when an item's equipped state
+     * changes. Cleared whenever the Items panel rebuilds its buttons, so it never holds
+     * buttons from an earlier render.
+     */
+    const liveItemButtons = new Set();
+    onEquipmentChange(async () => {
+        const connected = [...liveItemButtons].filter((b) => b.element?.isConnected);
+        await Promise.all(connected.map((b) => b.refresh()));
+    });
 
     /**
      * TIER 2 (Top Row): The Spell Action Button
@@ -151,6 +163,7 @@ export function defineMagicItemsMain(CoreHUD) {
             this.accordion = accordion;
             /** This item's spell buttons, re-rendered with it after an equip toggle. */
             this.spellButtons = [];
+            liveItemButtons.add(this);
         }
 
         get label() {
@@ -190,15 +203,21 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         /**
-         * Toggles the item's equipped state, then re-renders this item and its spells in place.
-         * A full HUD refresh would rebuild every panel and close this one; the item document
-         * is updated in place by Foundry, so re-rendering reads the new state directly.
+         * Toggles the item's equipped state, then refreshes the equip-dependent buttons in
+         * place (see equipment.js; the same refresh runs when the sheet changes an item).
+         * A full HUD refresh would rebuild every panel and close this one.
          */
         async _onToggleEquip() {
             const token = hudToken();
             if (!token || !this.itemDoc) return;
             const toggled = await callTokenAction(token, "rmuTokenToggleEquippedState", this.itemDoc.id);
             if (!toggled) return; // The wrapper has already reported the failure.
+            await refreshEquipment();
+        }
+
+        /** Re-renders this item and its spells. The item document is updated in place by
+         *  Foundry, so the render reads the new equipped state directly. */
+        async refresh() {
             await Promise.all([this.render(), ...this.spellButtons.map((b) => b.render())]);
         }
 
@@ -314,6 +333,8 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         async _getButtons() {
+            // A new set of item buttons is about to be built, so forget the previous ones.
+            liveItemButtons.clear();
             const actor = hudToken()?.actor;
             if (!actor) return [];
 
