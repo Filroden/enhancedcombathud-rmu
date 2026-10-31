@@ -12,7 +12,8 @@ import { RMUCustomIconsMenu } from "./apps/CustomIconsMenu.js";
  */
 export function registerIconSettings() {
     // 1. One setting per structural icon (melee, shield, resistances, ...). Icons are read
-    //    when the HUD is built, so a change only applies after a reload.
+    //    when the HUD is built, so a change only applies after a reload. Setting names and
+    //    hints are language keys, which Foundry localises when it shows the settings.
     for (const [key, config] of Object.entries(ICON_CONFIG)) {
         game.settings.register(MODULE_ID, `${SETTING_KEYS.mainIconPrefix}${key}`, {
             name: config.name,
@@ -35,9 +36,9 @@ export function registerIconSettings() {
 
     // 3. Settings menu button that opens the custom icon editor (GM only).
     game.settings.registerMenu(MODULE_ID, SETTING_KEYS.customIconsMenu, {
-        name: "Custom Spell & Skill Icons",
-        label: "Configure Icons",
-        hint: "Map specific spells and skills to custom icons.",
+        name: "ECH-RMU.Setting.CustomIcons.Name",
+        label: "ECH-RMU.Setting.CustomIcons.Label",
+        hint: "ECH-RMU.Setting.CustomIcons.Hint",
         icon: "fas fa-images",
         type: RMUCustomIconsMenu,
         restricted: true,

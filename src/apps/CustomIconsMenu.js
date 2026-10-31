@@ -33,7 +33,8 @@ export class RMUCustomIconsMenu extends HandlebarsApplicationMixin(ApplicationV2
             closeOnSubmit: true,
         },
         window: {
-            title: "Custom Spell & Skill Icons",
+            // A language key: ApplicationV2 localises the window title itself.
+            title: "ECH-RMU.CustomIcons.Title",
             icon: "fas fa-images",
             resizable: true,
         },

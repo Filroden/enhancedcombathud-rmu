@@ -24,39 +24,41 @@ function moduleIcon(file) {
  * Configuration of every user-customisable structural icon.
  * The key is used in code (ICONS.melee) and in the setting key; the resistance keys must
  * match the system's untranslated resistance identifiers (Channeling, Essence, ...).
+ * name is the language key of the setting's label, which Foundry localises when it shows
+ * the settings.
  */
 export const ICON_CONFIG = {
     // --- MAIN HUD ICONS ---
-    melee: { name: "Melee Attack", default: moduleIcon("sword-brandish.svg") },
-    ranged: { name: "Ranged Attack", default: moduleIcon("high-shot.svg") },
-    natural: { name: "Natural Attack", default: moduleIcon("fist.svg") },
-    shield: { name: "Shield Attack", default: moduleIcon("vibrating-shield.svg") },
-    skills: { name: "Skills Category", default: moduleIcon("skills.svg") },
-    skills_muted: { name: "Skill Action (Muted)", default: moduleIcon("skills-muted.svg") },
-    spells: { name: "Spells Category", default: moduleIcon("spell-book.svg") },
-    spells_muted: { name: "Spell Action (Muted)", default: moduleIcon("spell-book-muted.svg") },
-    items: { name: "Items Category", default: moduleIcon("ring.svg") },
-    combat: { name: "End Turn (Combat)", default: moduleIcon("skip-next-circle.svg") },
-    rest: { name: "Rest Action", default: moduleIcon("rest.svg") },
-    special: { name: "Special Checks", default: moduleIcon("hazard-sign.svg") },
-    endurance: { name: "Endurance Check", default: moduleIcon("mountain-climbing.svg") },
-    concentration: { name: "Concentration Check", default: moduleIcon("meditation.svg") },
-    star: { name: "Favorite Star", default: moduleIcon("star.svg") },
-    instant: { name: "Instantaneous Asterisk", default: moduleIcon("asterisk.svg") },
-    subconscious: { name: "Sub-conscious Indicator", default: moduleIcon("airline_seat_flat.svg") },
-    close: { name: "Close/Clear", default: moduleIcon("clear-text.svg") },
-    search: { name: "Search Magnifier", default: moduleIcon("search.svg") },
-    equip_closed: { name: "Equipped Shield", default: moduleIcon("back_hand_closed.svg") },
-    equip_open: { name: "Unequipped Shield", default: moduleIcon("back_hand_open.svg") },
-    ranked: { name: "Ranked Skill Chip", default: moduleIcon("voting_chip.svg") },
-    panel: { name: "Generic Panel", default: moduleIcon("resistance-panel.svg") },
+    melee: { name: "ECH-RMU.Setting.Icon.Melee", default: moduleIcon("sword-brandish.svg") },
+    ranged: { name: "ECH-RMU.Setting.Icon.Ranged", default: moduleIcon("high-shot.svg") },
+    natural: { name: "ECH-RMU.Setting.Icon.Natural", default: moduleIcon("fist.svg") },
+    shield: { name: "ECH-RMU.Setting.Icon.Shield", default: moduleIcon("vibrating-shield.svg") },
+    skills: { name: "ECH-RMU.Setting.Icon.Skills", default: moduleIcon("skills.svg") },
+    skills_muted: { name: "ECH-RMU.Setting.Icon.SkillsMuted", default: moduleIcon("skills-muted.svg") },
+    spells: { name: "ECH-RMU.Setting.Icon.Spells", default: moduleIcon("spell-book.svg") },
+    spells_muted: { name: "ECH-RMU.Setting.Icon.SpellsMuted", default: moduleIcon("spell-book-muted.svg") },
+    items: { name: "ECH-RMU.Setting.Icon.Items", default: moduleIcon("ring.svg") },
+    combat: { name: "ECH-RMU.Setting.Icon.Combat", default: moduleIcon("skip-next-circle.svg") },
+    rest: { name: "ECH-RMU.Setting.Icon.Rest", default: moduleIcon("rest.svg") },
+    special: { name: "ECH-RMU.Setting.Icon.Special", default: moduleIcon("hazard-sign.svg") },
+    endurance: { name: "ECH-RMU.Setting.Icon.Endurance", default: moduleIcon("mountain-climbing.svg") },
+    concentration: { name: "ECH-RMU.Setting.Icon.Concentration", default: moduleIcon("meditation.svg") },
+    star: { name: "ECH-RMU.Setting.Icon.Star", default: moduleIcon("star.svg") },
+    instant: { name: "ECH-RMU.Setting.Icon.Instant", default: moduleIcon("asterisk.svg") },
+    subconscious: { name: "ECH-RMU.Setting.Icon.Subconscious", default: moduleIcon("airline_seat_flat.svg") },
+    close: { name: "ECH-RMU.Setting.Icon.Close", default: moduleIcon("clear-text.svg") },
+    search: { name: "ECH-RMU.Setting.Icon.Search", default: moduleIcon("search.svg") },
+    equip_closed: { name: "ECH-RMU.Setting.Icon.EquipClosed", default: moduleIcon("back_hand_closed.svg") },
+    equip_open: { name: "ECH-RMU.Setting.Icon.EquipOpen", default: moduleIcon("back_hand_open.svg") },
+    ranked: { name: "ECH-RMU.Setting.Icon.Ranked", default: moduleIcon("voting_chip.svg") },
+    panel: { name: "ECH-RMU.Setting.Icon.Panel", default: moduleIcon("resistance-panel.svg") },
 
     // --- RESISTANCE ICONS ---
-    Channeling: { name: "Resist: Channeling", default: moduleIcon("resistance-channeling.svg") },
-    Essence: { name: "Resist: Essence", default: moduleIcon("resistance-essence.svg") },
-    Mentalism: { name: "Resist: Mentalism", default: moduleIcon("resistance-mentalism.svg") },
-    Physical: { name: "Resist: Physical", default: moduleIcon("resistance-physical.svg") },
-    Fear: { name: "Resist: Fear", default: moduleIcon("resistance-fear.svg") },
+    Channeling: { name: "ECH-RMU.Setting.Icon.Channeling", default: moduleIcon("resistance-channeling.svg") },
+    Essence: { name: "ECH-RMU.Setting.Icon.Essence", default: moduleIcon("resistance-essence.svg") },
+    Mentalism: { name: "ECH-RMU.Setting.Icon.Mentalism", default: moduleIcon("resistance-mentalism.svg") },
+    Physical: { name: "ECH-RMU.Setting.Icon.Physical", default: moduleIcon("resistance-physical.svg") },
+    Fear: { name: "ECH-RMU.Setting.Icon.Fear", default: moduleIcon("resistance-fear.svg") },
 };
 
 /**

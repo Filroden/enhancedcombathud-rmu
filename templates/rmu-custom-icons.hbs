@@ -6,20 +6,20 @@
 --}}
 <div class="ech-rmu-custom-icons">
     <p class="notes ech-rmu-custom-icons__intro">
-        Map specific skill or spell names to an icon. Enter the exact name (e.g. "Fire Bolt" or "Perception").
+        {{localize "ECH-RMU.CustomIcons.Intro"}}
     </p>
 
     <div class="ech-rmu-custom-icons__rows">
         {{#each icons}}
             <div class="form-group ech-rmu-custom-icons__row" data-row-id="{{this.id}}">
-                <input type="text" class="ech-rmu-custom-icons__name" name="name_{{this.id}}" value="{{this.name}}" placeholder="Name (e.g., Perception)" />
+                <input type="text" class="ech-rmu-custom-icons__name" name="name_{{this.id}}" value="{{this.name}}" placeholder="{{localize 'ECH-RMU.CustomIcons.NamePlaceholder'}}" />
 
                 <div class="ech-rmu-custom-icons__path-group">
-                    <input type="text" class="ech-rmu-custom-icons__path" name="path_{{this.id}}" value="{{this.path}}" placeholder="Icon Path" />
-                    <button type="button" class="ech-rmu-custom-icons__icon-button" data-action="pickFile" data-target="path_{{this.id}}" title="Browse Files">
+                    <input type="text" class="ech-rmu-custom-icons__path" name="path_{{this.id}}" value="{{this.path}}" placeholder="{{localize 'ECH-RMU.CustomIcons.PathPlaceholder'}}" />
+                    <button type="button" class="ech-rmu-custom-icons__icon-button" data-action="pickFile" data-target="path_{{this.id}}" title="{{localize 'ECH-RMU.CustomIcons.Browse'}}">
                         <i class="fas fa-file-import fa-fw"></i>
                     </button>
-                    <button type="button" class="ech-rmu-custom-icons__icon-button ech-rmu-custom-icons__delete" data-action="deleteRow" title="Remove">
+                    <button type="button" class="ech-rmu-custom-icons__icon-button ech-rmu-custom-icons__delete" data-action="deleteRow" title="{{localize 'ECH-RMU.CustomIcons.Remove'}}">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -30,18 +30,18 @@
     <div class="form-group ech-rmu-custom-icons__add">
         <button type="button" class="ech-rmu-custom-icons__text-button" data-action="addRow">
             <i class="fas fa-plus"></i>
-            Add Icon Map
+            {{localize "ECH-RMU.CustomIcons.Add"}}
         </button>
     </div>
 
     <footer class="form-footer ech-rmu-custom-icons__footer">
         <button type="button" class="ech-rmu-custom-icons__text-button" data-action="cancel">
             <i class="fas fa-times"></i>
-            Cancel
+            {{localize "ECH-RMU.CustomIcons.Cancel"}}
         </button>
         <button type="submit" class="ech-rmu-custom-icons__text-button">
             <i class="fas fa-save"></i>
-            Save Changes
+            {{localize "ECH-RMU.CustomIcons.Save"}}
         </button>
     </footer>
 </div>
