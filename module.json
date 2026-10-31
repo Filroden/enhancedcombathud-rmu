@@ -6,6 +6,10 @@
     "authors": [{ "name": "Ken Dearman" }],
     "esmodules": ["main.js"],
     "styles": ["styles/filroden-theme.css", "styles/enhancedcombathud-rmu.css"],
+    "languages": [
+        { "lang": "en", "name": "English", "path": "languages/en.json" },
+        { "lang": "en-GB", "name": "English (UK)", "path": "languages/en-gb.json" }
+    ],
     "relationships": {
         "requires": [{ "id": "enhancedcombathud", "type": "module", "compatibility": { "minimum": "5.0.0" } }],
         "systems": [{ "id": "rmu", "type": "system", "compatibility": { "minimum": "1.4.0" } }]
