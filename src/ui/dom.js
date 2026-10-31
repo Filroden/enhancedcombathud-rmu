@@ -21,9 +21,10 @@ const OVERLAY_HOST_SELECTOR = ".image, .ech-image, .icon, .thumbnail, .main-butt
  * Any previous overlay is replaced, so this is safe to call on every render.
  * @param {HTMLElement} buttonEl - The button's DOM element.
  * @param {string|number} [number=""] - The main value (for example 10 or "+10 / +5").
- * @param {string} [labelText="Total"] - The small label (for example "Total" or "SCR").
+ * @param {string} [labelText=""] - The small label, already localised (for example the
+ *   "Total" or "SCR" term). No label element is added when it is empty.
  */
-export function applyValueOverlay(buttonEl, number = "", labelText = "Total") {
+export function applyValueOverlay(buttonEl, number = "", labelText = "") {
     if (!buttonEl) return;
     const host = buttonEl.querySelector(OVERLAY_HOST_SELECTOR) || buttonEl;
     host.classList.add("ech-rmu-button-relative", "ech-rmu-overflow-hidden");

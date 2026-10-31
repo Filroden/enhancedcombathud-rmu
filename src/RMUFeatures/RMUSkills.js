@@ -3,6 +3,7 @@
  */
 
 import { ICONS, getUserIcon } from "../icons.js";
+import { t, term } from "../i18n.js";
 import { applyValueOverlay, buildChipContainer } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { buildTooltip } from "../ui/tooltip.js";
@@ -89,7 +90,7 @@ export function defineSkillsMain(CoreHUD) {
         }
         get label() {
             const e = this.entry;
-            return e?.spec ? `${e.name} (${e.spec})` : (e?.name ?? "Skill");
+            return e?.spec ? `${e.name} (${e.spec})` : (e?.name ?? t("ECH-RMU.Fallback.Skill"));
         }
         get icon() {
             const skillName = this.entry?.name;
@@ -127,7 +128,7 @@ export function defineSkillsMain(CoreHUD) {
             if (!this.element) return;
 
             // Apply total bonus overlay
-            applyValueOverlay(this.element, this.entry?.total ?? "", "Total");
+            applyValueOverlay(this.element, this.entry?.total ?? "", term("Total"));
 
             // Add data-attributes for searching and filtering
             const label = this.label || "";
@@ -174,7 +175,7 @@ export function defineSkillsMain(CoreHUD) {
     class RMUSkillsCategoryButton extends ButtonPanelButton {
         constructor() {
             super();
-            this.title = "SKILLS";
+            this.title = term("Skills");
             this._icon = ICONS.skills;
         }
         get label() {
@@ -238,7 +239,7 @@ export function defineSkillsMain(CoreHUD) {
      */
     class RMUSkillsActionPanel extends RMUActionPanel {
         get label() {
-            return "SKILLS";
+            return term("Skills");
         }
         async _getButtons() {
             return [new RMUSkillsCategoryButton()];

@@ -4,6 +4,7 @@
  */
 
 import { ICONS } from "../icons.js";
+import { t, term } from "../i18n.js";
 import { applyValueOverlay, createEquipToggle } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { buildTooltip } from "../ui/tooltip.js";
@@ -25,10 +26,10 @@ export function defineAttacksMain(CoreHUD) {
      * Spell attacks are shown in the Spells panel instead, so there is no spell category.
      */
     const CATS = [
-        { key: "melee", label: "Melee", icon: ICONS.melee },
-        { key: "ranged", label: "Ranged", icon: ICONS.ranged },
-        { key: "natural", label: "Natural", icon: ICONS.natural },
-        { key: "shield", label: "Shield", icon: ICONS.shield },
+        { key: "melee", labelKey: "ECH-RMU.Attack.Category.Melee", icon: ICONS.melee },
+        { key: "ranged", labelKey: "ECH-RMU.Attack.Category.Ranged", icon: ICONS.ranged },
+        { key: "natural", labelKey: "ECH-RMU.Attack.Category.Natural", icon: ICONS.natural },
+        { key: "shield", labelKey: "ECH-RMU.Attack.Category.Shield", icon: ICONS.shield },
     ];
 
     /**
@@ -81,7 +82,7 @@ export function defineAttacksMain(CoreHUD) {
         }
 
         get label() {
-            return this.attack?.attackName ?? this.attack?.name ?? "Attack";
+            return this.attack?.attackName ?? this.attack?.name ?? t("ECH-RMU.Fallback.Attack");
         }
 
         get icon() {
@@ -92,7 +93,7 @@ export function defineAttacksMain(CoreHUD) {
             await super._renderInner();
             if (!this.element) return;
 
-            applyValueOverlay(this.element, this.attack?.totalBonus ?? "", "Total");
+            applyValueOverlay(this.element, this.attack?.totalBonus ?? "", term("Total"));
 
             if (this._isPhysicalWeapon && this.attack.itemId) {
                 this._renderEquipToggle();
@@ -194,10 +195,10 @@ export function defineAttacksMain(CoreHUD) {
      * @augments ButtonPanelButton
      */
     class RMUAttackCategoryButton extends ButtonPanelButton {
-        constructor({ key, label, icon, attacks }) {
+        constructor({ key, labelKey, icon, attacks }) {
             super();
             this.key = key;
-            this.title = label;
+            this.title = t(labelKey);
             this._icon = icon;
             this._attacks = Array.isArray(attacks) ? attacks : [];
         }
@@ -226,7 +227,7 @@ export function defineAttacksMain(CoreHUD) {
      */
     class RMUAttacksActionPanel extends RMUActionPanel {
         get label() {
-            return "Attacks";
+            return t("ECH-RMU.Panel.Attacks");
         }
 
         async _getButtons() {
@@ -266,7 +267,7 @@ export function defineAttacksMain(CoreHUD) {
                 (c) =>
                     new RMUAttackCategoryButton({
                         key: c.key,
-                        label: c.label,
+                        labelKey: c.labelKey,
                         icon: c.icon,
                         attacks: buckets.get(c.key) || [],
                     }),

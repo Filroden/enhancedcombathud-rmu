@@ -4,6 +4,7 @@
  */
 
 import { ICONS, getUserIcon } from "../icons.js";
+import { tf, term } from "../i18n.js";
 import { formatBonus } from "../format.js";
 import { applyValueOverlay, buildChipContainer } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
@@ -54,7 +55,7 @@ export function defineSpellsMain(CoreHUD) {
         }
 
         get label() {
-            return `${this.spell.name} (Lvl ${this.spell.level})`;
+            return tf("ECH-RMU.Spell.Label", { name: this.spell.name, level: this.spell.level });
         }
 
         get icon() {
@@ -150,16 +151,18 @@ export function defineSpellsMain(CoreHUD) {
             if (this._hasAttack) {
                 const obVal = formatBonus(spellAttackBonus(this.spell));
 
-                applyValueOverlay(this.element, `${scrVal} / ${obVal}`, "SCR / OB");
+                applyValueOverlay(this.element, `${scrVal} / ${obVal}`, `${term("SCR")} / ${term("OB")}`);
                 // Ensures custom CSS font-size reduction for dual values is applied
                 this.element.classList.add("ech-rmu-combo-spell");
             } else {
-                applyValueOverlay(this.element, scrVal ?? "", "SCR");
+                applyValueOverlay(this.element, scrVal ?? "", term("SCR"));
             }
 
             // Search text and accordion position.
             const listInfo = this.spell._rawListInfo || {};
-            const nameNorm = `${this.spell.name} ${listInfo.listName} ${listInfo.realm} ${listInfo.listType} Lvl ${this.spell.level}`.toLowerCase();
+            // The level is searchable as it reads on the button ("Lvl 5" in English).
+            const levelText = tf("ECH-RMU.Spell.Level", { level: this.spell.level });
+            const nameNorm = `${this.spell.name} ${listInfo.listName} ${listInfo.realm} ${listInfo.listType} ${levelText}`.toLowerCase();
             this.element.dataset.nameNorm = nameNorm;
             this.accordion.register(this.element, ACCORDION_ROLE.ITEM, [this._listTypeKey, this._listKey]);
         }
@@ -239,7 +242,7 @@ export function defineSpellsMain(CoreHUD) {
     class RMUAllSpellsCategoryButton extends ButtonPanelButton {
         constructor() {
             super();
-            this.title = "SPELLS";
+            this.title = term("Spells");
             this._icon = ICONS.spells;
         }
         get label() {
@@ -313,7 +316,7 @@ export function defineSpellsMain(CoreHUD) {
 
     class RMUSpellsActionPanel extends RMUActionPanel {
         get label() {
-            return "SPELLS";
+            return term("Spells");
         }
         async _getButtons() {
             return [new RMUAllSpellsCategoryButton()];

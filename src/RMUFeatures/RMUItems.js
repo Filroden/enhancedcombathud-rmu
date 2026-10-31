@@ -5,6 +5,7 @@
  */
 
 import { ICONS } from "../icons.js";
+import { t, term } from "../i18n.js";
 import { UIGuards } from "../ui/guards.js";
 import { applyValueOverlay, createEquipToggle } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
@@ -75,7 +76,7 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         get label() {
-            return this.spell?.name ?? "Item Spell";
+            return this.spell?.name ?? t("ECH-RMU.Fallback.ItemSpell");
         }
         get icon() {
             return ICONS.spells;
@@ -94,7 +95,7 @@ export function defineMagicItemsMain(CoreHUD) {
 
             const value = this.spell?.scr;
             if (value !== undefined && value !== null) {
-                applyValueOverlay(this.element, value, "SCR");
+                applyValueOverlay(this.element, value, term("SCR"));
             }
         }
 
@@ -153,7 +154,7 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         get label() {
-            return this.itemGroup.groupLabel || this.itemDoc?.name || "Magic Item";
+            return this.itemGroup.groupLabel || this.itemDoc?.name || t("ECH-RMU.Fallback.MagicItem");
         }
         get icon() {
             return this.itemDoc?.img || ICONS.items;
@@ -256,7 +257,7 @@ export function defineMagicItemsMain(CoreHUD) {
     class RMUItemsMasterCategoryButton extends ButtonPanelButton {
         constructor(itemSpells, actor) {
             super();
-            this.title = "ITEMS";
+            this.title = t("ECH-RMU.Panel.Items");
             this._icon = ICONS.items;
             this.itemSpells = itemSpells;
             this._actor = actor;
@@ -309,7 +310,7 @@ export function defineMagicItemsMain(CoreHUD) {
      */
     class RMUMagicItemsActionPanel extends RMUActionPanel {
         get label() {
-            return "ITEMS";
+            return t("ECH-RMU.Panel.Items");
         }
 
         async _getButtons() {

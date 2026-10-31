@@ -12,6 +12,7 @@
  */
 
 import { ICONS } from "../icons.js";
+import { t, tf, term } from "../i18n.js";
 import { applyValueOverlay } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { DETAIL_FORMAT, buildTooltip } from "../ui/tooltip.js";
@@ -54,7 +55,8 @@ export function definePortraitPanel(CoreHUD) {
         get description() {
             if (!this.actor) return "";
             const { level, profession } = getPortraitData(this.actor);
-            return [level == null ? null : `Lvl ${level}`, profession].filter(Boolean).join(" · ");
+            const levelText = level == null ? null : tf("ECH-RMU.Portrait.Level", { level });
+            return [levelText, profession].filter(Boolean).join(" · ");
         }
 
         /** @override */
@@ -77,9 +79,9 @@ export function definePortraitPanel(CoreHUD) {
             const { hp, pp, db } = getPortraitData(this.actor);
             const hpColor = hp.value <= 0 ? "var(--filroden-color-danger)" : "var(--filroden-color-success)";
             return [
-                [{ text: `${hp.value}`, color: hpColor }, { text: "/" }, { text: `${hp.max}`, color: "var(--filroden-color-text-main-solid)" }, { text: "HP" }],
-                [{ text: "PP" }, { text: `${pp.value}/${pp.max}`, color: "var(--ech-movement-baseMovement-background)" }],
-                [{ text: "DB" }, { text: `${db}`, color: "var(--ech-movement-baseMovement-background)" }],
+                [{ text: `${hp.value}`, color: hpColor }, { text: "/" }, { text: `${hp.max}`, color: "var(--filroden-color-text-main-solid)" }, { text: term("HP") }],
+                [{ text: term("PP") }, { text: `${pp.value}/${pp.max}`, color: "var(--ech-movement-baseMovement-background)" }],
+                [{ text: term("DB") }, { text: `${db}`, color: "var(--ech-movement-baseMovement-background)" }],
             ];
         }
     }
@@ -156,7 +158,7 @@ export function defineResistancesMain(CoreHUD) {
             this.resist = resist;
         }
         get label() {
-            return this.resist?.name || "Resistance";
+            return this.resist?.name || t("ECH-RMU.Fallback.Resistance");
         }
         get icon() {
             // Icon settings are keyed by the system's untranslated resistance identifier.
@@ -188,7 +190,7 @@ export function defineResistancesMain(CoreHUD) {
         async _renderInner() {
             await super._renderInner();
             if (!this.element) return;
-            applyValueOverlay(this.element, this.resist?.total ?? "", "Total");
+            applyValueOverlay(this.element, this.resist?.total ?? "", term("Total"));
         }
 
         async _onActivate() {
@@ -198,7 +200,7 @@ export function defineResistancesMain(CoreHUD) {
 
     class RMUResistanceCategoryButton extends ButtonPanelButton {
         get label() {
-            return "RESISTANCE ROLLS";
+            return t("ECH-RMU.Panel.ResistanceRolls");
         }
         get icon() {
             return ICONS.panel;
@@ -220,7 +222,7 @@ export function defineResistancesMain(CoreHUD) {
 
     class RMUResistanceActionPanel extends RMUActionPanel {
         get label() {
-            return "RESISTANCES";
+            return t("ECH-RMU.Panel.Resistances");
         }
         async _getButtons() {
             return [new RMUResistanceCategoryButton()];
@@ -240,8 +242,8 @@ export function defineResistancesMain(CoreHUD) {
  * check.
  */
 const SPECIAL_CHECKS = Object.freeze([
-    { label: "PHYSICAL", iconKey: "endurance", skillName: "Body Development", rollOption: "Endurance", injuryKey: "_endurance" },
-    { label: "MENTAL", iconKey: "concentration", skillName: "Mental Focus", rollOption: "Concentration", injuryKey: "_concentration" },
+    { labelKey: "ECH-RMU.Endurance.Physical", iconKey: "endurance", skillName: "Body Development", rollOption: "Endurance", injuryKey: "_endurance" },
+    { labelKey: "ECH-RMU.Endurance.Mental", iconKey: "concentration", skillName: "Mental Focus", rollOption: "Concentration", injuryKey: "_concentration" },
 ]);
 
 /**
@@ -263,7 +265,7 @@ export function defineSpecialChecksMain(CoreHUD) {
         }
 
         get label() {
-            return this._config.label;
+            return t(this._config.labelKey);
         }
         get icon() {
             return ICONS[this._config.iconKey];
@@ -301,7 +303,7 @@ export function defineSpecialChecksMain(CoreHUD) {
             const actor = hudActor();
             this._skill = actor ? getSkillByName(actor, this._config.skillName) : null;
             this._values = getEnduranceValues(actor, this._config.injuryKey, this._skill);
-            applyValueOverlay(this.element, this._values.total ?? "", "Total");
+            applyValueOverlay(this.element, this._values.total ?? "", term("Total"));
         }
 
         async _onActivate() {
@@ -323,7 +325,7 @@ export function defineSpecialChecksMain(CoreHUD) {
 
     class RMUSpecialChecksCategoryButton extends ButtonPanelButton {
         get label() {
-            return "ENDURANCE";
+            return term("Endurance");
         }
         get icon() {
             return ICONS.special;
@@ -340,7 +342,7 @@ export function defineSpecialChecksMain(CoreHUD) {
 
     class RMUSpecialChecksActionPanel extends RMUActionPanel {
         get label() {
-            return "ENDURANCE";
+            return term("Endurance");
         }
         async _getButtons() {
             return [new RMUSpecialChecksCategoryButton()];
@@ -376,7 +378,7 @@ export function defineRestMain(CoreHUD) {
 
     class RMURestActionButton extends RMUActionButton {
         get label() {
-            return "REST";
+            return term("Rest");
         }
         get icon() {
             return ICONS.rest;
@@ -397,7 +399,7 @@ export function defineRestMain(CoreHUD) {
 
     class RMURestActionPanel extends RMUActionPanel {
         get label() {
-            return "REST";
+            return term("Rest");
         }
         async _getButtons() {
             return [new RMURestActionButton()];
@@ -415,7 +417,7 @@ export function defineCombatMain(CoreHUD) {
 
     class RMUEndTurnActionButton extends RMUActionButton {
         get label() {
-            return "End Turn";
+            return t("ECH-RMU.Button.EndTurn");
         }
         get icon() {
             return ICONS.combat;
@@ -443,7 +445,7 @@ export function defineCombatMain(CoreHUD) {
 
     class RMUCombatActionPanel extends RMUActionPanel {
         get label() {
-            return "COMBAT";
+            return t("ECH-RMU.Panel.Combat");
         }
         /**
          * Shown on the HUD token's turn. Also shown when the active combatant is the same

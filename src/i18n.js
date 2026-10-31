@@ -40,6 +40,7 @@ export const SYSTEM_TERM_KEYS = Object.freeze({
     ItemStrength: "RMU.EquipmentSheet.StrengthLegend",
     Knack: "RMU.Terms.Knack",
     Level: "RMU.Terms.Level",
+    OB: "RMU.Terms.OB",
     PP: "RMU.Terms.PowerPointsLabel",
     Range: "RMU.Terms.Range",
     Ranks: "RMU.Terms.RanksHeader",
