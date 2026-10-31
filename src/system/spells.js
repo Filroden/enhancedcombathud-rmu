@@ -41,20 +41,70 @@ function keyText(key, ownLanguageOnly = false) {
 }
 
 /**
- * Picks the text for a spell's name or description.
+ * Language key namespaces that hold spell lists, in the order they are searched.
+ * RMU.SpellList is the current structure for every book (Spell Law, Treasure Law, ...).
+ * RMU_SL and RMU_SW_SL are the older Spell Law namespaces, still searched so that a world
+ * whose Spell Law content has not been updated yet keeps its translated text.
+ */
+const SPELL_LIST_NAMESPACES = Object.freeze(["RMU.SpellList", "RMU_SL", "RMU_SW_SL"]);
+
+/** Separator between a list's key and its spells' keys ("RMU.SpellList.Hiding.spells.Blur.name"). */
+const SPELLS_SEGMENT = ".spells.";
+
+/** List name to the key of the list ("Hiding" to "RMU.SpellList.Hiding"), found once per list. */
+const listKeyCache = new Map();
+
+/**
+ * The language key of a spell's list, without a trailing ".name".
  *
- * In order: the system's pre-translated text (it localises spells when it prepares the
- * actor); the language key in the current language; the stored text; the language key in
- * English. The stored text sits between the two key lookups because it serves two cases:
- * on a custom spell it is the only text there is, while on a spell from the books it is
- * the English original, which a translation in the player's language should replace.
- * @param {string|undefined} translated
+ * Spells in the current structure carry no key of their own, so the list is found by its
+ * name in each namespace in turn. A list found in none of them (a custom list) has no key,
+ * and its spells show their stored text.
+ * @param {object} spell
+ * @returns {string|null}
+ */
+function spellListKey(spell) {
+    const list = spell?._spellListName ?? spell?.spellList;
+    if (!list) return null;
+    if (!listKeyCache.has(list)) {
+        const namespace = SPELL_LIST_NAMESPACES.find((ns) => game.i18n.has(`${ns}.${list}.name`));
+        listKeyCache.set(list, namespace ? `${namespace}.${list}` : null);
+    }
+    return listKeyCache.get(list);
+}
+
+/**
+ * The language key of a spell's name or description.
+ *
+ * A spell copied onto an actor before its book moved to the current structure can still
+ * carry its old key (label or descriptionLabel), which no longer exists in the language
+ * files. Such a key is only used when it still has text; otherwise the key is built from the
+ * list's key and the spell's name.
+ * @param {object} spell
+ * @param {"name"|"description"} field
+ * @returns {string|undefined}
+ */
+function spellKey(spell, field) {
+    const own = field === "name" ? spell?.label : spell?.descriptionLabel;
+    if (own && game.i18n.has(own)) return own;
+    const listKey = spellListKey(spell);
+    return listKey && spell?.name ? `${listKey}${SPELLS_SEGMENT}${spell.name}.${field}` : undefined;
+}
+
+/**
+ * Picks the text for a spell's or a list's name.
+ *
+ * In order: the language key in the current language; the stored name; the language key
+ * in English. The stored name is always filled in, and for a spell from the books it is the
+ * English original, so a translation in the player's language replaces it. A renamed or
+ * custom spell has no matching key (the key is built from its name), so its stored name
+ * shows.
  * @param {string|undefined} key
  * @param {string|undefined} stored
  * @returns {string}
  */
-function spellText(translated, key, stored) {
-    return firstText([translated, keyText(key, true), stored, keyText(key)]);
+function nameText(key, stored) {
+    return firstText([keyText(key, true), stored, keyText(key)]);
 }
 
 /**
@@ -63,16 +113,22 @@ function spellText(translated, key, stored) {
  * @returns {string}
  */
 export function spellDisplayName(spell) {
-    return spellText(spell?._translatedName, spell?.label, spell?.name);
+    return nameText(spellKey(spell, "name"), spell?.name);
 }
 
 /**
  * A spell's description as the player reads it (HTML).
+ *
+ * In the current spell structure a spell from the books stores no description: its text
+ * lives only in the language files. A stored description therefore means a custom or
+ * edited spell, and it is shown as written in preference to the books' text. Only an empty
+ * description falls through to the language key, in the current language first.
  * @param {object} spell
  * @returns {string}
  */
 export function spellDescription(spell) {
-    return spellText(spell?._translatedDescription, spell?.descriptionLabel, spell?.description);
+    const key = spellKey(spell, "description");
+    return firstText([spell?.description, keyText(key, true), keyText(key)]);
 }
 
 /**
@@ -81,8 +137,8 @@ export function spellDescription(spell) {
  * @returns {string}
  */
 export function spellListDisplayName(spell) {
-    const list = spell?._spellListName ?? spell?.spellList;
-    return spellText(spell?._translatedSpellListName, list ? `RMU_SL.${list}.name` : undefined, list);
+    const listKey = spellListKey(spell);
+    return nameText(listKey ? `${listKey}.name` : undefined, spell?._spellListName ?? spell?.spellList);
 }
 
 /**

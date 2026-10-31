@@ -7,7 +7,7 @@
  * entry, or one the language file does not cover) is shown as stored.
  */
 
-import { localizeSystem, localizeSystemId } from "../i18n.js";
+import { localizeSystem, localizeSystemEntry, localizeSystemId } from "../i18n.js";
 
 /**
  * A stat's abbreviation (SD becomes Ad in French).
@@ -38,12 +38,13 @@ export function specializationName(specialization) {
 }
 
 /**
- * A profession's name (Mystic, Fighter, ...).
+ * A profession's name (Mystic, Fighter, ...). The system keys each profession under
+ * RMU.Profession.<name>, with its name in .Name.
  * @param {string} profession - The untranslated profession.
  * @returns {string}
  */
 export function professionName(profession) {
-    return localizeSystemId("RMU.Profession", profession);
+    return localizeSystemEntry("RMU.Profession", profession);
 }
 
 /**

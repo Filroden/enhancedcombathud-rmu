@@ -4,7 +4,7 @@
  */
 
 import { DETAIL_FORMAT } from "../format.js";
-import { compareText, localizeSystem, localizeSystemId, t, term } from "../i18n.js";
+import { compareText, localizeSystem, localizeSystemEntry, localizeSystemId, t, term } from "../i18n.js";
 import { hudActor } from "../argon.js";
 import { specializationName, statAbbreviation } from "./names.js";
 
@@ -46,13 +46,14 @@ export function getSkillByName(actor, name) {
 const NO_CATEGORY = "Other";
 
 /**
- * A skill's name in the current language. The system keys skill names as
- * RMU.Skills.<name>; a custom skill without a key shows as typed.
+ * A skill's name in the current language. The system keys each skill under
+ * RMU.Skills.<name>, with its name in .Name (and its description in .Description); a custom
+ * skill without a key shows as typed.
  * @param {string} name - The untranslated skill name.
  * @returns {string}
  */
 export function skillDisplayName(name) {
-    return localizeSystemId("RMU.Skills", name);
+    return localizeSystemEntry("RMU.Skills", name);
 }
 
 /**

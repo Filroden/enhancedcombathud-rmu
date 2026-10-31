@@ -144,6 +144,20 @@ export function localizeSystemId(prefix, id) {
 }
 
 /**
+ * Localises a system entry that has its own group of keys, such as a skill
+ * (RMU.Skills.<name>.Name and RMU.Skills.<name>.Description). The name is read from .Name;
+ * an entry without a key is returned unchanged, so custom entries still show.
+ * @param {string} prefix - The system's key prefix, without a trailing dot.
+ * @param {string} id - The untranslated identifier.
+ * @returns {string}
+ */
+export function localizeSystemEntry(prefix, id) {
+    if (typeof id !== "string" || id === "") return id ?? "";
+    const key = `${prefix}.${id}.Name`;
+    return game.i18n.has(key) ? game.i18n.localize(key) : id;
+}
+
+/**
  * Compares two display strings in the current language's alphabetical order, so sorted
  * lists follow the order a reader of that language expects.
  * @param {string} a

@@ -12,7 +12,7 @@
     ],
     "relationships": {
         "requires": [{ "id": "enhancedcombathud", "type": "module", "compatibility": { "minimum": "5.0.0" } }],
-        "systems": [{ "id": "rmu", "type": "system", "compatibility": { "minimum": "1.4.0" } }]
+        "systems": [{ "id": "rmu", "type": "system", "compatibility": { "minimum": "1.4.194" } }]
     },
     "compatibility": { "minimum": "14", "verified": "14", "maximum": "14" },
     "url": "https://github.com/Filroden/enhancedcombathud-rmu",
