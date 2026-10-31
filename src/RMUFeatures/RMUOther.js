@@ -215,7 +215,7 @@ export function defineResistancesMain(CoreHUD) {
         async _getPanel() {
             await ensureRMUReady();
             const list = getActorResistances();
-            const buttons = list.length ? list.map((r) => new RMUResistanceActionButton(r)) : [new RMUEmptyButton("No resistances", ICONS.panel)];
+            const buttons = list.length ? list.map((r) => new RMUResistanceActionButton(r)) : [new RMUEmptyButton(t("ECH-RMU.Empty.Resistances"), ICONS.panel)];
             return createGuardedPanel("ech-rmu-resistances", buttons);
         }
     }

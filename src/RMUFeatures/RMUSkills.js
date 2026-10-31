@@ -113,6 +113,19 @@ export function defineSkillsMain(CoreHUD) {
         get hasTooltip() {
             return true;
         }
+        /** @returns {boolean} Whether the skill is marked as a favourite. */
+        get _isFavorite() {
+            return this.entry?.raw?.system?.favorite === true || this.entry?.favorite === true;
+        }
+
+        /**
+         * The chips shown on the button, also listed as badges in its tooltip.
+         * @returns {Array<{class: string, label: string}>}
+         */
+        _chips() {
+            return this._isFavorite ? [{ class: "ech-rmu-skill-fav-chip", label: t("ECH-RMU.Chip.Favorite") }] : [];
+        }
+
         async getTooltipData() {
             const skill = this.entry?.raw;
             return buildTooltip({
@@ -120,6 +133,7 @@ export function defineSkillsMain(CoreHUD) {
                 subtitle: skill?.system?.category,
                 description: await getSkillDescription(skill),
                 details: skillTooltipDetails(skill),
+                properties: this._chips().map((c) => c.label),
             });
         }
 
@@ -140,22 +154,13 @@ export function defineSkillsMain(CoreHUD) {
             this.element.dataset.nameNorm = norm;
 
             const sys = this.entry?.raw?.system ?? {};
-            const isFav = sys.favorite === true || this.entry?.favorite === true;
-            this.element.dataset.favorite = isFav ? "true" : "false";
+            this.element.dataset.favorite = this._isFavorite ? "true" : "false";
 
             // Extract total ranks and assign the dataset flag
             const totalRanks = Number(sys._totalRanks || sys.ranks || 0);
             this.element.dataset.ranked = totalRanks > 0 ? "true" : "false";
 
-            // Add "Favorite" chip
-            const chips = [];
-            if (isFav) {
-                chips.push({
-                    class: "ech-rmu-skill-fav-chip",
-                    title: "Favorite",
-                });
-            }
-            buildChipContainer(this.element, chips);
+            buildChipContainer(this.element, this._chips());
 
             this.accordion.register(this.element, ACCORDION_ROLE.ITEM, [catKeyOf(cat)]);
         }
@@ -197,7 +202,7 @@ export function defineSkillsMain(CoreHUD) {
             const buttons = [];
 
             if (!groups.size) {
-                return createGuardedPanel("ech-rmu-skills", [new RMUEmptyButton("No skills")]);
+                return createGuardedPanel("ech-rmu-skills", [new RMUEmptyButton(t("ECH-RMU.Empty.Skills"))]);
             }
 
             const cats = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b));
@@ -217,13 +222,13 @@ export function defineSkillsMain(CoreHUD) {
                     id: "fav",
                     dataKey: "favorite",
                     icon: ICONS.star,
-                    tooltip: "Show Favorites Only",
+                    tooltip: t("ECH-RMU.Filter.Favorites"),
                 },
                 {
                     id: "ranked",
                     dataKey: "ranked",
                     icon: ICONS.ranked,
-                    tooltip: "Show Ranked Skills Only",
+                    tooltip: t("ECH-RMU.Filter.Ranked"),
                 },
             ];
 

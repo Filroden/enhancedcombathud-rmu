@@ -1,5 +1,7 @@
 {
     "ECH-RMU.Setting.Icon.Star": "Favourite Star",
     "ECH-RMU.Tooltip.ArmorBonus": "Armour Bonus",
+    "ECH-RMU.Chip.Favorite": "Favourite",
+    "ECH-RMU.Filter.Favorites": "Show Favourites Only",
     "ECH-RMU.Term.Specialization": "Specialisation"
 }

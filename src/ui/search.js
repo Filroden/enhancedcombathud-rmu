@@ -12,6 +12,7 @@
  */
 
 import { ICONS } from "../icons.js";
+import { t, tf } from "../i18n.js";
 import { ACCORDION_ROLE, isPathPrefix, readAccordionData } from "./accordion.js";
 
 /**
@@ -94,7 +95,7 @@ export class ListSearch {
         this.input = document.createElement("input");
         this.input.className = "ech-rmu-search-input";
         this.input.type = "text";
-        this.input.placeholder = "Filter...";
+        this.input.placeholder = t("ECH-RMU.Search.Placeholder");
         // Typing must never reach Foundry's key handling (for example WASD token movement),
         // so key events are stopped at the input in the capture phase.
         this.input.addEventListener(
@@ -115,7 +116,7 @@ export class ListSearch {
             this.run();
         });
 
-        const clearBtn = createIconButton("ech-rmu-search-clear ech-rmu-filter-button", ICONS.close, "Clear search and filters");
+        const clearBtn = createIconButton("ech-rmu-search-clear ech-rmu-filter-button", ICONS.close, t("ECH-RMU.Search.Clear"));
         clearBtn.addEventListener("click", (e) => {
             e.preventDefault();
             this.input.value = "";
@@ -166,7 +167,7 @@ export class ListSearch {
             header.el.style.display = hasMatch ? "" : "none";
         }
 
-        this.summary.textContent = `Showing ${visiblePaths.length} of ${items.length}`;
+        this.summary.textContent = tf("ECH-RMU.Search.Summary", { visible: visiblePaths.length, total: items.length });
         this.summary.style.display = "";
     }
 

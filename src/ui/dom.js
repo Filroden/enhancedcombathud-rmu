@@ -9,6 +9,7 @@
 
 import { ICONS } from "../icons.js";
 import { formatBonus } from "../format.js";
+import { t } from "../i18n.js";
 
 /**
  * Selectors for the image element inside an Argon button, tried together. The overlay is
@@ -68,13 +69,19 @@ function defaultChipIcon(chipClass) {
 /**
  * Builds one chip element. The icon is drawn as a mask over the chip's colour, so the GM's
  * icon choice is passed as the --ech-rmu-chip-icon-url custom property.
- * @param {{class: string, title: string, icon?: string}} chipData - The chip definition.
+ *
+ * Chips let the pointer through (pointer-events: none in the module CSS) so a click on a
+ * chip still reaches its button, which also means a hover title would never show. The
+ * label is therefore set as aria-label for assistive technology, and the button's tooltip
+ * lists the same labels as property badges.
+ * @param {{class: string, label: string, icon?: string}} chipData - The chip definition.
  * @returns {HTMLElement}
  */
 function buildChip(chipData) {
     const chip = document.createElement("div");
     chip.className = `ech-rmu-chip ${chipData.class}`;
-    chip.title = chipData.title;
+    chip.setAttribute("role", "img");
+    chip.setAttribute("aria-label", chipData.label);
 
     const iconUrl = chipData.icon || defaultChipIcon(chipData.class);
     if (iconUrl) {
@@ -89,7 +96,7 @@ function buildChip(chipData) {
 /**
  * Creates or refreshes the chip row on an action button. Passing no chips removes the row.
  * @param {HTMLElement} element - The button's DOM element.
- * @param {Array<{class: string, title: string, icon?: string}>} [chips=[]] - Chips to show.
+ * @param {Array<{class: string, label: string, icon?: string}>} [chips=[]] - Chips to show.
  * @returns {HTMLElement|null} The chip container, or null when there are no chips.
  */
 export function buildChipContainer(element, chips = []) {
@@ -131,12 +138,12 @@ export function createEquipToggle({ equipped, onToggle }) {
     const toggle = document.createElement("div");
     toggle.className = "ech-rmu-equip-toggle";
     toggle.classList.toggle("equipped", equipped);
-    toggle.title = equipped ? "Click to Unequip" : "Click to Equip";
+    toggle.title = t(equipped ? "ECH-RMU.Equip.Unequip" : "ECH-RMU.Equip.Equip");
 
     const icon = document.createElement("img");
     icon.className = "ech-rmu-equip-icon";
     icon.src = equipped ? ICONS.equip_closed : ICONS.equip_open;
-    icon.alt = "Toggle Equip";
+    icon.alt = t("ECH-RMU.Equip.Toggle");
     toggle.appendChild(icon);
 
     toggle.addEventListener("pointerdown", (e) => e.stopImmediatePropagation());

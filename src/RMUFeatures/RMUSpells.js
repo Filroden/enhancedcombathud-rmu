@@ -123,7 +123,20 @@ export function defineSpellsMain(CoreHUD) {
                 subtitle: tf("ECH-RMU.Spell.Subtitle", { level: s.level, list: s.spellList }),
                 description: (s.description || "") + helpText,
                 details,
+                properties: this._chips().map((c) => c.label),
             });
+        }
+
+        /**
+         * The chips shown on the button, also listed as badges in its tooltip.
+         * @returns {Array<{class: string, label: string}>}
+         */
+        _chips() {
+            const chips = [];
+            if (this.spell.isFavorite === true) chips.push({ class: "ech-rmu-spell-fav-chip", label: t("ECH-RMU.Chip.Favorite") });
+            if (this.spell.isInstantaneous === true) chips.push({ class: "ech-rmu-instant-chip", label: term("Instantaneous") });
+            if (this.spell.isSubconscious === true) chips.push({ class: "ech-rmu-subconscious-chip", label: term("Subconscious") });
+            return chips;
         }
 
         async _renderInner() {
@@ -132,7 +145,7 @@ export function defineSpellsMain(CoreHUD) {
 
             this.element.classList.add("ech-rmu-button-relative");
 
-            // Chips
+            // Flags shown as chips and read by the search filters
             const isFav = this.spell.isFavorite === true;
             const isInstant = this.spell.isInstantaneous === true;
             const isSubconscious = this.spell.isSubconscious === true;
@@ -142,11 +155,7 @@ export function defineSpellsMain(CoreHUD) {
             this.element.dataset.isInstant = isInstant ? "true" : "false";
             this.element.dataset.isSubconscious = isSubconscious ? "true" : "false";
 
-            const chips = [];
-            if (isFav) chips.push({ class: "ech-rmu-spell-fav-chip", title: "Favorite" });
-            if (isInstant) chips.push({ class: "ech-rmu-instant-chip", title: "Instantaneous" });
-            if (isSubconscious) chips.push({ class: "ech-rmu-subconscious-chip", title: "Sub-conscious" });
-            buildChipContainer(this.element, chips);
+            buildChipContainer(this.element, this._chips());
 
             // --- SCR / OB OVERLAY ---
             const scrVal = formatBonus(this.spell.scr);
@@ -265,7 +274,7 @@ export function defineSpellsMain(CoreHUD) {
             const allSpellsByListType = getGroupedSpells();
 
             if (!allSpellsByListType.size) {
-                return createGuardedPanel("ech-rmu-spells-all", [new RMUEmptyButton("No spells known")]);
+                return createGuardedPanel("ech-rmu-spells-all", [new RMUEmptyButton(t("ECH-RMU.Empty.Spells"))]);
             }
 
             const sortedListTypes = Array.from(allSpellsByListType.keys()).sort(compareListTypes);
@@ -294,19 +303,19 @@ export function defineSpellsMain(CoreHUD) {
                     id: "fav",
                     dataKey: "favorite",
                     icon: ICONS.star,
-                    tooltip: "Show Only Favorites",
+                    tooltip: t("ECH-RMU.Filter.Favorites"),
                 },
                 {
                     id: "instant",
                     dataKey: "isInstant",
                     icon: ICONS.instant,
-                    tooltip: "Show Only Instantaneous Spells",
+                    tooltip: t("ECH-RMU.Filter.Instantaneous"),
                 },
                 {
                     id: "subcon",
                     dataKey: "isSubconscious",
                     icon: ICONS.subconscious,
-                    tooltip: "Show Only Sub-conscious Spells",
+                    tooltip: t("ECH-RMU.Filter.Subconscious"),
                 },
             ];
 

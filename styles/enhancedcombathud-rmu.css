@@ -551,3 +551,19 @@
 .enhancedcombathud-rmu .ech-tooltip.ech-rmu-tooltip .ech-tooltip-body .ech-tooltip-details > div > span {
   line-height: 1.2;
 }
+
+/* Property badges explain the chips on a button. CORE's heading for the row is an h3,
+   which Foundry sizes larger than the detail labels above it; inheriting the tooltip's
+   font size makes it read as one more label. CORE also gives the first badge the brighter
+   hover colours, because other systems use the first badge for a primary property (a
+   damage type, for example). Our badges are all equal, so the first one keeps the base
+   colours like the rest. */
+.enhancedcombathud-rmu .ech-tooltip.ech-rmu-tooltip .ech-tooltip-body .ech-tooltip-properties h3 {
+  font-size: inherit;
+}
+
+.enhancedcombathud-rmu .ech-tooltip.ech-rmu-tooltip .ech-tooltip-body .ech-tooltip-properties .ech-tooltip-badge:first-of-type {
+  background-color: var(--ech-buttons-base-background);
+  border-color: var(--ech-buttons-base-border);
+  color: var(--ech-buttons-base-color);
+}

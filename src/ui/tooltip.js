@@ -9,12 +9,18 @@
  * - DETAIL_FORMAT.NUMBER: a count or measure, shown as is (ranks, level, targets).
  * - DETAIL_FORMAT.TEXT: anything else (the default).
  *
- * CORE inserts the title, subtitle and detail values as raw HTML, so buildTooltip escapes
- * them. The description is the one field passed through as HTML, because it carries
- * formatted text from the system or the item's notes.
+ * CORE inserts the title, subtitle, detail values and property badges as raw HTML, so
+ * buildTooltip escapes them. The description is the one field passed through as HTML,
+ * because it carries formatted text from the system or the item's notes.
+ *
+ * Properties are CORE's badge row at the foot of the tooltip. They explain the chips drawn
+ * on a button (Favorite, Instantaneous, ...): the chips themselves cannot have their own
+ * hover text, because they let the pointer through to the button so a click on a chip
+ * still activates it, and a second hover tooltip would compete with CORE's.
  */
 
 import { DETAIL_FORMAT, escapeHTML, formatBonus } from "../format.js";
+import { t } from "../i18n.js";
 
 export { DETAIL_FORMAT };
 
@@ -47,13 +53,21 @@ export function tooltipDetails(details) {
  * @param {string} [data.subtitle] - Plain text (escaped).
  * @param {string} [data.description] - HTML (not escaped).
  * @param {Array<{label: string, value: *, format?: string}>} [data.details]
- * @returns {{title: string, subtitle: string, description: string, details: Array<{label: string, value: string}>}}
+ * @param {Array<string>} [data.properties] - Translated badge texts (escaped).
+ * @returns {object} title, subtitle, description and details, plus properties and
+ *   propertiesLabel when there are properties.
  */
-export function buildTooltip({ title, subtitle, description, details }) {
-    return {
+export function buildTooltip({ title, subtitle, description, details, properties }) {
+    const tooltip = {
         title: escapeHTML(title),
         subtitle: escapeHTML(subtitle),
         description: description ?? "",
         details: tooltipDetails(details),
     };
+    const badges = (properties ?? []).filter((p) => !isEmpty(p));
+    if (badges.length) {
+        tooltip.properties = badges.map((label) => ({ label: escapeHTML(label) }));
+        tooltip.propertiesLabel = t("ECH-RMU.Tooltip.Properties");
+    }
+    return tooltip;
 }
