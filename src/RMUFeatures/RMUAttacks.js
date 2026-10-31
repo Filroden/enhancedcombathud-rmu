@@ -11,6 +11,7 @@ import { buildTooltip } from "../ui/tooltip.js";
 import { hudToken } from "../argon.js";
 import { callTokenAction } from "../system/api.js";
 import { onEquipmentChange, refreshEquipment } from "../equipment.js";
+import { skillDisplayName } from "../system/skills.js";
 import { ensureExtendedTokenData, ensureRMUReady } from "../system/derive.js";
 import { attackCategory, attackTooltipDetails, getActorAttacks, getLiveAttack, isAttackEquipped } from "../system/attacks.js";
 
@@ -36,9 +37,11 @@ export function defineAttacksMain(CoreHUD) {
     /**
      * Attack buttons built for the current HUD render.
      * After an equip toggle every attack button is refreshed, not only the one clicked: one
-     * weapon can appear several times (for example 1H and 2H variants), and equipping one
-     * item can make the system unequip another. The set is cleared whenever the Attacks panel
-     * rebuilds its buttons, so it never holds buttons from an earlier render.
+     * weapon can appear several times (for example 1H and 2H variants), and every one of them
+     * shares the item's equipped state. The system refuses to equip a weapon when the actor
+     * has no free hand rather than unequipping another, so a refused toggle simply leaves
+     * the buttons as they were. The set is cleared whenever the Attacks panel rebuilds its
+     * buttons, so it never holds buttons from an earlier render.
      */
     const liveAttackButtons = new Set();
 
@@ -143,7 +146,7 @@ export function defineAttacksMain(CoreHUD) {
             const a = this.attack ?? {};
             return buildTooltip({
                 title: this.label,
-                subtitle: a.skill?.name,
+                subtitle: skillDisplayName(a.skill?.name),
                 details: attackTooltipDetails(a, this._catKey),
             });
         }

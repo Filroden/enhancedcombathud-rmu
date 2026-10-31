@@ -4,7 +4,7 @@
  */
 
 import { ICONS, getUserIcon } from "../icons.js";
-import { t, tf, term } from "../i18n.js";
+import { compareText, t, tf, term } from "../i18n.js";
 import { escapeHTML, formatBonus } from "../format.js";
 import { applyValueOverlay, buildChipContainer } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
@@ -13,7 +13,16 @@ import { ListSearch } from "../ui/search.js";
 import { DETAIL_FORMAT, buildTooltip } from "../ui/tooltip.js";
 import { callHudTokenAction } from "../system/api.js";
 import { ensureRMUReady } from "../system/derive.js";
-import { compareListTypes, getGroupedSpells, spellAttackBonus, spellRealmsText } from "../system/spells.js";
+import {
+    compareListTypes,
+    getGroupedSpells,
+    listTypeDisplayName,
+    spellAttackBonus,
+    spellDescription,
+    spellDisplayName,
+    spellListDisplayName,
+    spellRealmsText,
+} from "../system/spells.js";
 
 /**
  * Spell list type headers dim their list headers while another list type is open, so the
@@ -24,6 +33,18 @@ import { compareListTypes, getGroupedSpells, spellAttackBonus, spellRealmsText }
  */
 function isSpellHeaderDimmed(headerPath, openPath) {
     return headerPath.length === 2 && headerPath[0] !== openPath[0];
+}
+
+/** Level suffixes on spell names (Regeneration I, ..., Regeneration True). */
+const SPELL_LEVEL_SUFFIX = / (I|II|III|IV|V|VI|VII|VIII|IX|X|True)$/;
+
+/**
+ * A spell name without its level suffix, so one custom icon covers every level variant.
+ * @param {string} name
+ * @returns {string}
+ */
+function baseSpellName(name) {
+    return String(name ?? "").replace(SPELL_LEVEL_SUFFIX, "").trim();
 }
 
 export function defineSpellsMain(CoreHUD) {
@@ -55,16 +76,14 @@ export function defineSpellsMain(CoreHUD) {
         }
 
         get label() {
-            return tf("ECH-RMU.Spell.Label", { name: this.spell.name, level: this.spell.level });
+            return tf("ECH-RMU.Spell.Label", { name: spellDisplayName(this.spell), level: this.spell.level });
         }
 
         get icon() {
-            // Extract the base spell name
-            const spellName = this.spell?.name || "";
-            const baseName = spellName.replace(/ (I|II|III|IV|V|VI|VII|VIII|IX|X|True)$/, "").trim();
-
-            // Check if the user has configured a custom icon
-            const customIcon = getUserIcon(baseName);
+            // A custom icon is mapped to the spell's base name (without its level suffix), so
+            // one mapping covers every level variant. The untranslated name is tried first,
+            // then the name as shown.
+            const customIcon = getUserIcon(baseSpellName(this.spell?.name)) ?? getUserIcon(baseSpellName(spellDisplayName(this.spell)));
             if (customIcon) return customIcon;
 
             // Fallback for all spells
@@ -89,7 +108,7 @@ export function defineSpellsMain(CoreHUD) {
             const range = s._modifiedRange?.range || s.range;
 
             const details = [
-                { label: t("ECH-RMU.Tooltip.ListType"), value: s.listType, format: TEXT },
+                { label: t("ECH-RMU.Tooltip.ListType"), value: listTypeDisplayName(s.listType), format: TEXT },
                 { label: t("ECH-RMU.Tooltip.Realms"), value: spellRealmsText(s), format: TEXT },
                 { label: term("AoE"), value: aoe, format: TEXT },
                 { label: term("Duration"), value: duration, format: TEXT },
@@ -120,8 +139,8 @@ export function defineSpellsMain(CoreHUD) {
 
             return buildTooltip({
                 title: this.label,
-                subtitle: tf("ECH-RMU.Spell.Subtitle", { level: s.level, list: s.spellList }),
-                description: (s.description || "") + helpText,
+                subtitle: tf("ECH-RMU.Spell.Subtitle", { level: s.level, list: spellListDisplayName(s) }),
+                description: spellDescription(s) + helpText,
                 details,
                 properties: this._chips().map((c) => c.label),
             });
@@ -173,7 +192,20 @@ export function defineSpellsMain(CoreHUD) {
             const listInfo = this.spell._rawListInfo || {};
             // The level is searchable as it reads on the button ("Lvl 5" in English).
             const levelText = tf("ECH-RMU.Spell.Level", { level: this.spell.level });
-            const nameNorm = `${this.spell.name} ${listInfo.listName} ${listInfo.realm} ${listInfo.listType} ${levelText}`.toLowerCase();
+            // Both the text the player reads and the untranslated names are searchable.
+            const nameNorm = [
+                spellDisplayName(this.spell),
+                spellListDisplayName(this.spell),
+                listTypeDisplayName(listInfo.listType),
+                this.spell.name,
+                listInfo.listName,
+                listInfo.realm,
+                listInfo.listType,
+                levelText,
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase();
             this.element.dataset.nameNorm = nameNorm;
             this.accordion.register(this.element, ACCORDION_ROLE.ITEM, [this._listTypeKey, this._listKey]);
         }
@@ -189,14 +221,21 @@ export function defineSpellsMain(CoreHUD) {
      * Level 2 accordion header: one spell list (for example "Hiding").
      */
     class RMUSpellListButton extends RMUActionButton {
-        constructor(listName, listTypeKey, accordion) {
+        /**
+         * @param {string} listName - The untranslated list name, which keys the accordion.
+         * @param {string} title - The list name as the player reads it.
+         * @param {string} listTypeKey - The untranslated list type.
+         * @param {Accordion} accordion
+         */
+        constructor(listName, title, listTypeKey, accordion) {
             super();
             this._listName = listName;
+            this._title = title;
             this._listTypeKey = listTypeKey;
             this.accordion = accordion;
         }
         get label() {
-            return this._listName;
+            return this._title;
         }
         get icon() {
             return "";
@@ -228,7 +267,7 @@ export function defineSpellsMain(CoreHUD) {
             this.accordion = accordion;
         }
         get label() {
-            return this._listType;
+            return listTypeDisplayName(this._listType);
         }
         get icon() {
             return "";
@@ -286,11 +325,13 @@ export function defineSpellsMain(CoreHUD) {
                 const listMap = allSpellsByListType.get(listType);
                 allButtons.push(new RMUSpellListTypeButton(listType, accordion));
 
-                const sortedListNames = Array.from(listMap.keys()).sort((a, b) => a.localeCompare(b));
+                // Lists in the alphabetical order of the names the player reads.
+                const titleOf = (listName) => spellListDisplayName(listMap.get(listName)[0]) || listName;
+                const sortedListNames = Array.from(listMap.keys()).sort((a, b) => compareText(titleOf(a), titleOf(b)));
 
                 for (const listName of sortedListNames) {
                     const spells = listMap.get(listName);
-                    allButtons.push(new RMUSpellListButton(listName, listType, accordion));
+                    allButtons.push(new RMUSpellListButton(listName, titleOf(listName), listType, accordion));
 
                     for (const spell of spells) {
                         allButtons.push(new RMUSpellActionButton(spell, accordion));

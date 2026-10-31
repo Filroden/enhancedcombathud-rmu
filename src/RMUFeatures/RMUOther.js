@@ -21,7 +21,7 @@ import { hudActor, hudToken } from "../argon.js";
 import { callHudTokenAction, callTokenAction } from "../system/api.js";
 import { ensureRMUReady } from "../system/derive.js";
 import { getActorResistances } from "../system/resistances.js";
-import { getEnduranceValues, getSkillByName, skillTooltipDetails } from "../system/skills.js";
+import { getEnduranceValues, getSkillByName, skillDisplayName, skillTooltipDetails } from "../system/skills.js";
 import { getPortraitData } from "../system/portrait.js";
 
 // -----------------------------------------------------------------------------
@@ -292,7 +292,7 @@ export function defineSpecialChecksMain(CoreHUD) {
             }
             return buildTooltip({
                 title: this.label,
-                subtitle: this._skill?.system?.name ?? t(this._config.checkKey),
+                subtitle: this._skill ? skillDisplayName(this._skill.system?.name) : t(this._config.checkKey),
                 details,
             });
         }

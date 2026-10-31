@@ -106,10 +106,11 @@ function hasOwnTranslation(key) {
 export function term(id) {
     const moduleKey = `${I18N_NAMESPACE}.Term.${id}`;
     const systemKey = SYSTEM_TERM_KEYS[id];
-    if (systemKey && hasOwnTranslation(systemKey)) return game.i18n.localize(systemKey);
-    if (hasOwnTranslation(moduleKey)) return game.i18n.localize(moduleKey);
-    if (systemKey && game.i18n.has(systemKey)) return game.i18n.localize(systemKey);
-    return game.i18n.localize(moduleKey);
+    // Translations are trimmed: some carry a stray trailing space ("Endurance ").
+    if (systemKey && hasOwnTranslation(systemKey)) return game.i18n.localize(systemKey).trim();
+    if (hasOwnTranslation(moduleKey)) return game.i18n.localize(moduleKey).trim();
+    if (systemKey && game.i18n.has(systemKey)) return game.i18n.localize(systemKey).trim();
+    return game.i18n.localize(moduleKey).trim();
 }
 
 /**
@@ -140,4 +141,15 @@ export function localizeSystemId(prefix, id) {
     if (typeof id !== "string" || id === "") return id ?? "";
     const key = `${prefix}.${id}`;
     return game.i18n.has(key) ? game.i18n.localize(key) : id;
+}
+
+/**
+ * Compares two display strings in the current language's alphabetical order, so sorted
+ * lists follow the order a reader of that language expects.
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+export function compareText(a, b) {
+    return String(a ?? "").localeCompare(String(b ?? ""), game.i18n?.lang);
 }

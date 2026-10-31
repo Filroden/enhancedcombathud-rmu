@@ -4,7 +4,7 @@
  */
 
 import { DETAIL_FORMAT } from "../format.js";
-import { t, term } from "../i18n.js";
+import { compareText, localizeSystem, localizeSystemId, t, term } from "../i18n.js";
 import { hudActor } from "../argon.js";
 
 /**
@@ -41,20 +41,57 @@ export function getSkillByName(actor, name) {
     return getAllActorSkills(actor).find((s) => (s?.system?.name ?? s?.name) === name);
 }
 
+/** Category used when the system gives a skill none. */
+const NO_CATEGORY = "Other";
+
+/**
+ * A skill's name in the current language. The system keys skill names as
+ * RMU.Skills.<name>; a custom skill without a key shows as typed.
+ * @param {string} name - The untranslated skill name.
+ * @returns {string}
+ */
+export function skillDisplayName(name) {
+    return localizeSystemId("RMU.Skills", name);
+}
+
+/**
+ * A skill category in the current language. The system gives each skill the key of its
+ * category (_i18nCategoryLabel); the RMU.SkillCategory.<category> key is the fallback.
+ * @param {object} s - The skill's system data.
+ * @returns {string}
+ */
+function categoryDisplayName(s) {
+    const label = localizeSystem(s._i18nCategoryLabel);
+    if (label && label !== s._i18nCategoryLabel) return label;
+    return localizeSystemId("RMU.SkillCategory", s.category ?? NO_CATEGORY);
+}
+
 /**
  * Turns a skill entry into what the Skills panel displays.
+ *
+ * Two sets of names are kept. name, spec and category are the system's untranslated
+ * identifiers: they group the skills, key the accordion and look up custom icons, so
+ * nothing changes behaviour when the language changes. displayName, displaySpec and
+ * displayCategory are what the player reads.
+ *
  * Unspecialised parent entries (for example "Animal Handling" next to "Animal Handling
  * (Horse)") are kept on purpose: the system lets them be rolled for an untrained use.
  * @param {object} sk
- * @returns {{key: string, name: string, spec: string, category: string, total: number, favorite: boolean, disabledBySystem: boolean, raw: object}}
+ * @returns {object}
  */
 function toDisplaySkill(sk) {
     const s = sk?.system ?? {};
+    const spec = s.specialization ?? "";
     return {
-        key: `${s.name ?? "Skill"}::${s.specialization ?? ""}`,
+        key: `${s.name ?? "Skill"}::${spec}`,
         name: s.name ?? "",
-        spec: s.specialization ?? "",
-        category: s.category ?? "Other",
+        spec,
+        category: s.category ?? NO_CATEGORY,
+        displayName: skillDisplayName(s.name ?? ""),
+        // Specialisations without a system key (most are spell list or place names) show
+        // as typed.
+        displaySpec: localizeSystemId("RMU.Specializations", spec),
+        displayCategory: categoryDisplayName(s),
         total: s._bonus,
         favorite: s.favorite === true || sk?.favorite === true,
         disabledBySystem: s._disableSkillRoll === true,
@@ -62,11 +99,18 @@ function toDisplaySkill(sk) {
     };
 }
 
-/** Display name used for sorting: "Name (Specialisation)" or "Name". */
-const displayName = (sk) => (sk.spec ? `${sk.name} (${sk.spec})` : sk.name);
+/**
+ * A skill's full label as the player reads it: "Name (Specialisation)" or "Name".
+ * @param {object} sk - A display skill from toDisplaySkill.
+ * @returns {string}
+ */
+export function skillLabel(sk) {
+    return sk.displaySpec ? `${sk.displayName} (${sk.displaySpec})` : sk.displayName;
+}
 
 /**
- * The HUD actor's skills grouped by category, each group sorted by display name.
+ * The HUD actor's skills grouped by untranslated category, each group sorted by the label
+ * the player reads, in the current language's alphabetical order.
  * @returns {Map<string, Array<object>>}
  */
 export function getGroupedSkills() {
@@ -78,7 +122,7 @@ export function getGroupedSkills() {
         groups.get(sk.category).push(sk);
     }
     for (const list of groups.values()) {
-        list.sort((a, b) => displayName(a).localeCompare(displayName(b)));
+        list.sort((a, b) => compareText(skillLabel(a), skillLabel(b)));
     }
     return groups;
 }

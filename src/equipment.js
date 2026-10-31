@@ -10,8 +10,9 @@
  * Panels register a refresh function. refreshEquipment() runs them one after another and
  * never runs two refreshes at the same time: a button rendered twice at once would get two
  * equip toggles, because each render appends its own. A request made while a refresh is
- * running is folded into one more pass after it, so a burst of item updates (equipping one
- * item can make the system unequip another) costs at most two passes.
+ * running is folded into one more pass after it, so a burst of requests (the HUD's own
+ * toggle and the updateItem hook it causes, or several items saved together) costs at
+ * most two passes.
  */
 
 import { hudActor } from "./argon.js";

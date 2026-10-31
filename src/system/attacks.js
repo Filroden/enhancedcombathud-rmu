@@ -10,6 +10,7 @@
 import { DETAIL_FORMAT } from "../format.js";
 import { t, term } from "../i18n.js";
 import { hudActor } from "../argon.js";
+import { skillDisplayName } from "./skills.js";
 
 /** Display order and keys of the attack categories. */
 export const ATTACK_CATEGORIES = Object.freeze(["melee", "ranged", "natural", "shield"]);
@@ -108,7 +109,7 @@ export function attackTooltipDetails(a, category) {
             : { label: t("ECH-RMU.Tooltip.MeleeReach"), value: meleeReach, format: NUMBER },
         { label: term("ItemStrength"), value: a.itemStrength, format: NUMBER },
         { label: term("Ranks"), value: a.skill?.ranks, format: NUMBER },
-        { label: term("CombatTraining"), value: a.skill?.name, format: TEXT },
+        { label: term("CombatTraining"), value: skillDisplayName(a.skill?.name), format: TEXT },
         { label: term("TwoHanded"), value: t(Number(a.twoHandedBonus) === TWO_HANDED_BONUS ? "ECH-RMU.Value.Yes" : "ECH-RMU.Value.No"), format: TEXT },
         { label: t("ECH-RMU.Tooltip.BonusOB"), value: a.itemBonus, format: BONUS },
         { label: term("TotalOB"), value: a.totalBonus, format: BONUS },

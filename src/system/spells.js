@@ -5,9 +5,94 @@
  * Everything the panel derives from a spell uses the system's own fields: favorite,
  * isInstantaneous, isSubconscious, _hasOB and _totalBonus (spell attack OB), _realms. These
  * match the old string parsing on every captured spell and do not depend on English text.
+ *
+ * Spells, lists and list types are grouped, keyed and sorted by their untranslated
+ * identifiers (name, spellList, listType); the display helpers below give the text the
+ * player reads.
  */
 
 import { hudActor } from "../argon.js";
+import { localizeSystemId } from "../i18n.js";
+
+/**
+ * The first usable text: a non-empty string that is not an untranslated key.
+ * @param {Array<string|undefined>} candidates - In order of preference.
+ * @returns {string}
+ */
+function firstText(candidates) {
+    for (const value of candidates) {
+        if (typeof value === "string" && value.trim() !== "") return value;
+    }
+    return "";
+}
+
+/**
+ * Localises a language key, or returns "" when there is no text for it, so it can sit in a
+ * fallback list without its raw key ever being shown.
+ * @param {string|undefined} key
+ * @param {boolean} [ownLanguageOnly=false] - Only accept a translation in the current
+ *   language itself, not Foundry's English fallback.
+ * @returns {string}
+ */
+function keyText(key, ownLanguageOnly = false) {
+    if (typeof key !== "string" || key === "") return "";
+    if (!game.i18n.has(key, !ownLanguageOnly)) return "";
+    return game.i18n.localize(key);
+}
+
+/**
+ * Picks the text for a spell's name or description.
+ *
+ * In order: the system's pre-translated text (it localises spells when it prepares the
+ * actor); the language key in the current language; the stored text; the language key in
+ * English. The stored text sits between the two key lookups because it serves two cases:
+ * on a custom spell it is the only text there is, while on a spell from the books it is
+ * the English original, which a translation in the player's language should replace.
+ * @param {string|undefined} translated
+ * @param {string|undefined} key
+ * @param {string|undefined} stored
+ * @returns {string}
+ */
+function spellText(translated, key, stored) {
+    return firstText([translated, keyText(key, true), stored, keyText(key)]);
+}
+
+/**
+ * A spell's name as the player reads it.
+ * @param {object} spell
+ * @returns {string}
+ */
+export function spellDisplayName(spell) {
+    return spellText(spell?._translatedName, spell?.label, spell?.name);
+}
+
+/**
+ * A spell's description as the player reads it (HTML).
+ * @param {object} spell
+ * @returns {string}
+ */
+export function spellDescription(spell) {
+    return spellText(spell?._translatedDescription, spell?.descriptionLabel, spell?.description);
+}
+
+/**
+ * A spell list's name as the player reads it, from one of its spells.
+ * @param {object} spell
+ * @returns {string}
+ */
+export function spellListDisplayName(spell) {
+    const list = spell?._spellListName ?? spell?.spellList;
+    return spellText(spell?._translatedSpellListName, list ? `RMU_SL.${list}.name` : undefined, list);
+}
+
+/**
+ * A spell list type (Base, Open, ...) as the player reads it.
+ * @param {string} listType - The untranslated list type.
+ * @returns {string}
+ */
+export function listTypeDisplayName(listType) {
+    return localizeSystemId("RMU.SpellListType", listType);
+}
 
 /**
  * Order of the spell list types (the untranslated identifiers). Any type not listed, for

@@ -15,7 +15,7 @@ import { hudToken } from "../argon.js";
 import { callTokenAction } from "../system/api.js";
 import { onEquipmentChange, refreshEquipment } from "../equipment.js";
 import { ensureExtendedTokenData, ensureRMUReady } from "../system/derive.js";
-import { getItemSpellGroups } from "../system/spells.js";
+import { getItemSpellGroups, spellDescription, spellDisplayName, spellListDisplayName } from "../system/spells.js";
 
 /** Equipment states the system uses for an item that is owned but not in use. */
 const NOT_IN_USE_STATES = new Set(["carried", "none"]);
@@ -88,7 +88,7 @@ export function defineMagicItemsMain(CoreHUD) {
         }
 
         get label() {
-            return this.spell?.name ?? t("ECH-RMU.Fallback.ItemSpell");
+            return (this.spell && spellDisplayName(this.spell)) || t("ECH-RMU.Fallback.ItemSpell");
         }
         get icon() {
             return ICONS.spells;
@@ -128,8 +128,8 @@ export function defineMagicItemsMain(CoreHUD) {
             const { TEXT, NUMBER, BONUS } = DETAIL_FORMAT;
             return buildTooltip({
                 title: this.label,
-                subtitle: this.itemDoc?.name ?? s.spellList ?? t("ECH-RMU.Fallback.ItemSpell"),
-                description: s._translatedDescription ?? s.description ?? "",
+                subtitle: this.itemDoc?.name ?? (spellListDisplayName(s) || t("ECH-RMU.Fallback.ItemSpell")),
+                description: spellDescription(s),
                 details: [
                     { label: term("Level"), value: s.level, format: NUMBER },
                     { label: term("Range"), value: s._modifiedRange?.range ?? s.range, format: TEXT },

@@ -3,7 +3,7 @@
  */
 
 import { ICONS, getUserIcon } from "../icons.js";
-import { t, term } from "../i18n.js";
+import { compareText, t, term } from "../i18n.js";
 import { applyValueOverlay, buildChipContainer } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { buildTooltip } from "../ui/tooltip.js";
@@ -11,7 +11,7 @@ import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
 import { ListSearch } from "../ui/search.js";
 import { callHudTokenAction, getSkillDescription } from "../system/api.js";
 import { ensureRMUReady } from "../system/derive.js";
-import { getGroupedSkills, skillTooltipDetails } from "../system/skills.js";
+import { getGroupedSkills, skillLabel, skillTooltipDetails } from "../system/skills.js";
 
 /**
  * Normalizes a category string into a key.
@@ -40,13 +40,14 @@ export function defineSkillsMain(CoreHUD) {
      */
     class RMUSkillHeaderButton extends RMUActionButton {
         /**
-         * @param {string} title - The category name.
+         * @param {string} category - The untranslated category, which keys the accordion.
+         * @param {string} title - The category as the player reads it.
          * @param {Accordion} accordion - The panel's accordion.
          */
-        constructor(title, accordion) {
+        constructor(category, title, accordion) {
             super();
             this._title = title;
-            this._catKey = catKeyOf(title);
+            this._catKey = catKeyOf(category);
             this.accordion = accordion;
         }
         get label() {
@@ -89,14 +90,11 @@ export function defineSkillsMain(CoreHUD) {
             this.accordion = accordion;
         }
         get label() {
-            const e = this.entry;
-            return e?.spec ? `${e.name} (${e.spec})` : (e?.name ?? t("ECH-RMU.Fallback.Skill"));
+            return this.entry ? skillLabel(this.entry) || t("ECH-RMU.Fallback.Skill") : t("ECH-RMU.Fallback.Skill");
         }
         get icon() {
-            const skillName = this.entry?.name;
-
-            // Check if the user has configured a custom icon
-            const customIcon = getUserIcon(skillName);
+            // A custom icon may be mapped to the untranslated name or to the name as shown.
+            const customIcon = getUserIcon(this.entry?.name) ?? getUserIcon(this.entry?.displayName);
             if (customIcon) return customIcon;
 
             // Fallback for all skills
@@ -130,7 +128,7 @@ export function defineSkillsMain(CoreHUD) {
             const skill = this.entry?.raw;
             return buildTooltip({
                 title: this.label,
-                subtitle: skill?.system?.category,
+                subtitle: this.entry?.displayCategory,
                 description: await getSkillDescription(skill),
                 details: skillTooltipDetails(skill),
                 properties: this._chips().map((c) => c.label),
@@ -144,11 +142,12 @@ export function defineSkillsMain(CoreHUD) {
             // Apply total bonus overlay
             applyValueOverlay(this.element, this.entry?.total ?? "", term("Total"));
 
-            // Add data-attributes for searching and filtering
+            // Add data-attributes for searching and filtering. The search text holds what the
+            // player reads and the untranslated names, so either finds the skill.
             const label = this.label || "";
-            const cat = this.entry?.category || "";
-            const spec = this.entry?.spec || "";
-            const norm = (label + " " + cat + " " + spec).toLowerCase();
+            const e = this.entry ?? {};
+            const cat = e.category || "";
+            const norm = [label, e.displayCategory, e.name, e.spec, cat].filter(Boolean).join(" ").toLowerCase();
 
             this.element.dataset.name = label;
             this.element.dataset.nameNorm = norm;
@@ -205,12 +204,14 @@ export function defineSkillsMain(CoreHUD) {
                 return createGuardedPanel("ech-rmu-skills", [new RMUEmptyButton(t("ECH-RMU.Empty.Skills"))]);
             }
 
-            const cats = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b));
+            // Categories in the alphabetical order of the names the player reads.
+            const titleOf = (cat) => groups.get(cat)[0]?.displayCategory ?? cat;
+            const cats = Array.from(groups.keys()).sort((a, b) => compareText(titleOf(a), titleOf(b)));
             const accordion = new Accordion();
 
             // Headers and tiles; every category starts closed.
             for (const cat of cats) {
-                buttons.push(new RMUSkillHeaderButton(cat, accordion));
+                buttons.push(new RMUSkillHeaderButton(cat, titleOf(cat), accordion));
                 for (const entry of groups.get(cat)) {
                     buttons.push(new RMUSkillActionButton(entry, accordion));
                 }
