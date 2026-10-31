@@ -4,8 +4,8 @@
  */
 
 import { ICONS, getUserIcon } from "../icons.js";
-import { tf, term } from "../i18n.js";
-import { formatBonus } from "../format.js";
+import { t, tf, term } from "../i18n.js";
+import { escapeHTML, formatBonus } from "../format.js";
 import { applyValueOverlay, buildChipContainer } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
@@ -89,36 +89,38 @@ export function defineSpellsMain(CoreHUD) {
             const range = s._modifiedRange?.range || s.range;
 
             const details = [
-                { label: "List type", value: s.listType, format: TEXT },
-                { label: "Realm(s)", value: spellRealmsText(s), format: TEXT },
-                { label: "AoE", value: aoe, format: TEXT },
-                { label: "Duration", value: duration, format: TEXT },
-                { label: "Range", value: range, format: TEXT },
-                { label: "Spell type", value: s.spellType, format: TEXT },
-                { label: "SCR", value: s.scr, format: BONUS },
-                { label: "Level", value: s.level, format: NUMBER },
+                { label: t("ECH-RMU.Tooltip.ListType"), value: s.listType, format: TEXT },
+                { label: t("ECH-RMU.Tooltip.Realms"), value: spellRealmsText(s), format: TEXT },
+                { label: term("AoE"), value: aoe, format: TEXT },
+                { label: term("Duration"), value: duration, format: TEXT },
+                { label: term("Range"), value: range, format: TEXT },
+                { label: term("SpellType"), value: s.spellType, format: TEXT },
+                { label: term("SCR"), value: s.scr, format: BONUS },
+                { label: term("Level"), value: s.level, format: NUMBER },
             ];
 
             // --- 2. ATTACK DETAILS (spells with an attack roll) ---
             if (this._hasAttack) {
                 const attackDetails = [
-                    { label: "Attack Type", value: s.attack, format: TEXT },
-                    { label: "Specialization", value: s.spellAttack?.specialization, format: TEXT },
-                    { label: "Size", value: s.spellAttack?.size, format: BONUS },
-                    { label: "Chart", value: s.spellAttack?.chart?.name, format: TEXT },
-                    { label: "Fumble", value: s.spellAttack?.fumble, format: NUMBER },
-                    { label: "Range (interval)", value: s._modifiedRange?.range || s.range, format: TEXT },
-                    { label: "Targets", value: s._modifiedAoE?.targets, format: NUMBER },
-                    { label: "Total OB", value: spellAttackBonus(s), format: BONUS },
+                    { label: term("AttackType"), value: s.attack, format: TEXT },
+                    { label: term("Specialization"), value: s.spellAttack?.specialization, format: TEXT },
+                    { label: term("Size"), value: s.spellAttack?.size, format: BONUS },
+                    { label: term("Chart"), value: s.spellAttack?.chart?.name, format: TEXT },
+                    { label: term("Fumble"), value: s.spellAttack?.fumble, format: NUMBER },
+                    { label: t("ECH-RMU.Tooltip.IntervalRange"), value: s._modifiedRange?.range || s.range, format: TEXT },
+                    { label: term("Targets"), value: s._modifiedAoE?.targets, format: NUMBER },
+                    { label: term("TotalOB"), value: spellAttackBonus(s), format: BONUS },
                 ];
                 details.push(...attackDetails);
             }
 
-            const helpText = "<br><br><b>Left-Click:</b> Cast Spell (SCR)";
+            // The description is inserted as HTML, so the translated help text is escaped and
+            // only the line breaks and bold markup come from here.
+            const helpText = `<br><br><b>${escapeHTML(t("ECH-RMU.Spell.Help.LeftClick"))}</b> ${escapeHTML(t("ECH-RMU.Spell.Help.Cast"))}`;
 
             return buildTooltip({
                 title: this.label,
-                subtitle: `Lvl ${s.level} - ${s.spellList}`,
+                subtitle: tf("ECH-RMU.Spell.Subtitle", { level: s.level, list: s.spellList }),
                 description: (s.description || "") + helpText,
                 details,
             });

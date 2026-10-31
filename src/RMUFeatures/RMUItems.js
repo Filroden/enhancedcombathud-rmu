@@ -116,17 +116,17 @@ export function defineMagicItemsMain(CoreHUD) {
             const { TEXT, NUMBER, BONUS } = DETAIL_FORMAT;
             return buildTooltip({
                 title: this.label,
-                subtitle: this.itemDoc?.name ?? s.spellList ?? "Item Spell",
+                subtitle: this.itemDoc?.name ?? s.spellList ?? t("ECH-RMU.Fallback.ItemSpell"),
                 description: s._translatedDescription ?? s.description ?? "",
                 details: [
-                    { label: "Level", value: s.level, format: NUMBER },
-                    { label: "Range", value: s._modifiedRange?.range ?? s.range, format: TEXT },
-                    { label: "Area of Effect", value: s._modifiedAoE?.aoe ?? s.aoe, format: TEXT },
-                    { label: "Duration", value: s._modifiedDuration?.duration ?? s.duration, format: TEXT },
-                    { label: "Casting Mode", value: s.castingMode, format: TEXT },
-                    { label: "Total SCR", value: s.scr, format: BONUS },
-                    { label: "Charges", value: charges, format: TEXT },
-                    { label: "Castable by Wearer", value: sl.castable === false ? "No" : "Yes", format: TEXT },
+                    { label: term("Level"), value: s.level, format: NUMBER },
+                    { label: term("Range"), value: s._modifiedRange?.range ?? s.range, format: TEXT },
+                    { label: t("ECH-RMU.Tooltip.AreaOfEffect"), value: s._modifiedAoE?.aoe ?? s.aoe, format: TEXT },
+                    { label: term("Duration"), value: s._modifiedDuration?.duration ?? s.duration, format: TEXT },
+                    { label: t("ECH-RMU.Tooltip.CastingMode"), value: s.castingMode, format: TEXT },
+                    { label: t("ECH-RMU.Tooltip.TotalSCR"), value: s.scr, format: BONUS },
+                    { label: term("Charges"), value: charges, format: TEXT },
+                    { label: t("ECH-RMU.Tooltip.CastableByWearer"), value: t(sl.castable === false ? "ECH-RMU.Value.No" : "ECH-RMU.Value.Yes"), format: TEXT },
                 ],
             });
         }
@@ -217,12 +217,12 @@ export function defineMagicItemsMain(CoreHUD) {
             const { TEXT, NUMBER } = DETAIL_FORMAT;
             return buildTooltip({
                 title: this.label,
-                subtitle: "Magic Item",
+                subtitle: t("ECH-RMU.Fallback.MagicItem"),
                 description: sys._notes || sys.notes || "",
                 details: [
-                    { label: "Level", value: sys.magic?.level, format: NUMBER },
-                    { label: "Weight", value: `${sys.weight ?? 0} ${sys.weightUnit ?? ""}`.trim(), format: TEXT },
-                    { label: "Spells", value: this._spells.length, format: NUMBER },
+                    { label: term("Level"), value: sys.magic?.level, format: NUMBER },
+                    { label: term("Weight"), value: `${sys.weight ?? 0} ${sys.weightUnit ?? ""}`.trim(), format: TEXT },
+                    { label: term("Spells"), value: this._spells.length, format: NUMBER },
                 ],
             });
         }

@@ -4,6 +4,7 @@
  */
 
 import { DETAIL_FORMAT } from "../format.js";
+import { t, term } from "../i18n.js";
 import { hudActor } from "../argon.js";
 
 /**
@@ -102,20 +103,22 @@ export function getEnduranceValues(actor, injuryKey, skill) {
 
 /**
  * A skill's bonus breakdown for its tooltip, in the order the character sheet shows it.
+ * Each entry has an id, so callers can find or replace an entry without matching its
+ * translated label.
  * @param {object} skill - A skill from the actor's skill list ({system: {...}}).
- * @returns {Array<{label: string, value: *, format: string}>}
+ * @returns {Array<{id: string, label: string, value: *, format: string}>}
  */
 export function skillTooltipDetails(skill) {
     const sys = skill?.system ?? {};
     const { NUMBER, BONUS, TEXT } = DETAIL_FORMAT;
     return [
-        { label: "Total ranks", value: sys._totalRanks, format: NUMBER },
-        { label: "Rank bonus", value: sys._rankBonus, format: BONUS },
-        { label: "Culture ranks", value: sys.cultureRanks, format: NUMBER },
-        { label: "Stat", value: sys.stat, format: TEXT },
-        { label: "Stat bonus", value: sys._statBonus, format: BONUS },
-        { label: "Prof bonus", value: sys._professionalBonus, format: BONUS },
-        { label: "Knack", value: sys._knack, format: BONUS },
-        { label: "Total bonus", value: sys._bonus, format: BONUS },
+        { id: "totalRanks", label: t("ECH-RMU.Tooltip.TotalRanks"), value: sys._totalRanks, format: NUMBER },
+        { id: "rankBonus", label: t("ECH-RMU.Tooltip.RankBonus"), value: sys._rankBonus, format: BONUS },
+        { id: "cultureRanks", label: t("ECH-RMU.Tooltip.CultureRanks"), value: sys.cultureRanks, format: NUMBER },
+        { id: "stat", label: term("Stat"), value: sys.stat, format: TEXT },
+        { id: "statBonus", label: term("StatBonus"), value: sys._statBonus, format: BONUS },
+        { id: "profBonus", label: t("ECH-RMU.Tooltip.ProfessionalBonus"), value: sys._professionalBonus, format: BONUS },
+        { id: "knack", label: term("Knack"), value: sys._knack, format: BONUS },
+        { id: "totalBonus", label: term("TotalBonus"), value: sys._bonus, format: BONUS },
     ];
 }

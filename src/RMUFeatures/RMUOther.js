@@ -175,14 +175,14 @@ export function defineResistancesMain(CoreHUD) {
                 title: this.label,
                 subtitle: r.statShortName,
                 details: [
-                    { label: "Stat Bonus", value: r.statBonus, format: BONUS },
-                    { label: "Level Bonus", value: r.levelBonus, format: BONUS },
-                    { label: "Racial Bonus", value: r.racialBonus, format: BONUS },
-                    { label: "Special Bonus", value: r.specialBonus, format: BONUS },
-                    { label: "Armour Bonus", value: r.armorBonus, format: BONUS },
-                    { label: "Helmet Bonus", value: r.helmetBonus, format: BONUS },
-                    { label: "Same Realm", value: r.sameRealmBonus, format: BONUS },
-                    { label: "Total", value: r.total, format: BONUS },
+                    { label: term("StatBonus"), value: r.statBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.LevelBonus"), value: r.levelBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.RacialBonus"), value: r.racialBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.SpecialBonus"), value: r.specialBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.ArmorBonus"), value: r.armorBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.HelmetBonus"), value: r.helmetBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.SameRealm"), value: r.sameRealmBonus, format: BONUS },
+                    { label: term("Total"), value: r.total, format: BONUS },
                 ],
             });
         }
@@ -242,8 +242,8 @@ export function defineResistancesMain(CoreHUD) {
  * check.
  */
 const SPECIAL_CHECKS = Object.freeze([
-    { labelKey: "ECH-RMU.Endurance.Physical", iconKey: "endurance", skillName: "Body Development", rollOption: "Endurance", injuryKey: "_endurance" },
-    { labelKey: "ECH-RMU.Endurance.Mental", iconKey: "concentration", skillName: "Mental Focus", rollOption: "Concentration", injuryKey: "_concentration" },
+    { labelKey: "ECH-RMU.Endurance.Physical", checkKey: "ECH-RMU.Endurance.PhysicalCheck", iconKey: "endurance", skillName: "Body Development", rollOption: "Endurance", injuryKey: "_endurance" },
+    { labelKey: "ECH-RMU.Endurance.Mental", checkKey: "ECH-RMU.Endurance.MentalCheck", iconKey: "concentration", skillName: "Mental Focus", rollOption: "Concentration", injuryKey: "_concentration" },
 ]);
 
 /**
@@ -284,15 +284,15 @@ export function defineSpecialChecksMain(CoreHUD) {
             let details = skillTooltipDetails(this._skill);
             if (racial) {
                 details = [
-                    ...details.filter((d) => d.label !== "Total bonus"),
-                    { label: "Skill bonus", value: skillBonus, format: BONUS },
-                    { label: "Racial bonus", value: racial, format: BONUS },
-                    { label: "Total bonus", value: total, format: BONUS },
+                    ...details.filter((d) => d.id !== "totalBonus"),
+                    { label: t("ECH-RMU.Tooltip.SkillBonus"), value: skillBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.RacialBonus"), value: racial, format: BONUS },
+                    { label: term("TotalBonus"), value: total, format: BONUS },
                 ];
             }
             return buildTooltip({
                 title: this.label,
-                subtitle: this._skill?.system?.name ?? `${this._config.rollOption} Check`,
+                subtitle: this._skill?.system?.name ?? t(this._config.checkKey),
                 details,
             });
         }
@@ -390,7 +390,11 @@ export function defineRestMain(CoreHUD) {
             return true;
         }
         async getTooltipData() {
-            return buildTooltip({ title: "Rest", subtitle: "Recover resources", details: [{ label: "Info", value: "Open the rest dialog." }] });
+            return buildTooltip({
+                title: term("Rest"),
+                subtitle: t("ECH-RMU.Rest.Subtitle"),
+                details: [{ label: t("ECH-RMU.Rest.InfoLabel"), value: t("ECH-RMU.Rest.Info") }],
+            });
         }
         async _onActivate() {
             await callHudTokenAction("rmuTokenRestAction");

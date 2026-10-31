@@ -8,6 +8,7 @@
  */
 
 import { DETAIL_FORMAT } from "../format.js";
+import { t, term } from "../i18n.js";
 import { hudActor } from "../argon.js";
 
 /** Display order and keys of the attack categories. */
@@ -98,18 +99,18 @@ export function attackTooltipDetails(a, category) {
     const meleeReach = a.meleeRange ? Number.parseFloat(Number(a.meleeRange).toFixed(1)) : null;
     const { TEXT, NUMBER, BONUS } = DETAIL_FORMAT;
     return [
-        { label: "Specialization", value: a.specialization || a.skill?.specialization, format: TEXT },
-        { label: "Size", value: a.usage?.size, format: BONUS },
-        { label: "Chart", value: a.chart?.name, format: TEXT },
-        { label: "Fumble", value: a.fumble, format: NUMBER },
+        { label: term("Specialization"), value: a.specialization || a.skill?.specialization, format: TEXT },
+        { label: term("Size"), value: a.usage?.size, format: BONUS },
+        { label: term("Chart"), value: a.chart?.name, format: TEXT },
+        { label: term("Fumble"), value: a.fumble, format: NUMBER },
         category === "ranged"
-            ? { label: "Range (short)", value: attackShortRange(a), format: TEXT }
-            : { label: "Melee reach", value: meleeReach, format: NUMBER },
-        { label: "Item Strength", value: a.itemStrength, format: NUMBER },
-        { label: "Ranks", value: a.skill?.ranks, format: NUMBER },
-        { label: "Combat Training", value: a.skill?.name, format: TEXT },
-        { label: "2H", value: Number(a.twoHandedBonus) === TWO_HANDED_BONUS ? "Yes" : "No", format: TEXT },
-        { label: "Bonus OB", value: a.itemBonus, format: BONUS },
-        { label: "Total OB", value: a.totalBonus, format: BONUS },
+            ? { label: t("ECH-RMU.Tooltip.ShortRange"), value: attackShortRange(a), format: TEXT }
+            : { label: t("ECH-RMU.Tooltip.MeleeReach"), value: meleeReach, format: NUMBER },
+        { label: term("ItemStrength"), value: a.itemStrength, format: NUMBER },
+        { label: term("Ranks"), value: a.skill?.ranks, format: NUMBER },
+        { label: term("CombatTraining"), value: a.skill?.name, format: TEXT },
+        { label: term("TwoHanded"), value: t(Number(a.twoHandedBonus) === TWO_HANDED_BONUS ? "ECH-RMU.Value.Yes" : "ECH-RMU.Value.No"), format: TEXT },
+        { label: t("ECH-RMU.Tooltip.BonusOB"), value: a.itemBonus, format: BONUS },
+        { label: term("TotalOB"), value: a.totalBonus, format: BONUS },
     ];
 }
