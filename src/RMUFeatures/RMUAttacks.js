@@ -4,7 +4,7 @@
  */
 
 import { ICONS } from "../icons.js";
-import { t, term } from "../i18n.js";
+import { t, tf, term } from "../i18n.js";
 import { applyValueOverlay, createEquipToggle } from "../ui/dom.js";
 import { createBaseClasses } from "../ui/baseButtons.js";
 import { buildTooltip } from "../ui/tooltip.js";
@@ -158,7 +158,7 @@ export function defineAttacksMain(CoreHUD) {
             const targets = game.user?.targets ?? new Set();
 
             if (!targets.size) {
-                ui.notifications?.warn?.("Select at least one target before attacking.");
+                ui.notifications?.warn?.(t("ECH-RMU.Notify.NoTarget"));
                 return;
             }
 
@@ -167,7 +167,7 @@ export function defineAttacksMain(CoreHUD) {
             const live = getLiveAttack(this.attack);
 
             if (!live.isEquipped) {
-                ui.notifications?.warn?.(`${live?.attackName ?? this.label} is not equipped.`);
+                ui.notifications?.warn?.(tf("ECH-RMU.Notify.NotEquipped", { name: live?.attackName ?? this.label }));
                 return;
             }
 

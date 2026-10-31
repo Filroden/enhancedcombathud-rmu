@@ -3,6 +3,7 @@
  */
 
 import { hudToken } from "../argon.js";
+import { t, tf } from "../i18n.js";
 
 /**
  * Calls an RMU token action (a roll, an equip toggle, the rest dialogue).
@@ -15,13 +16,13 @@ import { hudToken } from "../argon.js";
  */
 export async function callTokenAction(token, apiFunctionName, ...args) {
     if (!token) {
-        ui.notifications?.error?.("No active token for HUD.");
+        ui.notifications?.error?.(t("ECH-RMU.Notify.NoToken"));
         return false;
     }
     const api = game.system?.api?.[apiFunctionName];
     if (typeof api !== "function") {
         console.warn(`[ECH-RMU] RMU API function not available: ${apiFunctionName}`);
-        ui.notifications?.warn?.(`RMU API function not available: ${apiFunctionName}. Action simulated.`);
+        ui.notifications?.warn?.(tf("ECH-RMU.Notify.ApiMissing", { name: apiFunctionName }));
         return false;
     }
 
@@ -38,7 +39,7 @@ export async function callTokenAction(token, apiFunctionName, ...args) {
         return true;
     } catch (err) {
         console.error(`[ECH-RMU] ${apiFunctionName} error:`, err);
-        ui.notifications?.error?.(`${apiFunctionName} failed: ${err?.message ?? err}`);
+        ui.notifications?.error?.(tf("ECH-RMU.Notify.ApiFailed", { name: apiFunctionName, error: err?.message ?? String(err) }));
         return false;
     }
 }
@@ -65,6 +66,6 @@ export async function getSkillDescription(skill) {
         return (await api(skill)) ?? "";
     } catch (err) {
         console.error("[ECH-RMU] rmuGetSkillDescription API call FAILED!", err);
-        return "Error loading description.";
+        return t("ECH-RMU.Description.Error");
     }
 }

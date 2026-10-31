@@ -311,12 +311,12 @@ export function defineSpecialChecksMain(CoreHUD) {
             const token = hudToken();
             const actor = token?.actor;
             if (!actor) {
-                ui.notifications?.error?.("No active token for HUD.");
+                ui.notifications?.error?.(t("ECH-RMU.Notify.NoToken"));
                 return;
             }
             const skill = this._skill ?? getSkillByName(actor, this._config.skillName);
             if (!skill) {
-                ui.notifications?.warn?.(`Skill not found: ${this._config.skillName}`);
+                ui.notifications?.warn?.(tf("ECH-RMU.Notify.SkillNotFound", { name: this._config.skillName }));
                 return;
             }
             await callTokenAction(token, "rmuTokenSkillAction", skill, { specialManeuver: this._config.rollOption });
@@ -438,9 +438,8 @@ export function defineCombatMain(CoreHUD) {
             if (!c?.started) return;
 
             try {
-                if (typeof c.nextTurn === "function") await c.nextTurn();
-                else if (typeof c.advanceTurn === "function") await c.advanceTurn();
-                else ui.notifications?.error?.("Combat API does not support advancing turns.");
+                // Combat#nextTurn is core Foundry API in every supported version.
+                await c.nextTurn();
             } catch (e) {
                 console.error("[ECH-RMU] End Turn failed:", e);
             }
@@ -501,7 +500,7 @@ export function defineDrawerPanel(CoreHUD) {
 
     class RMUDrawer extends BaseDrawer {
         get title() {
-            return "Macros";
+            return t("ECH-RMU.Drawer.Title");
         }
 
         get categories() {
@@ -513,7 +512,7 @@ export function defineDrawerPanel(CoreHUD) {
             if (hotbarMacros.length) {
                 macroButtons = hotbarMacros.map((macro) => new RMUMacroDrawerButton(macro));
             } else {
-                const emptyButtonPart = [{ label: "No Macros in Hotbar" }];
+                const emptyButtonPart = [{ label: t("ECH-RMU.Drawer.Empty") }];
                 macroButtons = [new BaseDrawerButton(emptyButtonPart)];
             }
 
@@ -521,7 +520,7 @@ export function defineDrawerPanel(CoreHUD) {
                 {
                     gridCols: "1fr",
                     // CORE applies this as an inline text-align; "start" follows the text direction.
-                    captions: [{ label: "Hotbar Macros", align: "start" }],
+                    captions: [{ label: t("ECH-RMU.Drawer.Hotbar"), align: "start" }],
                     buttons: macroButtons,
                 },
             ];
