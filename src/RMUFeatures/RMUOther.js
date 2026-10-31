@@ -23,6 +23,7 @@ import { ensureRMUReady } from "../system/derive.js";
 import { getActorResistances } from "../system/resistances.js";
 import { getEnduranceValues, getSkillByName, skillDisplayName, skillTooltipDetails } from "../system/skills.js";
 import { getPortraitData } from "../system/portrait.js";
+import { professionName, resistanceName, statAbbreviation } from "../system/names.js";
 
 // -----------------------------------------------------------------------------
 // Portrait
@@ -56,7 +57,7 @@ export function definePortraitPanel(CoreHUD) {
             if (!this.actor) return "";
             const { level, profession } = getPortraitData(this.actor);
             const levelText = level == null ? null : tf("ECH-RMU.Portrait.Level", { level });
-            return [levelText, profession].filter(Boolean).join(" · ");
+            return [levelText, profession ? professionName(profession) : null].filter(Boolean).join(" · ");
         }
 
         /** @override */
@@ -158,7 +159,7 @@ export function defineResistancesMain(CoreHUD) {
             this.resist = resist;
         }
         get label() {
-            return this.resist?.name || t("ECH-RMU.Fallback.Resistance");
+            return resistanceName(this.resist) || t("ECH-RMU.Fallback.Resistance");
         }
         get icon() {
             // Icon settings are keyed by the system's untranslated resistance identifier.
@@ -173,7 +174,7 @@ export function defineResistancesMain(CoreHUD) {
             const { BONUS } = DETAIL_FORMAT;
             return buildTooltip({
                 title: this.label,
-                subtitle: r.statShortName,
+                subtitle: statAbbreviation(r.statShortName),
                 details: [
                     { label: term("StatBonus"), value: r.statBonus, format: BONUS },
                     { label: t("ECH-RMU.Tooltip.LevelBonus"), value: r.levelBonus, format: BONUS },

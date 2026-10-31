@@ -11,6 +11,7 @@ import { DETAIL_FORMAT } from "../format.js";
 import { t, term } from "../i18n.js";
 import { hudActor } from "../argon.js";
 import { skillDisplayName } from "./skills.js";
+import { attackTableName, specializationName } from "./names.js";
 
 /** Display order and keys of the attack categories. */
 export const ATTACK_CATEGORIES = Object.freeze(["melee", "ranged", "natural", "shield"]);
@@ -100,9 +101,9 @@ export function attackTooltipDetails(a, category) {
     const meleeReach = a.meleeRange ? Number.parseFloat(Number(a.meleeRange).toFixed(1)) : null;
     const { TEXT, NUMBER, BONUS } = DETAIL_FORMAT;
     return [
-        { label: term("Specialization"), value: a.specialization || a.skill?.specialization, format: TEXT },
+        { label: term("Specialization"), value: specializationName(a.specialization || a.skill?.specialization), format: TEXT },
         { label: term("Size"), value: a.usage?.size, format: BONUS },
-        { label: term("Chart"), value: a.chart?.name, format: TEXT },
+        { label: term("Chart"), value: attackTableName(a.chart?.name), format: TEXT },
         { label: term("Fumble"), value: a.fumble, format: NUMBER },
         category === "ranged"
             ? { label: t("ECH-RMU.Tooltip.ShortRange"), value: attackShortRange(a), format: TEXT }

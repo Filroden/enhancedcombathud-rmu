@@ -23,6 +23,7 @@ import {
     spellListDisplayName,
     spellRealmsText,
 } from "../system/spells.js";
+import { attackTableName, specializationName } from "../system/names.js";
 
 /**
  * Spell list type headers dim their list headers while another list type is open, so the
@@ -121,10 +122,10 @@ export function defineSpellsMain(CoreHUD) {
             // --- 2. ATTACK DETAILS (spells with an attack roll) ---
             if (this._hasAttack) {
                 const attackDetails = [
-                    { label: term("AttackType"), value: s.attack, format: TEXT },
-                    { label: term("Specialization"), value: s.spellAttack?.specialization, format: TEXT },
+                    { label: term("AttackType"), value: attackTableName(s.attack), format: TEXT },
+                    { label: term("Specialization"), value: specializationName(s.spellAttack?.specialization), format: TEXT },
                     { label: term("Size"), value: s.spellAttack?.size, format: BONUS },
-                    { label: term("Chart"), value: s.spellAttack?.chart?.name, format: TEXT },
+                    { label: term("Chart"), value: attackTableName(s.spellAttack?.chart?.name), format: TEXT },
                     { label: term("Fumble"), value: s.spellAttack?.fumble, format: NUMBER },
                     { label: t("ECH-RMU.Tooltip.IntervalRange"), value: s._modifiedRange?.range || s.range, format: TEXT },
                     { label: term("Targets"), value: s._modifiedAoE?.targets, format: NUMBER },

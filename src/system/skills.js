@@ -6,6 +6,7 @@
 import { DETAIL_FORMAT } from "../format.js";
 import { compareText, localizeSystem, localizeSystemId, t, term } from "../i18n.js";
 import { hudActor } from "../argon.js";
+import { specializationName, statAbbreviation } from "./names.js";
 
 /**
  * Flattens the actor's skill list into skill entries (objects with a system property).
@@ -90,7 +91,7 @@ function toDisplaySkill(sk) {
         displayName: skillDisplayName(s.name ?? ""),
         // Specialisations without a system key (most are spell list or place names) show
         // as typed.
-        displaySpec: localizeSystemId("RMU.Specializations", spec),
+        displaySpec: specializationName(spec),
         displayCategory: categoryDisplayName(s),
         total: s._bonus,
         favorite: s.favorite === true || sk?.favorite === true,
@@ -159,7 +160,7 @@ export function skillTooltipDetails(skill) {
         { id: "totalRanks", label: t("ECH-RMU.Tooltip.TotalRanks"), value: sys._totalRanks, format: NUMBER },
         { id: "rankBonus", label: t("ECH-RMU.Tooltip.RankBonus"), value: sys._rankBonus, format: BONUS },
         { id: "cultureRanks", label: t("ECH-RMU.Tooltip.CultureRanks"), value: sys.cultureRanks, format: NUMBER },
-        { id: "stat", label: term("Stat"), value: sys.stat, format: TEXT },
+        { id: "stat", label: term("Stat"), value: statAbbreviation(sys.stat), format: TEXT },
         { id: "statBonus", label: term("StatBonus"), value: sys._statBonus, format: BONUS },
         { id: "profBonus", label: t("ECH-RMU.Tooltip.ProfessionalBonus"), value: sys._professionalBonus, format: BONUS },
         { id: "knack", label: term("Knack"), value: sys._knack, format: BONUS },
