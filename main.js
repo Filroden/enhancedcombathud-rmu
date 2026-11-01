@@ -10,7 +10,7 @@
 import { SUPPORTED_ACTOR_TYPES } from "./src/constants.js";
 import { registerIconSettings } from "./src/settings.js";
 import { defineTooltip, defineSupportedActorTypes } from "./src/RMUCore.js";
-import { closeHudForUnsupportedActors, renderDrawer, updateMainPanelVisibility } from "./src/argon.js";
+import { closeHudForUnsupportedActors, closePanelsWhenMinimised, renderDrawer, updateMainPanelVisibility } from "./src/argon.js";
 import { onItemUpdated } from "./src/equipment.js";
 import { defineAttacksMain } from "./src/RMUFeatures/RMUAttacks.js";
 import { defineSkillsMain } from "./src/RMUFeatures/RMUSkills.js";
@@ -85,6 +85,9 @@ Hooks.once("ready", () => {
     // Loot actors have no actions: close the HUD quietly instead of CORE's warning.
     // CORE's own ready hook runs first (it is a required module), so ui.ARGON exists here.
     closeHudForUnsupportedActors(VALID_ACTOR_TYPES);
+    // Open panels would otherwise stay on screen, with no way to close them, while the HUD
+    // is minimised.
+    closePanelsWhenMinimised();
 });
 
 // Update visibility of REST and COMBAT buttons when combat starts/ends

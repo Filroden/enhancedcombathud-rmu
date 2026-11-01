@@ -46,6 +46,40 @@ export function renderDrawer() {
 }
 
 /**
+ * Closes every open button panel whenever the HUD is minimised.
+ *
+ * CORE minimises by sliding the HUD down by its own height. Open panels sit above the
+ * action bar, so they stay on screen while the buttons that would close them are out of
+ * sight. Closing them first avoids that. Their saved open state (which CORE restores on the
+ * next render) is cleared too, so they stay closed when the HUD comes back. CORE re-applies
+ * the minimised state on every render, so this also runs then, which is harmless.
+ * Must run after CORE's ready hook has created ui.ARGON.
+ */
+export function closePanelsWhenMinimised() {
+    const hud = coreHud();
+    if (typeof hud?.toggleMinimize !== "function") return;
+    const originalToggle = hud.toggleMinimize;
+    hud.toggleMinimize = function (forceState, ...rest) {
+        const minimising = forceState ?? !document.body.classList.contains("minimize-ech-hud");
+        if (minimising) closeAllPanels(this);
+        return originalToggle.call(this, forceState, ...rest);
+    };
+}
+
+/**
+ * Closes the open button panels and records them as closed in CORE's saved panel state.
+ * @param {object} hud - CORE's running HUD.
+ */
+function closeAllPanels(hud) {
+    hud.collapseAllPanels?.();
+    const state = hud.getState?.();
+    if (!state) return;
+    for (const [panelId, panelState] of Object.entries(state)) {
+        if (panelState?.visible) state[panelId] = { ...panelState, visible: false };
+    }
+}
+
+/**
  * Makes the HUD close quietly when it is asked to bind to an actor type it does not
  * support (the RMU system's Loot actors), instead of CORE showing an "unsupported actor
  * type" error each time such a token is selected.
