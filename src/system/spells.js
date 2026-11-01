@@ -55,22 +55,30 @@ const SPELLS_SEGMENT = ".spells.";
 const listKeyCache = new Map();
 
 /**
- * The language key of a spell's list, without a trailing ".name".
- *
- * Spells in the current structure carry no key of their own, so the list is found by its
- * name in each namespace in turn. A list found in none of them (a custom list) has no key,
- * and its spells show their stored text.
- * @param {object} spell
+ * The language key of a spell list, without a trailing ".name", found by the list's name in
+ * each namespace in turn. A list found in none of them (a custom list) has no key.
+ * @param {string|undefined} list - The untranslated list name.
  * @returns {string|null}
  */
-function spellListKey(spell) {
-    const list = spell?._spellListName ?? spell?.spellList;
+function listNameKey(list) {
     if (!list) return null;
     if (!listKeyCache.has(list)) {
         const namespace = SPELL_LIST_NAMESPACES.find((ns) => game.i18n.has(`${ns}.${list}.name`));
         listKeyCache.set(list, namespace ? `${namespace}.${list}` : null);
     }
     return listKeyCache.get(list);
+}
+
+/**
+ * The language key of a spell's list, without a trailing ".name".
+ *
+ * Spells in the current structure carry no key of their own, so the list is found by its
+ * name. The spells of a list with no key (a custom list) show their stored text.
+ * @param {object} spell
+ * @returns {string|null}
+ */
+function spellListKey(spell) {
+    return listNameKey(spell?._spellListName ?? spell?.spellList);
 }
 
 /**
@@ -139,6 +147,16 @@ export function spellDescription(spell) {
 export function spellListDisplayName(spell) {
     const listKey = spellListKey(spell);
     return nameText(listKey ? `${listKey}.name` : undefined, spell?._spellListName ?? spell?.spellList);
+}
+
+/**
+ * A name as the player reads it, if it is the name of a spell list in the language files.
+ * @param {string} name - An untranslated name, for example a skill's specialisation.
+ * @returns {string} The list's name, or "" when no spell list has this name.
+ */
+export function knownSpellListName(name) {
+    const listKey = listNameKey(name);
+    return listKey ? nameText(`${listKey}.name`, name) : "";
 }
 
 /**

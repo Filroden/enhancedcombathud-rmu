@@ -8,6 +8,10 @@
  */
 
 import { localizeSystem, localizeSystemEntry, localizeSystemId } from "../i18n.js";
+import { knownSpellListName } from "./spells.js";
+
+/** Language key prefix of skill specialisations. */
+const SPECIALIZATION_PREFIX = "RMU.Specializations";
 
 /**
  * A stat's abbreviation (SD becomes Ad in French).
@@ -28,13 +32,21 @@ export function attackTableName(chart) {
 }
 
 /**
- * A skill specialisation (Blade, Crossbow, ...). Most spell list and place names have no
- * key and show as stored.
+ * A skill specialisation (Blade, Crossbow, ...).
+ *
+ * Spell list skills (Spell Mastery, and the Grace skills of magical expertise) use the
+ * list's name as their specialisation, which has no RMU.Specializations key, so a name the
+ * system does not key as a specialisation falls back to the spell list of that name. A name
+ * with neither key (a place or a language, for example) shows as stored.
  * @param {string} specialization - The untranslated specialisation.
  * @returns {string}
  */
 export function specializationName(specialization) {
-    return localizeSystemId("RMU.Specializations", specialization);
+    if (!specialization) return specialization ?? "";
+    if (game.i18n.has(`${SPECIALIZATION_PREFIX}.${specialization}`)) {
+        return localizeSystemId(SPECIALIZATION_PREFIX, specialization);
+    }
+    return knownSpellListName(specialization) || specialization;
 }
 
 /**
