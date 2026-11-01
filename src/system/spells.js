@@ -12,7 +12,7 @@
  */
 
 import { hudActor } from "../argon.js";
-import { localizeSystemId } from "../i18n.js";
+import { localizeSystemEntry } from "../i18n.js";
 
 /**
  * The first usable text: a non-empty string that is not an untranslated key.
@@ -143,11 +143,18 @@ export function spellListDisplayName(spell) {
 
 /**
  * A spell list type (Base, Open, ...) as the player reads it.
+ *
+ * The system keys list types as RMU.SpellListType.<type>, but has no such key for
+ * Restricted. Spell list types are also skills, so the skill's name (RMU.Skills.<type>.Name)
+ * is the fallback; it is only used when the list type key is missing, because the two can be
+ * worded differently in some languages.
  * @param {string} listType - The untranslated list type.
  * @returns {string}
  */
 export function listTypeDisplayName(listType) {
-    return localizeSystemId("RMU.SpellListType", listType);
+    const key = `RMU.SpellListType.${listType}`;
+    if (listType && game.i18n.has(key)) return game.i18n.localize(key);
+    return localizeSystemEntry("RMU.Skills", listType);
 }
 
 /**

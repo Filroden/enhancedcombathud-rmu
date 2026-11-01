@@ -165,5 +165,13 @@ export function localizeSystemEntry(prefix, id) {
  * @returns {number}
  */
 export function compareText(a, b) {
-    return String(a ?? "").localeCompare(String(b ?? ""), game.i18n?.lang);
+    const left = String(a ?? "");
+    const right = String(b ?? "");
+    try {
+        return left.localeCompare(right, game.i18n?.lang || undefined);
+    } catch {
+        // A language code the browser does not recognise as a locale makes localeCompare
+        // throw a RangeError; the browser's default order is used instead.
+        return left.localeCompare(right);
+    }
 }
