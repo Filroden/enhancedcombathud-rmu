@@ -28,10 +28,9 @@ function toList(value) {
  * Physical, Fear). Each has value (the untranslated identifier), name, label (a
  * localisation key), statShortName and the bonus breakdown.
  *
- * In 1.4.133 the block's only own keys are _npc, _activeEffects and _resistances;
- * resistances is a getter on the block's class that calculates the list, and _resistances
- * is its internal store, which can be empty or out of date until the getter has run. The
- * getter is therefore read first, and the store only as a fallback.
+ * The block's resistances property is a getter on its class that calculates the list, and
+ * _resistances is its internal store, which can be empty or out of date until the getter
+ * has run. The getter is therefore read first, and the store only as a fallback.
  */
 export function getActorResistances() {
     const system = hudActor()?.system;

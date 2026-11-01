@@ -1,10 +1,9 @@
 /**
  * Physical attacks: reading the actor's attack list and the facts the Attacks panel shows.
  *
- * Paths are those of the RMU system's derived attack objects (system._attacks), confirmed
- * against captured actors. Category decisions use the system's own flags (isShield,
- * isRanged, isThrown, type) rather than matching skill names, which would break once names
- * are translated.
+ * Paths are those of the RMU system's derived attack objects (system._attacks). Category
+ * decisions use the system's own flags (isShield, isRanged, isThrown, type) rather than
+ * matching skill names, which would break once names are translated.
  */
 
 import { DETAIL_FORMAT } from "../format.js";

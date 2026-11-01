@@ -3,8 +3,8 @@
  * for the Items panel.
  *
  * Everything the panel derives from a spell uses the system's own fields: favorite,
- * isInstantaneous, isSubconscious, _hasOB and _totalBonus (spell attack OB), _realms. These
- * match the old string parsing on every captured spell and do not depend on English text.
+ * isInstantaneous, isSubconscious, _hasOB and _totalBonus (spell attack OB), _realms. None of
+ * them is parsed from display text, so they work the same in every language.
  *
  * Spells, lists and list types are grouped, keyed and sorted by their untranslated
  * identifiers (name, spellList, listType); the display helpers below give the text the
