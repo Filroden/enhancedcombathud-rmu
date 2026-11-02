@@ -104,7 +104,7 @@ The table below only shows the earliest version where a dependency has changed. 
 
 |Argon Combat HUD<br>(RMU)|RMU System|Argon Combat HUD<br>(CORE)|FoundryVTT|
 |:---:|:---:|:---:|:---:|
-|2.5.0|1.4.194|5.0.0|14|
+|2.5.0|1.4.94|5.0.0|14|
 |2.4.0|1.4.0|5.0.0|14|
 |2.3.0|1.3.40|5.0.0|14|
 |2.1.0|1.2.43|5.0.0|14|
