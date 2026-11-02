@@ -3,37 +3,55 @@
  * Spell attacks have been moved to the Spells panel (RMUSpells.js).
  */
 
-import { ICONS, RMUUtils, UIGuards } from "../RMUCore.js";
-import { RMUData } from "../RMUData.js";
+import { ICONS } from "../icons.js";
+import { t, tf, term } from "../i18n.js";
+import { applyValueOverlay, createEquipToggle } from "../ui/dom.js";
+import { createBaseClasses } from "../ui/baseButtons.js";
+import { buildTooltip } from "../ui/tooltip.js";
+import { hudToken } from "../argon.js";
+import { callTokenAction } from "../system/api.js";
+import { onEquipmentChange, refreshEquipment } from "../equipment.js";
+import { skillDisplayName } from "../system/skills.js";
+import { ensureExtendedTokenData, ensureRMUReady } from "../system/derive.js";
+import { attackCategory, attackTooltipDetails, getActorAttacks, getLiveAttack, isAttackEquipped } from "../system/attacks.js";
 
 /**
  * Defines and registers the main Attacks panel with Argon.
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineAttacksMain(CoreHUD) {
-    const ARGON = CoreHUD.ARGON;
-    const { ActionPanel } = ARGON.MAIN;
-    const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
-    const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
+    const { ButtonPanelButton } = CoreHUD.ARGON.MAIN.BUTTONS;
+    const { RMUActionButton, RMUActionPanel, createGuardedPanel } = createBaseClasses(CoreHUD.ARGON);
 
     /**
      * Defines the categories for the Attacks panel.
-     * Spell categories removed to prevent duplication.
+     * Spell attacks are shown in the Spells panel instead, so there is no spell category.
      */
     const CATS = [
-        { key: "melee", label: "Melee", icon: ICONS.melee },
-        { key: "ranged", label: "Ranged", icon: ICONS.ranged },
-        { key: "natural", label: "Natural", icon: ICONS.natural },
-        { key: "shield", label: "Shield", icon: ICONS.shield },
+        { key: "melee", labelKey: "ECH-RMU.Attack.Category.Melee", icon: ICONS.melee },
+        { key: "ranged", labelKey: "ECH-RMU.Attack.Category.Ranged", icon: ICONS.ranged },
+        { key: "natural", labelKey: "ECH-RMU.Attack.Category.Natural", icon: ICONS.natural },
+        { key: "shield", labelKey: "ECH-RMU.Attack.Category.Shield", icon: ICONS.shield },
     ];
 
     /**
-     * An action button representing a single physical attack.
-     * @augments ActionButton
+     * Attack buttons built for the current HUD render.
+     * After an equip toggle every attack button is refreshed, not only the one clicked: one
+     * weapon can appear several times (for example 1H and 2H variants), and every one of them
+     * shares the item's equipped state. The system refuses to equip a weapon when the actor
+     * has no free hand rather than unequipping another, so a refused toggle simply leaves
+     * the buttons as they were. The set is cleared whenever the Attacks panel rebuilds its
+     * buttons, so it never holds buttons from an earlier render.
      */
-    class RMUAttackActionButton extends ActionButton {
+    const liveAttackButtons = new Set();
+
+    /**
+     * An action button representing a single physical attack.
+     * @augments RMUActionButton
+     */
+    class RMUAttackActionButton extends RMUActionButton {
         /**
-         * @param {object} attack - The attack object (from RMUData).
+         * @param {object} attack - The attack object (from the system's attack list).
          * @param {string} catKey - The category key (e.g., "melee").
          */
         constructor(attack, catKey) {
@@ -41,16 +59,22 @@ export function defineAttacksMain(CoreHUD) {
             this.attack = attack;
             this._catKey = catKey;
 
-            // Check if this is a physical, equip-able item
+            // Natural attacks (fists, claws) are not items, so they have no equip toggle.
             this._isPhysicalWeapon = this._catKey !== "natural";
 
-            // Get the live equipped state for styling the toggle
-            const live = RMUData.getLiveAttack(this.attack);
-            this._equipped = !!(live?.isEquipped ?? live?.readyState ?? false);
+            this._readLiveState();
+            liveAttackButtons.add(this);
         }
 
-        get isInteractive() {
-            return true;
+        /**
+         * Re-reads this attack from the actor's current data. The system rebuilds its attack
+         * list when equipment changes, so the live copy carries the current equipped state
+         * and bonuses.
+         */
+        _readLiveState() {
+            const live = getLiveAttack(this.attack);
+            this.attack = live;
+            this._equipped = isAttackEquipped(live);
         }
 
         /**
@@ -62,33 +86,19 @@ export function defineAttacksMain(CoreHUD) {
         }
 
         get label() {
-            return this.attack?.attackName ?? this.attack?.name ?? "Attack";
+            return this.attack?.attackName ?? this.attack?.name ?? t("ECH-RMU.Fallback.Attack");
         }
 
         get icon() {
             return this.attack?.img || ICONS[this._catKey] || ICONS.melee;
         }
 
-        get classes() {
-            const c = super.classes.slice().filter((cls) => cls !== "disabled");
-            if (this.disabled) c.push("disabled");
-            return c;
-        }
-
         async _renderInner() {
             await super._renderInner();
             if (!this.element) return;
 
-            this.element.classList.add("rmu-interactive-button");
-            this.element.classList.toggle("disabled", this.disabled);
-            this.element.dataset.tooltipDirection = "UP";
+            applyValueOverlay(this.element, this.attack?.totalBonus ?? "", term("Total"));
 
-            const valueLabel = "Total";
-            const value = this.attack?.totalBonus;
-
-            RMUUtils.applyValueOverlay(this.element, value ?? "", valueLabel);
-
-            // Add the Equip Toggle Button
             if (this._isPhysicalWeapon && this.attack.itemId) {
                 this._renderEquipToggle();
             }
@@ -98,53 +108,33 @@ export function defineAttacksMain(CoreHUD) {
          * Creates and appends the equip/unequip toggle button.
          */
         _renderEquipToggle() {
-            const toggle = document.createElement("div");
-            toggle.className = "rmu-equip-toggle";
-
-            const iconSrc = this._equipped ? ICONS.equip_closed : ICONS.equip_open;
-            toggle.innerHTML = `<img src="${iconSrc}" class="rmu-equip-icon" alt="Toggle Equip"/>`;
-
-            toggle.classList.toggle("equipped", this._equipped);
-            toggle.title = this._equipped ? "Click to Unequip" : "Click to Equip";
-
-            toggle.addEventListener("pointerdown", (e) => {
-                e.stopImmediatePropagation();
+            const toggle = createEquipToggle({
+                equipped: this._equipped,
+                onToggle: () => this._onToggleEquip(),
             });
-            toggle.addEventListener("click", (e) => {
-                e.stopImmediatePropagation();
-                this._onToggleEquip(e);
-            });
-
             this.element.appendChild(toggle);
         }
 
         /**
-         * Handles the click event on the equip toggle.
-         * @param {Event} event - The click event.
+         * Toggles the weapon's equipped state, then refreshes the equip-dependent buttons in
+         * place (see equipment.js; the same refresh runs when the sheet changes an item).
+         *
+         * Only the attack buttons are re-rendered. A full HUD refresh (ui.ARGON.refresh) would
+         * rebuild every panel, and CORE then reopens panels from saved open/closed states that
+         * can be stale, which opened the wrong attack category after a toggle. Buttons keep
+         * their position until the HUD is next rebuilt; the equipped-first sort applies then.
          */
-        async _onToggleEquip(event) {
-            const token = ui.ARGON?._token;
+        async _onToggleEquip() {
+            const token = hudToken();
             if (!token || !this.attack.itemId) {
                 console.error("[ECH-RMU] Cannot toggle equip: No token or itemID.");
                 return;
             }
 
-            const apiFunctionName = "rmuTokenToggleEquippedState";
+            const toggled = await callTokenAction(token, "rmuTokenToggleEquippedState", this.attack.itemId);
+            if (!toggled) return; // The wrapper has already reported the failure.
 
-            try {
-                // Call the new system API via the wrapper
-                await RMUUtils.rmuTokenActionWrapper(
-                    token,
-                    apiFunctionName,
-                    this.attack.itemId, // Pass the itemId
-                );
-
-                // Refresh the HUD to show the new state
-                ui.ARGON?.refresh?.();
-            } catch (err) {
-                console.error(`[ECH-RMU] Failed to toggle equip state via API (${apiFunctionName})`, err);
-                ui.notifications.error("Failed to toggle equip state.");
-            }
+            await refreshEquipment();
         }
 
         /* ───────── Tooltip ───────── */
@@ -154,77 +144,55 @@ export function defineAttacksMain(CoreHUD) {
 
         async getTooltipData() {
             const a = this.attack ?? {};
-
-            // Physical Attack Tooltip
-            const details = [
-                { label: "Specialization", value: a.skill?.specialization },
-                { label: "Size", value: a.size },
-                { label: "Chart", value: a.chart?.name },
-                { label: "Fumble", value: a.fumble },
-                ...(["melee", "natural", "shield"].includes(this._catKey) ? [{ label: "Melee reach", value: a.meleeRange ? Number.parseFloat(Number(a.meleeRange).toFixed(1)) : null }] : []),
-                ...(this._catKey === "ranged" ? [{ label: "Range (short)", value: RMUData.getShortRange(a.rangeInrements ?? a.rangeIncrements ?? a.rangeIntervals ?? a.range) }] : []),
-                { label: "Item Strength", value: a.itemStrength },
-                { label: "Ranks", value: a.skill?.ranks },
-                { label: "Combat Training", value: a.skill?.name },
-                { label: "2H", value: Number(a.twoHandedBonus) === 10 ? "Yes" : "No" },
-                { label: "Bonus OB", value: a.itemBonus },
-                { label: "Total OB", value: a.totalBonus },
-            ].filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
-
-            return {
+            return buildTooltip({
                 title: this.label,
-                subtitle: a.skill?.name ?? "",
-                details: RMUUtils.formatTooltipDetails(details),
-            };
+                subtitle: skillDisplayName(a.skill?.name),
+                details: attackTooltipDetails(a, this._catKey),
+            });
         }
 
         /* ───────── Clicks ───────── */
 
-        async _onMouseDown(event) {
-            // 1. Check if button is disabled (weapon not equipped)
-            if (event.button !== 0 || this.disabled) return;
-
-            // 2. Check if click was on the equip toggle
-            if (event.target.closest(".rmu-equip-toggle")) {
-                return; // Handled by the toggle's own click listener
-            }
-
-            // 3. OK to proceed with attack
-            event.preventDefault();
-            event.stopPropagation();
-            await this._invokeAttack();
-        }
-
-        async _onLeftClick(event) {
-            event?.preventDefault?.();
-            event?.stopPropagation?.();
-        }
-
         /**
-         * Handles the logic for performing an attack.
+         * Performs the attack. Requires a target, and re-checks the equipped state from the
+         * actor's live data in case it changed since the button was rendered.
          */
-        async _invokeAttack() {
-            const token = ui.ARGON?._token;
+        async _onActivate() {
+            const token = hudToken();
             const targets = game.user?.targets ?? new Set();
 
             if (!targets.size) {
-                ui.notifications?.warn?.("Select at least one target before attacking.");
+                ui.notifications?.warn?.(t("ECH-RMU.Notify.NoTarget"));
                 return;
             }
 
-            await RMUData.ensureExtendedTokenData();
+            await ensureExtendedTokenData();
 
-            const live = RMUData.getLiveAttack(this.attack);
+            const live = getLiveAttack(this.attack);
 
             if (!live.isEquipped) {
-                ui.notifications?.warn?.(`${live?.attackName ?? this.label} is not equipped.`);
+                ui.notifications?.warn?.(tf("ECH-RMU.Notify.NotEquipped", { name: live?.attackName ?? this.label }));
                 return;
             }
 
-            // Standard attack
-            await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenAttackAction", live);
+            await callTokenAction(token, "rmuTokenAttackAction", live);
         }
     }
+
+    /**
+     * Re-reads and re-renders every attack button of the current render.
+     * @returns {Promise<void>}
+     */
+    async function refreshAttackButtons() {
+        const renders = [];
+        for (const button of liveAttackButtons) {
+            if (!button.element?.isConnected) continue;
+            button._readLiveState();
+            renders.push(button.render());
+        }
+        await Promise.all(renders);
+    }
+    onEquipmentChange(refreshAttackButtons);
 
     /**
      * A button representing a category of attacks (e.g., "Melee").
@@ -232,10 +200,10 @@ export function defineAttacksMain(CoreHUD) {
      * @augments ButtonPanelButton
      */
     class RMUAttackCategoryButton extends ButtonPanelButton {
-        constructor({ key, label, icon, attacks }) {
+        constructor({ key, labelKey, icon, attacks }) {
             super();
             this.key = key;
-            this.title = label;
+            this.title = t(labelKey);
             this._icon = icon;
             this._attacks = Array.isArray(attacks) ? attacks : [];
         }
@@ -253,38 +221,32 @@ export function defineAttacksMain(CoreHUD) {
         }
 
         async _getPanel() {
-            const buttons = (this._attacks || []).map((a) => new RMUAttackActionButton(a, this.key));
-            const panel = new ButtonPanel({ id: `rmu-attacks-${this.key}`, buttons });
-            UIGuards.attachPanelInteractionGuards(panel);
-            return panel;
+            const buttons = this._attacks.map((a) => new RMUAttackActionButton(a, this.key));
+            return createGuardedPanel(`ech-rmu-attacks-${this.key}`, buttons);
         }
     }
 
     /**
      * The main "Attacks" panel for the HUD.
-     * @augments ActionPanel
+     * @augments RMUActionPanel
      */
-    class RMUAttacksActionPanel extends ActionPanel {
+    class RMUAttacksActionPanel extends RMUActionPanel {
         get label() {
-            return "Attacks";
-        }
-        get maxActions() {
-            return null;
-        }
-        get currentActions() {
-            return null;
+            return t("ECH-RMU.Panel.Attacks");
         }
 
         async _getButtons() {
-            await RMUData.ensureRMUReady();
-            const allNormalAttacks = RMUData.getTokenAttacks();
+            // A new set of attack buttons is about to be built, so forget the previous ones.
+            liveAttackButtons.clear();
+            await ensureRMUReady();
+            const allNormalAttacks = getActorAttacks();
 
             // We initialize buckets based ONLY on the filtered CATS array
             const buckets = new Map(CATS.map((c) => [c.key, []]));
 
             // Bucket Normal Attacks
             for (const atk of allNormalAttacks) {
-                const key = RMUData.bucketOf(atk);
+                const key = attackCategory(atk);
                 // Safety check: ensure the bucket exists in our defined categories
                 if (buckets.has(key)) {
                     buckets.get(key).push(atk);
@@ -294,10 +256,10 @@ export function defineAttacksMain(CoreHUD) {
             // Sort attacks within each bucket (Physical logic only)
             for (const list of buckets.values()) {
                 list.sort((a, b) => {
-                    const la = RMUData.getLiveAttack(a);
-                    const lb = RMUData.getLiveAttack(b);
-                    const ea = !!(la?.isEquipped ?? la?.readyState ?? false);
-                    const eb = !!(lb?.isEquipped ?? lb?.readyState ?? false);
+                    const la = getLiveAttack(a);
+                    const lb = getLiveAttack(b);
+                    const ea = isAttackEquipped(la);
+                    const eb = isAttackEquipped(lb);
                     if (ea !== eb) return ea ? -1 : 1; // Equipped first
                     const na = String(la?.attackName ?? la?.name ?? "");
                     const nb = String(lb?.attackName ?? lb?.name ?? "");
@@ -310,7 +272,7 @@ export function defineAttacksMain(CoreHUD) {
                 (c) =>
                     new RMUAttackCategoryButton({
                         key: c.key,
-                        label: c.label,
+                        labelKey: c.labelKey,
                         icon: c.icon,
                         attacks: buckets.get(c.key) || [],
                     }),

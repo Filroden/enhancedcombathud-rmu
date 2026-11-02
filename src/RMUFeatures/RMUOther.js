@@ -11,8 +11,19 @@
  * @module RMUOther
  */
 
-import { ICONS, RMUUtils, UIGuards } from "../RMUCore.js";
-import { RMUData } from "../RMUData.js";
+import { ICONS } from "../icons.js";
+import { t, tf, term } from "../i18n.js";
+import { applyValueOverlay } from "../ui/dom.js";
+import { createBaseClasses } from "../ui/baseButtons.js";
+import { DETAIL_FORMAT, buildTooltip } from "../ui/tooltip.js";
+import { escapeHTML } from "../format.js";
+import { hudActor, hudToken } from "../argon.js";
+import { callHudTokenAction, callTokenAction } from "../system/api.js";
+import { ensureRMUReady } from "../system/derive.js";
+import { getActorResistances } from "../system/resistances.js";
+import { getEnduranceValues, getSkillByName, skillDisplayName, skillTooltipDetails } from "../system/skills.js";
+import { getPortraitData } from "../system/portrait.js";
+import { professionName, resistanceName, statAbbreviation } from "../system/names.js";
 
 // -----------------------------------------------------------------------------
 // Portrait
@@ -20,7 +31,7 @@ import { RMUData } from "../RMUData.js";
 
 export function definePortraitPanel(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
-    const Base = ARGON?.PORTRAIT?.PortraitPanel || ARGON?.HUD?.PortraitPanel || ARGON?.PortraitPanel;
+    const Base = ARGON?.PORTRAIT?.PortraitPanel;
 
     if (!Base) {
         console.warn("[ECH-RMU] PortraitPanel base not found; skipping.");
@@ -28,13 +39,25 @@ export function definePortraitPanel(CoreHUD) {
     }
 
     class RMUPortraitPanel extends Base {
+        /**
+         * CORE debounces refresh by 100 ms (its constructor wraps this method), and its
+         * updateActor hook calls it on every actor change. If the HUD is unbound inside that
+         * window (for example the token is deselected straight after its HP is edited), the
+         * delayed render runs with no actor and CORE's own name getter throws. Checking
+         * here runs at the moment the debounced call fires, so a stale refresh is skipped.
+         * @override
+         */
+        refresh() {
+            if (!this.actor) return;
+            super.refresh();
+        }
+
         /** @override */
         get description() {
-            const a = this.actor;
-            if (!a) return "";
-            const level = a.system?.level ?? a.system?.details?.level;
-            const prof = a.system?.profession ?? a.system?.details?.profession;
-            return [level == null ? null : `Lvl ${level}`, prof].filter(Boolean).join(" · ");
+            if (!this.actor) return "";
+            const { level, profession } = getPortraitData(this.actor);
+            const levelText = level == null ? null : tf("ECH-RMU.Portrait.Level", { level });
+            return [levelText, profession ? professionName(profession) : null].filter(Boolean).join(" · ");
         }
 
         /** @override */
@@ -44,22 +67,22 @@ export function definePortraitPanel(CoreHUD) {
 
         /** @override */
         get isDying() {
-            const hp = this.actor?.system?.health?.hp;
-            return Number(hp?.value ?? 0) <= 0;
+            return getPortraitData(this.actor).hp.value <= 0;
         }
 
-        /** @override */
+        /**
+         * CORE draws each block as coloured text spans. The HP colours come from the module
+         * theme, because CORE 5 no longer defines success or danger colours; PP and DB use
+         * CORE's own movement colour.
+         * @override
+         */
         async getStatBlocks() {
-            const hpVal = Number(this.actor?.system?.health?.hp?.value ?? 0);
-            const hpMax = Number(this.actor?.system?.health?.hp?.max ?? 0);
-            const ppVal = Number(this.actor?.system?.health?.power?.value ?? 0);
-            const ppMax = Number(this.actor?.system?.health?.power?.max ?? 0);
-            const dbTot = Number(this.actor?.system?._dbBlock?.totalDB ?? 0);
-
+            const { hp, pp, db } = getPortraitData(this.actor);
+            const hpColor = hp.value <= 0 ? "var(--filroden-color-danger)" : "var(--filroden-color-success)";
             return [
-                [{ text: `${hpVal}`, color: hpVal <= 0 ? "var(--ech-danger)" : "var(--ech-success)" }, { text: "/" }, { text: `${hpMax}`, color: "var(--ech-fore)" }, { text: "HP" }],
-                [{ text: "PP" }, { text: `${ppVal}/${ppMax}`, color: "var(--ech-movement-baseMovement-background)" }],
-                [{ text: "DB" }, { text: `${dbTot}`, color: "var(--ech-movement-baseMovement-background)" }],
+                [{ text: `${hp.value}`, color: hpColor }, { text: "/" }, { text: `${hp.max}`, color: "var(--filroden-color-text-main-solid)" }, { text: term("HP") }],
+                [{ text: term("PP") }, { text: `${pp.value}/${pp.max}`, color: "var(--ech-movement-baseMovement-background)" }],
+                [{ text: term("DB") }, { text: `${db}`, color: "var(--ech-movement-baseMovement-background)" }],
             ];
         }
     }
@@ -72,7 +95,7 @@ export function definePortraitPanel(CoreHUD) {
 
 export function defineMovementHud(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
-    const Base = ARGON?.HUD?.MovementHud || ARGON?.MovementHud;
+    const Base = ARGON?.MovementHud;
 
     if (!Base) return;
 
@@ -99,7 +122,7 @@ export function defineMovementHud(CoreHUD) {
 
 export function defineWeaponSets(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
-    const Base = ARGON?.WEAPONS?.WeaponSets || ARGON?.WeaponSets || ARGON?.HUD?.WeaponSets;
+    const Base = ARGON?.WeaponSets;
     if (!Base) {
         console.warn("[ECH-RMU] WeaponSets base not found; skipping.");
         return;
@@ -127,24 +150,20 @@ export function defineWeaponSets(CoreHUD) {
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineResistancesMain(CoreHUD) {
-    const ARGON = CoreHUD.ARGON;
-    const { ActionPanel } = ARGON.MAIN;
-    const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
-    const { ButtonPanelButton, ActionButton } = ARGON.MAIN.BUTTONS;
+    const { ButtonPanelButton } = CoreHUD.ARGON.MAIN.BUTTONS;
+    const { RMUActionButton, RMUEmptyButton, RMUActionPanel, createGuardedPanel } = createBaseClasses(CoreHUD.ARGON);
 
-    class RMUResistanceActionButton extends ActionButton {
+    class RMUResistanceActionButton extends RMUActionButton {
         constructor(resist) {
             super();
             this.resist = resist;
         }
         get label() {
-            return this.resist?.name || "Resistance";
+            return resistanceName(this.resist) || t("ECH-RMU.Fallback.Resistance");
         }
         get icon() {
-            return ICONS[this.resist?.name] || ICONS.panel;
-        }
-        get isInteractive() {
-            return true;
+            // Icon settings are keyed by the system's untranslated resistance identifier.
+            return ICONS[this.resist?.value ?? this.resist?.name] || ICONS.panel;
         }
         get hasTooltip() {
             return true;
@@ -152,58 +171,40 @@ export function defineResistancesMain(CoreHUD) {
 
         async getTooltipData() {
             const r = this.resist ?? {};
-            const details = [
-                { label: "Stat Bonus", value: r.statBonus },
-                { label: "Level Bonus", value: r.levelBonus },
-                { label: "Racial Bonus", value: r.racialBonus },
-                { label: "Special Bonus", value: r.specialBonus },
-                { label: "Armour Bonus", value: r.armorBonus },
-                { label: "Helmet Bonus", value: r.helmetBonus },
-                { label: "Same Realm", value: r.sameRealmBonus },
-                { label: "Total", value: r.total },
-            ].filter((x) => x.value !== undefined && x.value !== null && x.value !== "");
-
-            return {
+            const { BONUS } = DETAIL_FORMAT;
+            return buildTooltip({
                 title: this.label,
-                subtitle: r.statShortName,
-                details: RMUUtils.formatTooltipDetails(details),
-            };
+                subtitle: statAbbreviation(r.statShortName),
+                details: [
+                    { label: term("StatBonus"), value: r.statBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.LevelBonus"), value: r.levelBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.RacialBonus"), value: r.racialBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.SpecialBonus"), value: r.specialBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.ArmorBonus"), value: r.armorBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.HelmetBonus"), value: r.helmetBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.SameRealm"), value: r.sameRealmBonus, format: BONUS },
+                    { label: term("Total"), value: r.total, format: BONUS },
+                ],
+            });
         }
 
         async _renderInner() {
             await super._renderInner();
-            if (this.element) {
-                this.element.style.pointerEvents = "auto";
-                this.element.style.cursor = "pointer";
-                RMUUtils.applyValueOverlay(this.element, this.resist?.total ?? "", "Total");
-            }
+            if (!this.element) return;
+            applyValueOverlay(this.element, this.resist?.total ?? "", term("Total"));
         }
-        async _onMouseDown(event) {
-            if (event?.button !== 0) return;
-            event.preventDefault();
-            event.stopPropagation();
-            await this._roll();
-        }
-        async _onLeftClick(event) {
-            event?.preventDefault?.();
-            event?.stopPropagation?.();
-        }
-        async _roll() {
-            await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenResistanceRollAction", this.resist?.name);
+
+        async _onActivate() {
+            await callHudTokenAction("rmuTokenResistanceRollAction", this.resist?.name);
         }
     }
 
     class RMUResistanceCategoryButton extends ButtonPanelButton {
-        constructor() {
-            super();
-            this.title = "RESISTANCE ROLLS";
-            this._icon = ICONS.panel;
-        }
         get label() {
-            return this.title;
+            return t("ECH-RMU.Panel.ResistanceRolls");
         }
         get icon() {
-            return this._icon;
+            return ICONS.panel;
         }
         get hasContents() {
             return true;
@@ -213,41 +214,18 @@ export function defineResistancesMain(CoreHUD) {
         }
 
         async _getPanel() {
-            await RMUData.ensureRMUReady();
-            const list = RMUData.getTokenResistances();
-            if (!list.length) {
-                const empty = new (class NoResistButton extends ActionButton {
-                    get label() {
-                        return "No resistances";
-                    }
-                    get icon() {
-                        return ICONS.panel;
-                    }
-                    get classes() {
-                        return [...super.classes, "disabled"];
-                    }
-                })();
-                return new ButtonPanel({ id: "rmu-resistances", buttons: [empty] });
-            }
-            const buttons = list.map((r) => new RMUResistanceActionButton(r));
-            const panel = new ButtonPanel({ id: "rmu-resistances", buttons });
-            UIGuards.attachPanelInteractionGuards(panel);
-            return panel;
+            await ensureRMUReady();
+            const list = getActorResistances();
+            const buttons = list.length ? list.map((r) => new RMUResistanceActionButton(r)) : [new RMUEmptyButton(t("ECH-RMU.Empty.Resistances"), ICONS.panel)];
+            return createGuardedPanel("ech-rmu-resistances", buttons);
         }
     }
 
-    class RMUResistanceActionPanel extends ActionPanel {
+    class RMUResistanceActionPanel extends RMUActionPanel {
         get label() {
-            return "RESISTANCES";
-        }
-        get maxActions() {
-            return null;
-        }
-        get currentActions() {
-            return null;
+            return t("ECH-RMU.Panel.Resistances");
         }
         async _getButtons() {
-            await RMUData.ensureRMUReady();
             return [new RMUResistanceCategoryButton()];
         }
     }
@@ -260,103 +238,95 @@ export function defineResistancesMain(CoreHUD) {
 // -----------------------------------------------------------------------------
 
 /**
+ * Configuration of the two special check buttons. Each rolls a skill with the system's
+ * "special manoeuvre" option, which turns the skill roll into an Endurance or Concentration
+ * check.
+ */
+const SPECIAL_CHECKS = Object.freeze([
+    { labelKey: "ECH-RMU.Endurance.Physical", checkKey: "ECH-RMU.Endurance.PhysicalCheck", iconKey: "endurance", skillName: "Body Development", rollOption: "Endurance", injuryKey: "_endurance" },
+    { labelKey: "ECH-RMU.Endurance.Mental", checkKey: "ECH-RMU.Endurance.MentalCheck", iconKey: "concentration", skillName: "Mental Focus", rollOption: "Concentration", injuryKey: "_concentration" },
+]);
+
+/**
  * Defines the main Special Checks panel.
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineSpecialChecksMain(CoreHUD) {
-    const ARGON = CoreHUD.ARGON;
-    const { ActionPanel, BUTTONS } = ARGON.MAIN;
-    const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
-    const { ActionButton, ButtonPanelButton } = BUTTONS;
+    const { ButtonPanelButton } = CoreHUD.ARGON.MAIN.BUTTONS;
+    const { RMUActionButton, RMUActionPanel, createGuardedPanel } = createBaseClasses(CoreHUD.ARGON);
 
     /**
-     * Factory function to create Special Check classes dynamically.
+     * One special check button (Physical or Mental), configured by an entry of SPECIAL_CHECKS.
      */
-    function createSpecialCheckClass(className, config) {
-        // Using computed properties ensures the generated class has the correct 'name'
-        const ClassFactory = {
-            [className]: class extends ActionButton {
-                constructor() {
-                    super();
-                    this._skill = null;
-                }
+    class RMUSpecialCheckButton extends RMUActionButton {
+        constructor(config) {
+            super();
+            this._config = config;
+            this._skill = null;
+        }
 
-                get label() {
-                    return config.label;
-                }
-                get icon() {
-                    return config.icon;
-                }
-                get isInteractive() {
-                    return true;
-                }
-                get hasTooltip() {
-                    return true;
-                }
+        get label() {
+            return t(this._config.labelKey);
+        }
+        get icon() {
+            return ICONS[this._config.iconKey];
+        }
+        get hasTooltip() {
+            return true;
+        }
 
-                async getTooltipData() {
-                    const title = this.label;
-                    const subtitle = this._skill?.system?.name ?? `${config.rollOption} Check`;
-                    return RMUUtils.buildSkillTooltip(this._skill, title, subtitle);
-                }
+        /**
+         * The skill's breakdown, followed by the racial modifier when there is one, so the
+         * total matches the character sheet's Physical or Mental Endurance.
+         */
+        async getTooltipData() {
+            const { total, skillBonus, racial } = this._values ?? {};
+            const { BONUS } = DETAIL_FORMAT;
+            let details = skillTooltipDetails(this._skill);
+            if (racial) {
+                details = [
+                    ...details.filter((d) => d.id !== "totalBonus"),
+                    { label: t("ECH-RMU.Tooltip.SkillBonus"), value: skillBonus, format: BONUS },
+                    { label: t("ECH-RMU.Tooltip.RacialBonus"), value: racial, format: BONUS },
+                    { label: term("TotalBonus"), value: total, format: BONUS },
+                ];
+            }
+            return buildTooltip({
+                title: this.label,
+                subtitle: this._skill ? skillDisplayName(this._skill.system?.name) : t(this._config.checkKey),
+                details,
+            });
+        }
 
-                async _renderInner() {
-                    await super._renderInner();
-                    if (!this.element) return;
-                    this.element.style.pointerEvents = "auto";
-                    this.element.style.cursor = "pointer";
-                    const actor = ui.ARGON?._token?.actor;
-                    this._skill = actor ? RMUData.getSkillByName(actor, config.skillName) : null;
-                    RMUUtils.applyValueOverlay(this.element, this._skill?.system?._bonus ?? "", "Total");
-                }
+        async _renderInner() {
+            await super._renderInner();
+            if (!this.element) return;
+            const actor = hudActor();
+            this._skill = actor ? getSkillByName(actor, this._config.skillName) : null;
+            this._values = getEnduranceValues(actor, this._config.injuryKey, this._skill);
+            applyValueOverlay(this.element, this._values.total ?? "", term("Total"));
+        }
 
-                async _onMouseDown(event) {
-                    if (event?.button !== 0) return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    await RMUData.ensureRMUReady();
-                    const token = ui.ARGON?._token;
-                    const actor = token?.actor;
-                    if (!actor) {
-                        ui.notifications?.error?.("No active token for HUD.");
-                        return;
-                    }
-                    const skill = this._skill ?? RMUData.getSkillByName(actor, config.skillName);
-                    if (!skill) {
-                        ui.notifications?.warn?.(`Skill not found: ${config.skillName}`);
-                        return;
-                    }
-                    await rollSkillWithOption(token, skill, config.rollOption);
-                }
-
-                async _onLeftClick(e) {
-                    e?.preventDefault?.();
-                    e?.stopPropagation?.();
-                }
-            },
-        };
-
-        return ClassFactory[className];
+        async _onActivate() {
+            await ensureRMUReady();
+            const token = hudToken();
+            const actor = token?.actor;
+            if (!actor) {
+                ui.notifications?.error?.(t("ECH-RMU.Notify.NoToken"));
+                return;
+            }
+            const skill = this._skill ?? getSkillByName(actor, this._config.skillName);
+            if (!skill) {
+                ui.notifications?.warn?.(tf("ECH-RMU.Notify.SkillNotFound", { name: this._config.skillName }));
+                return;
+            }
+            await callTokenAction(token, "rmuTokenSkillAction", skill, { specialManeuver: this._config.rollOption });
+        }
     }
-
-    // Generate specific classes using the factory
-    const RMUSpecialCheckEndurance = createSpecialCheckClass("RMUSpecialCheckEndurance", {
-        label: "PHYSICAL",
-        icon: ICONS.endurance,
-        skillName: "Body Development",
-        rollOption: "Endurance",
-    });
-
-    const RMUSpecialCheckConcentration = createSpecialCheckClass("RMUSpecialCheckConcentration", {
-        label: "MENTAL",
-        icon: ICONS.concentration,
-        skillName: "Mental Focus",
-        rollOption: "Concentration",
-    });
 
     class RMUSpecialChecksCategoryButton extends ButtonPanelButton {
         get label() {
-            return "ENDURANCE";
+            return term("Endurance");
         }
         get icon() {
             return ICONS.special;
@@ -365,23 +335,15 @@ export function defineSpecialChecksMain(CoreHUD) {
             return true;
         }
         async _getPanel() {
-            await RMUData.ensureRMUReady();
-            const buttons = [new RMUSpecialCheckEndurance(), new RMUSpecialCheckConcentration()];
-            const panel = new ButtonPanel({ id: "rmu-special-checks", buttons });
-            UIGuards.attachPanelInteractionGuards(panel);
-            return panel;
+            await ensureRMUReady();
+            const buttons = SPECIAL_CHECKS.map((config) => new RMUSpecialCheckButton(config));
+            return createGuardedPanel("ech-rmu-special-checks", buttons);
         }
     }
 
-    class RMUSpecialChecksActionPanel extends ActionPanel {
+    class RMUSpecialChecksActionPanel extends RMUActionPanel {
         get label() {
-            return "ENDURANCE";
-        }
-        get maxActions() {
-            return null;
-        }
-        get currentActions() {
-            return null;
+            return term("Endurance");
         }
         async _getButtons() {
             return [new RMUSpecialChecksCategoryButton()];
@@ -391,26 +353,33 @@ export function defineSpecialChecksMain(CoreHUD) {
     CoreHUD.defineMainPanels([RMUSpecialChecksActionPanel]);
 }
 
-async function rollSkillWithOption(token, skillObj, optionText) {
-    await RMUUtils.rmuTokenActionWrapper(token, "rmuTokenSkillAction", skillObj, { specialManeuver: optionText });
-}
-
 // -----------------------------------------------------------------------------
 // Rest & Combat Actions
 // -----------------------------------------------------------------------------
+
+/**
+ * Returns true when the token currently bound to the HUD is the active combatant.
+ * Matches by token id, so two tokens of the same unlinked actor are told apart.
+ * @returns {boolean}
+ */
+function isHudTokenActiveCombatant() {
+    const tokenId = hudToken()?.id;
+    const c = game.combat;
+    if (!c?.started || !tokenId) return false;
+    const activeId = c.combatant?.tokenId ?? c.current?.tokenId ?? null;
+    return activeId === tokenId;
+}
 
 /**
  * Defines the main Rest panel.
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineRestMain(CoreHUD) {
-    const ARGON = CoreHUD.ARGON;
-    const { ActionPanel } = ARGON.MAIN;
-    const { ActionButton } = ARGON.MAIN.BUTTONS;
+    const { RMUActionButton, RMUActionPanel } = createBaseClasses(CoreHUD.ARGON);
 
-    class RMURestActionButton extends ActionButton {
+    class RMURestActionButton extends RMUActionButton {
         get label() {
-            return "REST";
+            return term("Rest");
         }
         get icon() {
             return ICONS.rest;
@@ -418,46 +387,24 @@ export function defineRestMain(CoreHUD) {
         get visible() {
             return !game.combat?.started;
         }
-        get isInteractive() {
-            return true;
-        }
         get hasTooltip() {
             return true;
         }
         async getTooltipData() {
-            return { title: "Rest", subtitle: "Recover resources", details: [{ label: "Info", value: "Open the rest dialog." }] };
+            return buildTooltip({
+                title: term("Rest"),
+                subtitle: t("ECH-RMU.Rest.Subtitle"),
+                details: [{ label: t("ECH-RMU.Rest.InfoLabel"), value: t("ECH-RMU.Rest.Info") }],
+            });
         }
-        async _renderInner() {
-            await super._renderInner();
-            if (this.element) {
-                this.element.style.pointerEvents = "auto";
-                this.element.style.cursor = "pointer";
-            }
-        }
-        async _onMouseDown(event) {
-            if (event?.button !== 0) return;
-            event.preventDefault();
-            event.stopPropagation();
-            await this._run();
-        }
-        async _onLeftClick(event) {
-            event?.preventDefault?.();
-            event?.stopPropagation?.();
-        }
-        async _run() {
-            await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenRestAction");
+        async _onActivate() {
+            await callHudTokenAction("rmuTokenRestAction");
         }
     }
 
-    class RMURestActionPanel extends ActionPanel {
+    class RMURestActionPanel extends RMUActionPanel {
         get label() {
-            return "REST";
-        }
-        get maxActions() {
-            return null;
-        }
-        get currentActions() {
-            return null;
+            return term("Rest");
         }
         async _getButtons() {
             return [new RMURestActionButton()];
@@ -471,65 +418,48 @@ export function defineRestMain(CoreHUD) {
  * @param {object} CoreHUD - The Argon CoreHUD object.
  */
 export function defineCombatMain(CoreHUD) {
-    const ARGON = CoreHUD.ARGON;
-    const { ActionPanel } = ARGON.MAIN;
-    const { ActionButton } = ARGON.MAIN.BUTTONS;
+    const { RMUActionButton, RMUActionPanel } = createBaseClasses(CoreHUD.ARGON);
 
-    class RMUEndTurnActionButton extends ActionButton {
+    class RMUEndTurnActionButton extends RMUActionButton {
         get label() {
-            return "End Turn";
+            return t("ECH-RMU.Button.EndTurn");
         }
         get icon() {
             return ICONS.combat;
-        }
-        get isInteractive() {
-            return true;
         }
         get hasTooltip() {
             return true;
         }
         get visible() {
-            const tokenId = ui.ARGON?._token?.id;
-            const c = game.combat;
-            if (!c?.started || !tokenId) return false;
-            const activeId = c.combatant?.tokenId ?? c.current?.tokenId ?? null;
-            return activeId === tokenId;
+            return isHudTokenActiveCombatant();
         }
 
-        async _onLeftClick(event) {
-            event.preventDefault();
-            event.stopPropagation();
-
+        async _onActivate() {
             const c = game.combat;
             if (!c?.started) return;
 
             try {
-                if (typeof c.nextTurn === "function") await c.nextTurn();
-                else if (typeof c.advanceTurn === "function") await c.advanceTurn();
-                else ui.notifications?.error?.("Combat API does not support advancing turns.");
+                // Combat#nextTurn is core Foundry API in every supported version.
+                await c.nextTurn();
             } catch (e) {
                 console.error("[ECH-RMU] End Turn failed:", e);
             }
         }
     }
 
-    class RMUCombatActionPanel extends ActionPanel {
+    class RMUCombatActionPanel extends RMUActionPanel {
         get label() {
-            return "COMBAT";
+            return t("ECH-RMU.Panel.Combat");
         }
+        /**
+         * Shown on the HUD token's turn. Also shown when the active combatant is the same
+         * actor (for example the GM selected another token of a linked actor), so the turn can
+         * still be ended from the HUD.
+         */
         get visible() {
             const c = game.combat;
-            const tokenId = ui.ARGON?._token?.id;
-            if (!c?.started || !tokenId) return false;
-            const activeId = c.combatant?.tokenId ?? c.current?.tokenId ?? null;
-            const isActorMatch = c.combatant?.actorId && c.combatant.actorId === ui.ARGON?._token?.actor?.id;
-            return activeId === tokenId || isActorMatch;
-        }
-        get maxActions() {
-            return null;
-        }
-        get currentActions() {
-            return null;
+            const isActorMatch = c?.started && c.combatant?.actorId && c.combatant.actorId === hudToken()?.actor?.id;
+            return isHudTokenActiveCombatant() || Boolean(isActorMatch);
         }
         async _getButtons() {
             return [new RMUEndTurnActionButton()];
@@ -548,51 +478,30 @@ export function defineCombatMain(CoreHUD) {
  */
 export function defineDrawerPanel(CoreHUD) {
     const ARGON = CoreHUD.ARGON;
-    const BaseDrawer = ARGON?.DRAWER?.DrawerPanel || ARGON?.HUD?.DrawerPanel || ARGON?.DrawerPanel;
-    const BaseDrawerButton = ARGON?.DRAWER?.DrawerButton || ARGON?.HUD?.DrawerButton || ARGON?.DrawerButton;
+    const BaseDrawer = ARGON?.DRAWER?.DrawerPanel;
+    const BaseDrawerButton = ARGON?.DRAWER?.DrawerButton;
 
     if (!BaseDrawer || !BaseDrawerButton) {
         console.warn("[ECH-RMU] DrawerPanel or DrawerButton base not found; skipping macro drawer.");
         return;
     }
 
+    /**
+     * One hotbar macro. CORE's drawer button handles the click (including positioning any
+     * dialog the macro opens next to the drawer) and applies the category's column and
+     * alignment settings.
+     */
     class RMUMacroDrawerButton extends BaseDrawerButton {
         constructor(macro) {
-            const buttonParts = [
-                {
-                    label: macro.name,
-                    onClick: (e) => {
-                        if (this.interceptDialogs) ui.ARGON.interceptNextDialog(e.currentTarget.closest(".ability"));
-                        macro.execute();
-                    },
-                },
-            ];
-            super(buttonParts);
+            // Macro names are typed by users and CORE inserts them as raw HTML.
+            super([{ label: escapeHTML(macro.name), onClick: () => macro.execute() }]);
             this.macro = macro;
-        }
-
-        async getData() {
-            const data = await super.getData();
-            const part = data.buttons[0];
-            if (part) {
-                part.label = this.macro.name;
-            }
-            return data;
-        }
-
-        setGrid(gridCols) {
-            this.element.style.gridTemplateColumns = "1fr";
-        }
-
-        setAlign(align) {
-            this._textAlign = ["left"];
-            this.setTextAlign();
         }
     }
 
     class RMUDrawer extends BaseDrawer {
         get title() {
-            return "Macros";
+            return t("ECH-RMU.Drawer.Title");
         }
 
         get categories() {
@@ -604,15 +513,15 @@ export function defineDrawerPanel(CoreHUD) {
             if (hotbarMacros.length) {
                 macroButtons = hotbarMacros.map((macro) => new RMUMacroDrawerButton(macro));
             } else {
-                const emptyButtonPart = [{ label: "No Macros in Hotbar" }];
+                const emptyButtonPart = [{ label: t("ECH-RMU.Drawer.Empty") }];
                 macroButtons = [new BaseDrawerButton(emptyButtonPart)];
             }
 
             return [
                 {
                     gridCols: "1fr",
-                    captions: [{ label: "Hotbar Macros", align: "left" }],
-                    align: ["left"],
+                    // CORE applies this as an inline text-align; "start" follows the text direction.
+                    captions: [{ label: t("ECH-RMU.Drawer.Hotbar"), align: "start" }],
                     buttons: macroButtons,
                 },
             ];

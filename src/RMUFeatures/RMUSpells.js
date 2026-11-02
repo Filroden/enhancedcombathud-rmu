@@ -1,106 +1,98 @@
 /**
- * Defines the main Spellcasting panel (3-Level Nested Accordion)
- * Implements standard Spell Casting Rolls (SCR).
+ * Defines the main Spellcasting panel: a two-level accordion (list type, then list) over the
+ * spell buttons, with the shared search bar. Implements standard Spell Casting Rolls (SCR).
  */
 
-import { ICONS, getUserIcon, RMUUtils, installListSearch, UIGuards, formatBonus } from "../RMUCore.js";
-import { RMUData } from "../RMUData.js";
-
-// Global state helpers
-const getOpenSpellState = RMUData.getOpenSpellState;
-const setOpenSpellState = RMUData.setOpenSpellState;
+import { ICONS, getUserIcon } from "../icons.js";
+import { compareText, t, tf, term } from "../i18n.js";
+import { escapeHTML, formatBonus } from "../format.js";
+import { applyValueOverlay, buildChipContainer } from "../ui/dom.js";
+import { createBaseClasses } from "../ui/baseButtons.js";
+import { Accordion, ACCORDION_ROLE } from "../ui/accordion.js";
+import { ListSearch } from "../ui/search.js";
+import { DETAIL_FORMAT, buildTooltip } from "../ui/tooltip.js";
+import { callHudTokenAction } from "../system/api.js";
+import { ensureRMUReady } from "../system/derive.js";
+import {
+    compareListTypes,
+    getGroupedSpells,
+    listTypeDisplayName,
+    spellAttackBonus,
+    spellDescription,
+    spellDisplayName,
+    spellListDisplayName,
+    spellRealmsText,
+} from "../system/spells.js";
+import { attackTableName, specializationName } from "../system/names.js";
 
 /**
- * Applies visibility to the 3-level accordion based on global state.
+ * Spell list type headers dim their list headers while another list type is open, so the
+ * lists of the open type stand out. Top-level headers are never dimmed.
+ * @param {string[]} headerPath - [listType] or [listType, listName].
+ * @param {string[]} openPath - The accordion's open path.
+ * @returns {boolean}
  */
-function applyAccordionVisibility(panelEl) {
-    if (!panelEl) return;
-    const { type: openType, name: openName } = getOpenSpellState();
+function isSpellHeaderDimmed(headerPath, openPath) {
+    return headerPath.length === 2 && headerPath[0] !== openPath[0];
+}
 
-    // L1 Headers
-    panelEl.querySelectorAll(`.rmu-spell-type-header`).forEach((h) => {
-        const hType = h.dataset.listTypeKey || "";
-        const isOpen = hType === openType;
-        h.classList.toggle("open", isOpen);
-        h.classList.toggle("closed", !isOpen);
-    });
+/** Level suffixes on spell names (Regeneration I, ..., Regeneration True). */
+const SPELL_LEVEL_SUFFIX = / (I|II|III|IV|V|VI|VII|VIII|IX|X|True)$/;
 
-    // L2 Headers
-    panelEl.querySelectorAll(`.rmu-spell-list-header`).forEach((h) => {
-        const hType = h.dataset.listTypeKey || "";
-        const hName = h.dataset.listNameKey || "";
-        const isMyParentOpen = hType === openType;
-        const isMeOpen = isMyParentOpen && hName === openName;
-
-        h.style.display = "";
-        h.classList.toggle("open", isMeOpen);
-        h.classList.toggle("closed", !isMeOpen);
-        h.style.opacity = isMyParentOpen ? "1" : "0.6";
-    });
-
-    // L3 Tiles
-    panelEl.querySelectorAll(`.rmu-spell-tile`).forEach((t) => {
-        const tType = t.dataset.listTypeKey || "";
-        const tName = t.dataset.listNameKey || "";
-        const isSearchHidden = t.classList.contains("hidden");
-        const visible = tType === openType && tName === openName && !isSearchHidden;
-        t.style.display = visible ? "" : "none";
-    });
+/**
+ * A spell name without its level suffix, so one custom icon covers every level variant.
+ * @param {string} name
+ * @returns {string}
+ */
+function baseSpellName(name) {
+    return String(name ?? "").replace(SPELL_LEVEL_SUFFIX, "").trim();
 }
 
 export function defineSpellsMain(CoreHUD) {
-    const ARGON = CoreHUD.ARGON;
-    const { ActionPanel } = ARGON.MAIN;
-    const { ButtonPanel } = ARGON.MAIN.BUTTON_PANELS;
-    const { ActionButton, ButtonPanelButton } = ARGON.MAIN.BUTTONS;
+    const { ButtonPanelButton } = CoreHUD.ARGON.MAIN.BUTTONS;
+    const { RMUActionButton, RMUEmptyButton, RMUActionPanel, createGuardedPanel } = createBaseClasses(CoreHUD.ARGON);
 
     /**
      * L3: An action button for a single spell.
      * Handles standard SCR (Casting).
      */
-    class RMUSpellActionButton extends ActionButton {
-        constructor(spell) {
+    class RMUSpellActionButton extends RMUActionButton {
+        /**
+         * @param {object} spell - The spell, with its _rawListInfo (from system/spells.js).
+         * @param {Accordion} accordion - The panel's accordion.
+         */
+        constructor(spell, accordion) {
             super();
             this.spell = spell;
+            this.accordion = accordion;
             if (spell) {
                 this._listKey = spell._rawListInfo.listKey;
                 this._listTypeKey = spell._rawListInfo.groupName ?? spell._rawListInfo.listType;
             }
-            this._relatedAttack = this._findRelatedAttack();
         }
 
-        /**
-         * Finds the attack data.
-         */
-        _findRelatedAttack() {
-            if (!this.spell) return null;
-            const attacks = RMUData.getDirectedSpellAttacks();
-            return attacks.find((a) => a.name === this.spell.name);
+        /** Whether the spell also has an attack roll (it then shows its OB beside its SCR). */
+        get _hasAttack() {
+            return spellAttackBonus(this.spell) !== null;
         }
 
         get label() {
-            return `${this.spell.name} (Lvl ${this.spell.level})`;
+            return tf("ECH-RMU.Spell.Label", { name: spellDisplayName(this.spell), level: this.spell.level });
         }
 
         get icon() {
-            // Extract the base spell name
-            const spellName = this.spell?.name || "";
-            const baseName = spellName.replace(/ (I|II|III|IV|V|VI|VII|VIII|IX|X|True)$/, "").trim();
-
-            // Check if the user has configured a custom icon
-            const customIcon = getUserIcon(baseName);
+            // A custom icon is mapped to the spell's base name (without its level suffix), so
+            // one mapping covers every level variant. The untranslated name is tried first,
+            // then the name as shown.
+            const customIcon = getUserIcon(baseSpellName(this.spell?.name)) ?? getUserIcon(baseSpellName(spellDisplayName(this.spell)));
             if (customIcon) return customIcon;
 
             // Fallback for all spells
             return ICONS.spells_muted;
         }
 
-        get isInteractive() {
-            return true;
-        }
-
         get classes() {
-            return [...super.classes, "rmu-spell-tile"];
+            return [...super.classes, "ech-rmu-spell-tile"];
         }
 
         get hasTooltip() {
@@ -109,7 +101,7 @@ export function defineSpellsMain(CoreHUD) {
 
         async getTooltipData() {
             const s = this.spell;
-            const a = this._relatedAttack;
+            const { TEXT, NUMBER, BONUS } = DETAIL_FORMAT;
 
             // --- 1. BASE SPELL DETAILS (SCR) ---
             const duration = s._modifiedDuration?.duration || s._modifiedDuration?.dur?.duration || s.duration;
@@ -117,226 +109,191 @@ export function defineSpellsMain(CoreHUD) {
             const range = s._modifiedRange?.range || s.range;
 
             const details = [
-                { label: "List type", value: s.listType },
-                { label: "Realm(s)", value: s.realms },
-                { label: "AoE", value: aoe },
-                { label: "Duration", value: duration },
-                { label: "Range", value: range },
-                { label: "Spell type", value: s.spellType },
-                { label: "SCR", value: s.scr },
-                { label: "Level", value: s.level },
+                { label: t("ECH-RMU.Tooltip.ListType"), value: listTypeDisplayName(s.listType), format: TEXT },
+                { label: t("ECH-RMU.Tooltip.Realms"), value: spellRealmsText(s), format: TEXT },
+                { label: term("AoE"), value: aoe, format: TEXT },
+                { label: term("Duration"), value: duration, format: TEXT },
+                { label: term("Range"), value: range, format: TEXT },
+                { label: term("SpellType"), value: s.spellType, format: TEXT },
+                { label: term("SCR"), value: s.scr, format: BONUS },
+                { label: term("Level"), value: s.level, format: NUMBER },
             ];
 
-            // --- 2. COMBO ATTACK DETAILS ---
-            if (a) {
+            // --- 2. ATTACK DETAILS (spells with an attack roll) ---
+            if (this._hasAttack) {
                 const attackDetails = [
-                    { label: "Attack Type", value: a.attack },
-                    { label: "Specialization", value: a.spellAttack?.specialization },
-                    { label: "Size", value: a.spellAttack?.size },
-                    { label: "Chart", value: a.spellAttack?.chart?.name },
-                    { label: "Fumble", value: a.spellAttack?.fumble },
-                    { label: "Range (interval)", value: a._modifiedRange?.range || a.range },
-                    { label: "AoE", value: a._modifiedAoE?.range || a.AoE },
-                    { label: "Targets", value: a._modifiedAoE?.targets },
-                    { label: "Total OB", value: a._totalBonus ?? a.totalBonus },
+                    { label: term("AttackType"), value: attackTableName(s.attack), format: TEXT },
+                    { label: term("Specialization"), value: specializationName(s.spellAttack?.specialization), format: TEXT },
+                    { label: term("Size"), value: s.spellAttack?.size, format: BONUS },
+                    { label: term("Chart"), value: attackTableName(s.spellAttack?.chart?.name), format: TEXT },
+                    { label: term("Fumble"), value: s.spellAttack?.fumble, format: NUMBER },
+                    { label: t("ECH-RMU.Tooltip.IntervalRange"), value: s._modifiedRange?.range || s.range, format: TEXT },
+                    { label: term("Targets"), value: s._modifiedAoE?.targets, format: NUMBER },
+                    { label: term("TotalOB"), value: spellAttackBonus(s), format: BONUS },
                 ];
                 details.push(...attackDetails);
             }
 
-            const helpText = "<br><br><b>Left-Click:</b> Cast Spell (SCR)";
+            // The description is inserted as HTML, so the translated help text is escaped and
+            // only the line breaks and bold markup come from here.
+            const helpText = `<br><br><b>${escapeHTML(t("ECH-RMU.Spell.Help.LeftClick"))}</b> ${escapeHTML(t("ECH-RMU.Spell.Help.Cast"))}`;
 
-            return {
+            return buildTooltip({
                 title: this.label,
-                subtitle: `Lvl ${s.level} - ${s.spellList}`,
-                description: (s.description || "") + helpText,
-                details: RMUUtils.formatTooltipDetails(details.filter((x) => x.value !== undefined && x.value !== null && x.value !== "")),
-            };
+                subtitle: tf("ECH-RMU.Spell.Subtitle", { level: s.level, list: spellListDisplayName(s) }),
+                description: spellDescription(s) + helpText,
+                details,
+                properties: this._chips().map((c) => c.label),
+            });
+        }
+
+        /**
+         * The chips shown on the button, also listed as badges in its tooltip.
+         * @returns {Array<{class: string, label: string}>}
+         */
+        _chips() {
+            const chips = [];
+            if (this.spell.isFavorite === true) chips.push({ class: "ech-rmu-spell-fav-chip", label: t("ECH-RMU.Chip.Favorite") });
+            if (this.spell.isInstantaneous === true) chips.push({ class: "ech-rmu-instant-chip", label: term("Instantaneous") });
+            if (this.spell.isSubconscious === true) chips.push({ class: "ech-rmu-subconscious-chip", label: term("Subconscious") });
+            return chips;
         }
 
         async _renderInner() {
             await super._renderInner();
             if (!this.element) return;
 
-            this.element.classList.add("rmu-button-relative");
-            this.element.dataset.tooltipDirection = "UP";
+            this.element.classList.add("ech-rmu-button-relative");
 
-            // Chips
-            const modifiersStr = this.spell.modifiers || "";
+            // Flags shown as chips and read by the search filters
             const isFav = this.spell.isFavorite === true;
-            const isInstant = modifiersStr.includes("*");
-            const isSubconscious = (this.spell.spellType || "").substring(1).includes("s");
+            const isInstant = this.spell.isInstantaneous === true;
+            const isSubconscious = this.spell.isSubconscious === true;
 
             // Apply data attributes so the Search Filter can find them
             this.element.dataset.favorite = isFav ? "true" : "false";
             this.element.dataset.isInstant = isInstant ? "true" : "false";
             this.element.dataset.isSubconscious = isSubconscious ? "true" : "false";
 
-            const chips = [];
-            if (isFav) chips.push({ class: "rmu-spell-fav-chip", title: "Favorite" });
-            if (isInstant) chips.push({ class: "rmu-instant-chip", title: "Instantaneous" });
-            if (isSubconscious) chips.push({ class: "rmu-subconscious-chip", title: "Sub-conscious" });
-            RMUUtils.buildChipContainer(this.element, chips);
+            buildChipContainer(this.element, this._chips());
 
             // --- SCR / OB OVERLAY ---
             const scrVal = formatBonus(this.spell.scr);
-            if (this._relatedAttack) {
-                const rawOb = this._relatedAttack._totalBonus ?? this._relatedAttack.totalBonus;
-                const obVal = formatBonus(rawOb);
+            if (this._hasAttack) {
+                const obVal = formatBonus(spellAttackBonus(this.spell));
 
-                RMUUtils.applyValueOverlay(this.element, `${scrVal} / ${obVal}`, "SCR / OB");
+                applyValueOverlay(this.element, `${scrVal} / ${obVal}`, `${term("SCR")} / ${term("OB")}`);
                 // Ensures custom CSS font-size reduction for dual values is applied
-                this.element.classList.add("rmu-combo-spell");
+                this.element.classList.add("ech-rmu-combo-spell");
             } else {
-                RMUUtils.applyValueOverlay(this.element, scrVal ?? "", "SCR");
+                applyValueOverlay(this.element, scrVal ?? "", term("SCR"));
             }
 
-            this.element.style.pointerEvents = "auto";
-            this.element.style.cursor = "pointer";
-
-            // Attributes
+            // Search text and accordion position.
             const listInfo = this.spell._rawListInfo || {};
-            const nameNorm = `${this.spell.name} ${listInfo.listName} ${listInfo.realm} ${listInfo.listType} Lvl ${this.spell.level}`.toLowerCase();
-
-            this.element.dataset.listTypeKey = this._listTypeKey;
-            this.element.dataset.listNameKey = this._listKey;
+            // The level is searchable as it reads on the button ("Lvl 5" in English).
+            const levelText = tf("ECH-RMU.Spell.Level", { level: this.spell.level });
+            // Both the text the player reads and the untranslated names are searchable.
+            const nameNorm = [
+                spellDisplayName(this.spell),
+                spellListDisplayName(this.spell),
+                listTypeDisplayName(listInfo.listType),
+                this.spell.name,
+                listInfo.listName,
+                listInfo.realm,
+                listInfo.listType,
+                levelText,
+            ]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase();
             this.element.dataset.nameNorm = nameNorm;
-            this.element.dataset.catKey = this._listKey;
-
-            const { type: openType, name: openName } = getOpenSpellState();
-            const isVisible = this._listTypeKey === openType && this._listKey === openName;
-            this.element.style.display = isVisible ? "" : "none";
+            this.accordion.register(this.element, ACCORDION_ROLE.ITEM, [this._listTypeKey, this._listKey]);
         }
 
-        async _onMouseDown(event) {
-            // Left Click (Action)
-            if (event.button === 0) {
-                event.preventDefault();
-                event.stopPropagation();
-                await this._roll();
-            }
-        }
-
-        async _onLeftClick(event) {
-            event?.preventDefault?.();
-            event?.stopPropagation?.();
-        }
-
-        async _roll() {
-            await RMUUtils.rmuTokenActionWrapper(ui.ARGON?._token, "rmuTokenSCRAction", this.spell);
+        /** Casts the spell (Spell Casting Roll). */
+        async _onActivate() {
+            await callHudTokenAction("rmuTokenSCRAction", this.spell);
         }
     }
 
     // --- Accordion Headers (Standard) ---
-    class RMUSpellListButton extends ActionButton {
-        constructor(listName, listTypeKey) {
+    /**
+     * Level 2 accordion header: one spell list (for example "Hiding").
+     */
+    class RMUSpellListButton extends RMUActionButton {
+        /**
+         * @param {string} listName - The untranslated list name, which keys the accordion.
+         * @param {string} title - The list name as the player reads it.
+         * @param {string} listTypeKey - The untranslated list type.
+         * @param {Accordion} accordion
+         */
+        constructor(listName, title, listTypeKey, accordion) {
             super();
             this._listName = listName;
+            this._title = title;
             this._listTypeKey = listTypeKey;
-            this._panelEl = null;
+            this.accordion = accordion;
         }
         get label() {
-            return this._listName;
+            return this._title;
         }
         get icon() {
             return "";
-        }
-        get isInteractive() {
-            return true;
         }
         get hasTooltip() {
             return false;
         }
         get classes() {
-            const { type: openType, name: openName } = getOpenSpellState();
-            const isOpen = openType === this._listTypeKey && openName === this._listName;
-            return [...super.classes, "rmu-skill-header", "rmu-spell-list-header", isOpen ? "open" : "closed"];
-        }
-        _bindPanel(panelEl) {
-            this._panelEl = panelEl;
+            return [...super.classes, "ech-rmu-skill-header", "ech-rmu-spell-list-header"];
         }
         async _renderInner() {
             await super._renderInner();
-            if (this.element) {
-                this.element.style.pointerEvents = "auto";
-                this.element.style.cursor = "pointer";
-                this.element.dataset.listTypeKey = this._listTypeKey;
-                this.element.dataset.listNameKey = this._listName;
-                this.element.dataset.nameNorm = this.label.toLowerCase();
-                this.element.dataset.catKey = this._listName;
-            }
+            if (!this.element) return;
+            this.accordion.register(this.element, ACCORDION_ROLE.HEADER, [this._listTypeKey, this._listName]);
         }
-        async _onMouseDown(event) {
-            if (event?.button !== 0) return;
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-            const { name: openName } = getOpenSpellState();
-            const isOpen = openName === this._listName;
-            setOpenSpellState(this._listTypeKey, isOpen ? null : this._listName);
-            applyAccordionVisibility(this._panelEl);
-        }
-        async _onLeftClick(e) {
-            e?.preventDefault?.();
-            e?.stopPropagation?.();
+        /** Opens this list's spells, or closes them if already open. */
+        async _onActivate() {
+            this.accordion.toggle([this._listTypeKey, this._listName]);
         }
     }
 
-    class RMUSpellListTypeButton extends ActionButton {
-        constructor(listType) {
+    /**
+     * Level 1 accordion header: one spell list type (for example "Base").
+     */
+    class RMUSpellListTypeButton extends RMUActionButton {
+        constructor(listType, accordion) {
             super();
             this._listType = listType;
-            this._panelEl = null;
+            this.accordion = accordion;
         }
         get label() {
-            return this._listType;
+            return listTypeDisplayName(this._listType);
         }
         get icon() {
             return "";
-        }
-        get isInteractive() {
-            return true;
         }
         get hasTooltip() {
             return false;
         }
         get classes() {
-            const { type: openType } = getOpenSpellState();
-            const isOpen = openType === this._listType;
-            return [...super.classes, "rmu-skill-header", "rmu-spell-type-header", isOpen ? "open" : "closed"];
-        }
-        _bindPanel(panelEl) {
-            this._panelEl = panelEl;
+            return [...super.classes, "ech-rmu-skill-header", "ech-rmu-spell-type-header"];
         }
         async _renderInner() {
             await super._renderInner();
-            if (this.element) {
-                this.element.style.pointerEvents = "auto";
-                this.element.style.cursor = "pointer";
-                this.element.dataset.listTypeKey = this._listType;
-                this.element.dataset.nameNorm = this.label.toLowerCase();
-                this.element.dataset.catKey = this._listType;
-            }
+            if (!this.element) return;
+            this.accordion.register(this.element, ACCORDION_ROLE.HEADER, [this._listType]);
         }
-        async _onMouseDown(event) {
-            if (event?.button !== 0) return;
-            event.preventDefault();
-            event.stopPropagation();
-            event.stopImmediatePropagation();
-            const { type: openType } = getOpenSpellState();
-            const isOpen = openType === this._listType;
-            setOpenSpellState(isOpen ? null : this._listType, null);
-            applyAccordionVisibility(this._panelEl);
-        }
-        async _onLeftClick(e) {
-            e?.preventDefault?.();
-            e?.stopPropagation?.();
+        /** Opens this list type, or closes it (and any open list) if already open. */
+        async _onActivate() {
+            this.accordion.toggle([this._listType]);
         }
     }
 
     class RMUAllSpellsCategoryButton extends ButtonPanelButton {
         constructor() {
             super();
-            this.title = "SPELLS";
+            this.title = term("Spells");
             this._icon = ICONS.spells;
         }
         get label() {
@@ -353,120 +310,66 @@ export function defineSpellsMain(CoreHUD) {
         }
 
         async _getPanel() {
-            setOpenSpellState(null, null);
-            await RMUData.ensureRMUReady();
-            const allSpellsByListType = RMUData.getGroupedSpellsForHUD();
+            await ensureRMUReady();
+            const allSpellsByListType = getGroupedSpells();
 
             if (!allSpellsByListType.size) {
-                const empty = new (class NoSpellsButton extends ActionButton {
-                    get label() {
-                        return "No spells known";
-                    }
-                    get icon() {
-                        return "";
-                    }
-                    get classes() {
-                        return [...super.classes, "disabled"];
-                    }
-                })();
-                return new ButtonPanel({
-                    id: "rmu-spells-all",
-                    buttons: [empty],
-                });
+                return createGuardedPanel("ech-rmu-spells-all", [new RMUEmptyButton(t("ECH-RMU.Empty.Spells"))]);
             }
 
-            const listOrder = {
-                Innate: 0,
-                Base: 1,
-                Open: 2,
-                Closed: 3,
-                Arcane: 4,
-                Restricted: 5,
-            };
-            const sortedListTypes = Array.from(allSpellsByListType.keys()).sort((a, b) => {
-                const rankA = listOrder[a] ?? 99;
-                const rankB = listOrder[b] ?? 99;
-                return rankA - rankB;
-            });
+            const sortedListTypes = Array.from(allSpellsByListType.keys()).sort(compareListTypes);
 
             const allButtons = [];
-            const allHeaderInstances = [];
+            const accordion = new Accordion({ isDimmed: isSpellHeaderDimmed });
 
             for (const listType of sortedListTypes) {
                 const listMap = allSpellsByListType.get(listType);
-                const l1Button = new RMUSpellListTypeButton(listType);
-                allButtons.push(l1Button);
-                allHeaderInstances.push(l1Button);
+                allButtons.push(new RMUSpellListTypeButton(listType, accordion));
 
-                const sortedListNames = Array.from(listMap.keys()).sort((a, b) => a.localeCompare(b));
+                // Lists in the alphabetical order of the names the player reads.
+                const titleOf = (listName) => spellListDisplayName(listMap.get(listName)[0]) || listName;
+                const sortedListNames = Array.from(listMap.keys()).sort((a, b) => compareText(titleOf(a), titleOf(b)));
 
                 for (const listName of sortedListNames) {
                     const spells = listMap.get(listName);
-                    const l2Button = new RMUSpellListButton(listName, listType);
-                    allButtons.push(l2Button);
-                    allHeaderInstances.push(l2Button);
+                    allButtons.push(new RMUSpellListButton(listName, titleOf(listName), listType, accordion));
 
                     for (const spell of spells) {
-                        allButtons.push(new RMUSpellActionButton(spell));
+                        allButtons.push(new RMUSpellActionButton(spell, accordion));
                     }
                 }
             }
-
-            const panel = new ButtonPanel({
-                id: "rmu-spells-all",
-                buttons: allButtons,
-            });
-            UIGuards.attachPanelInteractionGuards(panel);
 
             const spellFilters = [
                 {
                     id: "fav",
                     dataKey: "favorite",
                     icon: ICONS.star,
-                    tooltip: "Show Only Favorites",
+                    tooltip: t("ECH-RMU.Filter.Favorites"),
                 },
                 {
                     id: "instant",
                     dataKey: "isInstant",
                     icon: ICONS.instant,
-                    tooltip: "Show Only Instantaneous Spells",
+                    tooltip: t("ECH-RMU.Filter.Instantaneous"),
                 },
                 {
                     id: "subcon",
                     dataKey: "isSubconscious",
                     icon: ICONS.subconscious,
-                    tooltip: "Show Only Sub-conscious Spells",
+                    tooltip: t("ECH-RMU.Filter.Subconscious"),
                 },
             ];
 
-            installListSearch(panel, ".rmu-spell-tile", ".rmu-spell-type-header, .rmu-spell-list-header", "spell", {
-                filters: spellFilters,
-                onClear: (panelEl) => {
-                    if (!panelEl) return;
-                    setOpenSpellState(null, null);
-                    applyAccordionVisibility(panelEl);
-                    const summaryEl = panelEl.querySelector(".rmu-search-summary");
-                    if (summaryEl) summaryEl.style.display = "none";
-                },
-            });
-
-            const panelEl = panel.element;
-            allHeaderInstances.forEach((h) => h._bindPanel(panelEl));
-            applyAccordionVisibility(panelEl);
-
-            return panel;
+            // Clearing the search closes every list type.
+            const search = new ListSearch({ filters: spellFilters, resetOnClear: true });
+            return createGuardedPanel("ech-rmu-spells-all", allButtons, { accordion, search });
         }
     }
 
-    class RMUSpellsActionPanel extends ActionPanel {
+    class RMUSpellsActionPanel extends RMUActionPanel {
         get label() {
-            return "SPELLS";
-        }
-        get maxActions() {
-            return null;
-        }
-        get currentActions() {
-            return null;
+            return term("Spells");
         }
         async _getButtons() {
             return [new RMUAllSpellsCategoryButton()];

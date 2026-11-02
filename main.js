@@ -7,8 +7,11 @@
  */
 
 // Import modular logic
-import { UIGuards, defineTooltip, defineSupportedActorTypes, registerIconSettings } from "./src/RMUCore.js";
-import "./src/RMUData.js"; // Imports RMUData for its side effects (attaching to window)
+import { SUPPORTED_ACTOR_TYPES } from "./src/constants.js";
+import { registerIconSettings } from "./src/settings.js";
+import { defineTooltip, defineSupportedActorTypes } from "./src/RMUCore.js";
+import { closeHudForUnsupportedActors, closePanelsWhenMinimised, renderDrawer, updateMainPanelVisibility } from "./src/argon.js";
+import { onItemUpdated } from "./src/equipment.js";
 import { defineAttacksMain } from "./src/RMUFeatures/RMUAttacks.js";
 import { defineSkillsMain } from "./src/RMUFeatures/RMUSkills.js";
 import { defineSpellsMain } from "./src/RMUFeatures/RMUSpells.js";
@@ -24,7 +27,7 @@ import {
     defineDrawerPanel,
 } from "./src/RMUFeatures/RMUOther.js";
 
-const VALID_ACTOR_TYPES = new Set(["Character", "Creature"]);
+const VALID_ACTOR_TYPES = new Set(SUPPORTED_ACTOR_TYPES);
 
 /**
  * Initializes the RMU-specific configuration for the Argon HUD.
@@ -68,12 +71,6 @@ Hooks.once("init", () => {
     registerIconSettings();
 });
 
-Hooks.once("setup", () => {
-    console.info(`[ECH-RMU] Setting up RMU extension hooks`);
-    // Install the aggressive, global guard to prevent keydown conflicts.
-    UIGuards.installGlobalHudInputGuard();
-});
-
 // Register the main configuration function with Argon
 Hooks.on("argonInit", (CoreHUD) => initConfig(CoreHUD));
 
@@ -85,27 +82,29 @@ Hooks.once("ready", () => {
         body.classList.add("enhancedcombathud-rmu");
     }
 
-    // MONKEY PATCH: Suppress "Loot" Warnings
-    // Safely intercepts the HUD's bind method to ignore unsupported actors
-    if (ui.ARGON?.bind) {
-        const originalBind = ui.ARGON.bind;
-        ui.ARGON.bind = function (token) {
-            // If a token is selected, check if it's a valid type
-            if (token?.actor && !VALID_ACTOR_TYPES.has(token.actor.type)) {
-                // If invalid (e.g., Loot), force the HUD to close (unbind)
-                // ignoring the warning and preventing the HUD from getting stuck.
-                return originalBind.apply(this, [null]);
-            }
-            // Otherwise, proceed as normal
-            return originalBind.apply(this, arguments);
-        };
-    }
-});
-
-Hooks.once("shutdown", () => {
-    document.body.classList.remove("enhancedcombathud-rmu");
+    // Loot actors have no actions: close the HUD quietly instead of CORE's warning.
+    // CORE's own ready hook runs first (it is a required module), so ui.ARGON exists here.
+    closeHudForUnsupportedActors(VALID_ACTOR_TYPES);
+    // Open panels would otherwise stay on screen, with no way to close them, while the HUD
+    // is minimised.
+    closePanelsWhenMinimised();
 });
 
 // Update visibility of REST and COMBAT buttons when combat starts/ends
-Hooks.on("updateCombat", () => ui.ARGON?.components?.main?.forEach((c) => c.updateVisibility?.()));
-Hooks.on("deleteCombat", () => ui.ARGON?.components?.main?.forEach((c) => c.updateVisibility?.()));
+Hooks.on("updateCombat", () => updateMainPanelVisibility());
+Hooks.on("deleteCombat", () => updateMainPanelVisibility());
+
+// Keep equip toggles and disabled attacks in step with items changed elsewhere (the
+// character sheet, or another user).
+Hooks.on("updateItem", (item, changes) => onItemUpdated(item, changes));
+
+// Keep the macro drawer in step with the hotbar. CORE builds the drawer only when the whole
+// HUD renders, so a renamed, added or removed macro would otherwise not show until then.
+// Debounced so that changing several macros at once re-renders the drawer once.
+const renderDrawerSoon = foundry.utils.debounce(renderDrawer, 100);
+Hooks.on("createMacro", () => renderDrawerSoon());
+Hooks.on("updateMacro", () => renderDrawerSoon());
+Hooks.on("deleteMacro", () => renderDrawerSoon());
+Hooks.on("updateUser", (user, changes) => {
+    if (user === game.user && "hotbar" in (changes ?? {})) renderDrawerSoon();
+});

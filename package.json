@@ -1,10 +1,15 @@
 {
+  "name": "enhancedcombathud-rmu",
+  "private": true,
   "type": "module",
   "scripts": {
     "pack": "node scripts/pack.mjs",
+    "lint": "eslint .",
     "foundry-id": "node scripts/foundry-id.mjs"
   },
   "devDependencies": {
-    "@foundryvtt/foundryvtt-cli": "3.0.0"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0"
   }
 }
